@@ -896,6 +896,130 @@ def cakely_recipes():
     ).fetchall()]
     return jsonify({'ok': True, 'recipes': recipes, 'count': len(recipes)})
 
+# ── Cakely WRITE actions ──────────────────────────────────────────────────────
+@app.route('/cakely/api/recipes/add', methods=['POST'])
+def cakely_add_recipe():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    name        = data.get('name', '').strip()
+    category    = data.get('category', 'Cake')
+    description = data.get('description', '')
+    servings    = int(data.get('servings', 12))
+    prep_mins   = int(data.get('prep_mins', 60))
+    bake_mins   = int(data.get('bake_mins', 30))
+    base_price  = float(data.get('base_price', 0))
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    cur = db.execute(
+        'INSERT INTO recipes(name,category,description,servings,prep_mins,bake_mins,base_price) VALUES(?,?,?,?,?,?,?)',
+        (name, category, description, servings, prep_mins, bake_mins, base_price)
+    )
+    db.commit()
+    return jsonify({'ok': True, 'id': cur.lastrowid, 'message': f'Recipe "{name}" added successfully!'})
+
+@app.route('/cakely/api/inventory/add', methods=['POST'])
+def cakely_add_ingredient():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    name          = data.get('name', '').strip()
+    unit          = data.get('unit', 'each')
+    quantity      = float(data.get('quantity', 0))
+    reorder_level = float(data.get('reorder_level', 5))
+    cost_per_unit = float(data.get('cost_per_unit', 0))
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    cur = db.execute(
+        'INSERT INTO ingredients(name,unit,quantity,reorder_level,cost_per_unit) VALUES(?,?,?,?,?)',
+        (name, unit, quantity, reorder_level, cost_per_unit)
+    )
+    db.commit()
+    return jsonify({'ok': True, 'id': cur.lastrowid, 'message': f'Ingredient "{name}" added to inventory!'})
+
+@app.route('/cakely/api/inventory/update', methods=['POST'])
+def cakely_update_inventory():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    name  = data.get('name', '').strip()
+    delta = float(data.get('delta', 0))  # positive = add, negative = remove
+    item = db.execute('SELECT * FROM ingredients WHERE name LIKE ?', (f'%{name}%',)).fetchone()
+    if not item:
+        return jsonify({'error': f'Ingredient "{name}" not found'}), 404
+    new_qty = max(0, item['quantity'] + delta)
+    db.execute('UPDATE ingredients SET quantity=? WHERE id=?', (new_qty, item['id']))
+    db.commit()
+    return jsonify({'ok': True, 'name': item['name'], 'old_qty': item['quantity'],
+                   'new_qty': new_qty, 'unit': item['unit'],
+                   'message': f'{item["name"]} updated: {item["quantity"]} → {new_qty} {item["unit"]}'})
+
+@app.route('/cakely/api/customers/add', methods=['POST'])
+def cakely_add_customer():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    name  = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    notes = data.get('notes', '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    cur = db.execute('INSERT INTO customers(name,email,phone,notes) VALUES(?,?,?,?)',
+                     (name, email, phone, notes))
+    db.commit()
+    return jsonify({'ok': True, 'id': cur.lastrowid, 'message': f'Customer "{name}" added!'})
+
+@app.route('/cakely/api/orders/add', methods=['POST'])
+def cakely_add_order():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    cname       = data.get('customer_name', '').strip()
+    cemail      = data.get('customer_email', '').strip()
+    cphone      = data.get('customer_phone', '').strip()
+    pickup_date = data.get('pickup_date', '')
+    pickup_time = data.get('pickup_time', '')
+    notes       = data.get('special_notes', '')
+    otype       = data.get('type', 'custom')
+    if not cname:
+        return jsonify({'error': 'customer_name is required'}), 400
+    # Find or create customer
+    cust = db.execute('SELECT id FROM customers WHERE email=? AND email!=""', (cemail,)).fetchone() if cemail else None
+    cust_id = cust['id'] if cust else None
+    if not cust_id and cemail:
+        cur = db.execute('INSERT INTO customers(name,email,phone) VALUES(?,?,?)', (cname, cemail, cphone))
+        cust_id = cur.lastrowid
+    onum = gen_order_number()
+    cur = db.execute(
+        'INSERT INTO orders(order_number,customer_id,customer_name,customer_email,customer_phone,type,pickup_date,pickup_time,special_notes) VALUES(?,?,?,?,?,?,?,?,?)',
+        (onum, cust_id, cname, cemail, cphone, otype, pickup_date, pickup_time, notes)
+    )
+    db.commit()
+    return jsonify({'ok': True, 'order_number': onum, 'order_id': cur.lastrowid,
+                   'message': f'Order {onum} created for {cname}! Pickup: {pickup_date} {pickup_time}'})
+
+@app.route('/cakely/api/orders/update-status', methods=['POST'])
+def cakely_update_order_status():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    data = request.get_json() or {}
+    q      = data.get('order_number', data.get('q', '')).strip()
+    status = data.get('status', '').strip().lower()
+    valid  = ['pending','confirmed','in_production','ready','delivered','cancelled']
+    if status not in valid:
+        return jsonify({'error': f'status must be one of: {valid}'}), 400
+    order = db.execute('SELECT * FROM orders WHERE order_number=? OR customer_name LIKE ?',
+                       (q, f'%{q}%')).fetchone()
+    if not order:
+        return jsonify({'error': f'Order not found for: {q}'}), 404
+    db.execute('UPDATE orders SET status=? WHERE id=?', (status, order['id']))
+    db.commit()
+    return jsonify({'ok': True, 'order_number': order['order_number'],
+                   'customer': order['customer_name'], 'new_status': status,
+                   'message': f'Order {order["order_number"]} ({order["customer_name"]}) → {status}'})
+
+
 @app.route('/cakely/api/memory')
 def cakely_memory():
     """Returns Cakely brain files so the AI Widget can pull them."""
