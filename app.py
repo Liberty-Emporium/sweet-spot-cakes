@@ -230,6 +230,18 @@ def init_db():
         active      INTEGER DEFAULT 1,
         created     TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS campaigns (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        audience    TEXT DEFAULT 'all',  -- all, birthday, new, top_customers
+        subject     TEXT DEFAULT '',
+        message     TEXT DEFAULT '',
+        ad_copy     TEXT DEFAULT '',
+        status      TEXT DEFAULT 'draft', -- draft, sent, scheduled
+        sent_count  INTEGER DEFAULT 0,
+        created     TEXT DEFAULT (datetime('now')),
+        sent_at     TEXT DEFAULT ''
+    );
     CREATE TABLE IF NOT EXISTS loyalty_members (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_id INTEGER UNIQUE NOT NULL,
@@ -900,6 +912,166 @@ def special_toggle(special_id):
         db.execute('UPDATE specials SET active=? WHERE id=?', (0 if s['active'] else 1, special_id))
         db.commit()
     return redirect(url_for('loyalty'))
+
+
+# ── Marketing & Ads ─────────────────────────────────────────────────────────────────
+@app.route('/marketing')
+@login_required
+def marketing():
+    db = get_db()
+    campaigns = db.execute('SELECT * FROM campaigns ORDER BY created DESC').fetchall()
+
+    # Audience counts
+    total_members = db.execute('SELECT COUNT(*) FROM loyalty_members').fetchone()[0]
+    month = str(datetime.date.today().month).zfill(2)
+    birthday_count = db.execute(
+        "SELECT COUNT(*) FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE c.birthday LIKE ?",
+        (f'%-{month}-%',)).fetchone()[0]
+    new_count = db.execute(
+        "SELECT COUNT(*) FROM loyalty_members WHERE date(joined_at) >= date('now','-30 days')").fetchone()[0]
+    top_count = db.execute(
+        """SELECT COUNT(*) FROM loyalty_members lm
+           JOIN (SELECT customer_id, COUNT(*) as cnt FROM orders GROUP BY customer_id HAVING cnt>=2) t
+           ON t.customer_id=lm.customer_id""").fetchone()[0]
+    email_count = db.execute(
+        "SELECT COUNT(*) FROM loyalty_members lm JOIN customers c ON c.id=lm.customer_id WHERE c.email != ''"
+    ).fetchone()[0]
+
+    audiences = [
+        {'key': 'all',          'label': 'All VIP Members',        'count': total_members,  'icon': '⭐'},
+        {'key': 'birthday',     'label': 'Birthdays This Month',   'count': birthday_count, 'icon': '🎂'},
+        {'key': 'new',          'label': 'New Members (30 days)',  'count': new_count,      'icon': '🌱'},
+        {'key': 'top_customers','label': 'Top Customers (2+ orders)', 'count': top_count,  'icon': '🏆'},
+    ]
+    return render_template('marketing.html', campaigns=campaigns, audiences=audiences,
+                           email_count=email_count, total=total_members, bakery=BAKERY_NAME)
+
+
+@app.route('/marketing/campaigns/new', methods=['POST'])
+@login_required
+def campaign_new():
+    db = get_db()
+    cur = db.execute(
+        'INSERT INTO campaigns(name,audience,subject,message,ad_copy) VALUES(?,?,?,?,?)',
+        (request.form['name'].strip(),
+         request.form.get('audience', 'all'),
+         request.form.get('subject', '').strip(),
+         request.form.get('message', '').strip(),
+         request.form.get('ad_copy', '').strip()))
+    db.commit()
+    flash('Campaign created! ✨', 'success')
+    return redirect(url_for('campaign_detail', campaign_id=cur.lastrowid))
+
+
+@app.route('/marketing/campaigns/<int:campaign_id>')
+@login_required
+def campaign_detail(campaign_id):
+    db = get_db()
+    campaign = db.execute('SELECT * FROM campaigns WHERE id=?', (campaign_id,)).fetchone()
+    if not campaign: return redirect(url_for('marketing'))
+
+    # Build audience list
+    audience = campaign['audience']
+    if audience == 'birthday':
+        month = str(datetime.date.today().month).zfill(2)
+        members = db.execute(
+            "SELECT c.* FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE c.birthday LIKE ? AND c.email != ''",
+            (f'%-{month}-%',)).fetchall()
+    elif audience == 'new':
+        members = db.execute(
+            "SELECT c.* FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE date(lm.joined_at) >= date('now','-30 days') AND c.email != ''"
+        ).fetchall()
+    elif audience == 'top_customers':
+        members = db.execute(
+            """SELECT c.* FROM customers c
+               JOIN loyalty_members lm ON lm.customer_id=c.id
+               JOIN (SELECT customer_id, COUNT(*) as cnt FROM orders GROUP BY customer_id HAVING cnt>=2) t
+               ON t.customer_id=c.id WHERE c.email != ''""").fetchall()
+    else:  # all
+        members = db.execute(
+            "SELECT c.* FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE c.email != '' ORDER BY c.name"
+        ).fetchall()
+
+    return render_template('campaign_detail.html', campaign=campaign, members=members,
+                           bakery=BAKERY_NAME)
+
+
+@app.route('/marketing/campaigns/<int:campaign_id>/edit', methods=['POST'])
+@login_required
+def campaign_edit(campaign_id):
+    db = get_db()
+    db.execute('UPDATE campaigns SET name=?,audience=?,subject=?,message=?,ad_copy=? WHERE id=?',
+               (request.form['name'], request.form.get('audience','all'),
+                request.form.get('subject',''), request.form.get('message',''),
+                request.form.get('ad_copy',''), campaign_id))
+    db.commit()
+    flash('Campaign updated!', 'success')
+    return redirect(url_for('campaign_detail', campaign_id=campaign_id))
+
+
+@app.route('/marketing/campaigns/<int:campaign_id>/generate-ad', methods=['POST'])
+@login_required
+def campaign_generate_ad(campaign_id):
+    """Use AI to generate ad copy for the campaign."""
+    db = get_db()
+    campaign = db.execute('SELECT * FROM campaigns WHERE id=?', (campaign_id,)).fetchone()
+    if not campaign: return jsonify({'error': 'not found'}), 404
+
+    openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
+    if not openrouter_key:
+        return jsonify({'error': 'OPENROUTER_API_KEY not set in Railway env vars'}), 400
+
+    import urllib.request as _ur
+    audience_labels = {
+        'all': 'all VIP loyalty members',
+        'birthday': 'customers with birthdays this month',
+        'new': 'new members who joined in the last 30 days',
+        'top_customers': 'top customers with 2 or more orders',
+    }
+    audience_label = audience_labels.get(campaign['audience'], campaign['audience'])
+    prompt = f"""You are a marketing copywriter for a custom cake bakery called {BAKERY_NAME}.
+
+Write 3 SHORT, punchy marketing messages for {audience_label}.
+The campaign is: "{campaign['name']}"
+{('The offer/special: ' + campaign['subject']) if campaign['subject'] else ''}
+
+Write:
+1. A text message (SMS) version — max 160 chars, casual and warm
+2. An email subject line — catchy, under 50 chars
+3. A social media post — 2-3 sentences with emojis, friendly and fun
+
+Format:
+SMS: [text]
+EMAIL SUBJECT: [text]
+SOCIAL: [text]"""
+
+    try:
+        payload = json.dumps({'model': 'openai/gpt-4o-mini',
+                              'messages': [{'role': 'user', 'content': prompt}],
+                              'max_tokens': 300}).encode()
+        req = _ur.Request('https://openrouter.ai/api/v1/chat/completions', data=payload,
+                          headers={'Authorization': f'Bearer {openrouter_key}',
+                                   'Content-Type': 'application/json'})
+        with _ur.urlopen(req, timeout=20) as r:
+            result = json.loads(r.read())
+        ad_copy = result['choices'][0]['message']['content']
+        db.execute('UPDATE campaigns SET ad_copy=? WHERE id=?', (ad_copy, campaign_id))
+        db.commit()
+        return jsonify({'ok': True, 'ad_copy': ad_copy})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/marketing/campaigns/<int:campaign_id>/mark-sent', methods=['POST'])
+@login_required
+def campaign_mark_sent(campaign_id):
+    db = get_db()
+    count = int(request.form.get('count', 0))
+    db.execute("UPDATE campaigns SET status='sent', sent_count=?, sent_at=datetime('now') WHERE id=?",
+               (count, campaign_id))
+    db.commit()
+    flash(f'Campaign marked as sent to {count} members! ✅', 'success')
+    return redirect(url_for('campaign_detail', campaign_id=campaign_id))
 
 
 # ── Cakely AI Agent API (Bearer token auth) ─────────────────────────────────

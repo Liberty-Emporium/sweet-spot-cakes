@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}{{ campaign.name }} — {{ bakery }}{% endblock %}
+{% block page_title %}📣 {{ campaign.name }}{% endblock %}
+{% block content %}
+
+<a href="/marketing" class="btn btn-ghost btn-sm" style="margin-bottom:20px">← Campaigns</a>
+
+<div class="grid-2">
+
+  <!-- Left: Campaign info + edit -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Status card -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;font-family:'Space Grotesk',sans-serif">{{ campaign.name }}</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">
+            Audience: <strong>{{ campaign.audience.replace('_',' ')|title }}</strong>
+            &nbsp;·&nbsp; {{ members|length }} recipients with email
+          </div>
+        </div>
+        <span style="padding:4px 14px;border-radius:20px;font-size:.75rem;font-weight:700;
+          {% if campaign.status == 'sent' %}background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.3)
+          {% else %}background:rgba(156,163,175,.1);color:#9ca3af;border:1px solid rgba(156,163,175,.2){% endif %}">
+          {{ campaign.status|upper }}
+        </span>
+      </div>
+      {% if campaign.sent_at %}
+      <div style="font-size:.82rem;color:var(--green)">✅ Sent {{ campaign.sent_at[:16] }} to {{ campaign.sent_count }} members</div>
+      {% endif %}
+    </div>
+
+    <!-- AI Ad Generator -->
+    <div class="card" style="border-color:rgba(99,102,241,.3)">
+      <div class="card-title" style="margin-bottom:8px">🤖 AI Ad Copy Generator</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:14px">Click to generate SMS, email subject, and social post copy for this campaign.</div>
+      <button class="btn btn-primary btn-sm" onclick="generateAd()" id="genBtn">✨ Generate Ad Copy</button>
+      <div id="adResult" style="margin-top:14px;display:none">
+        <div style="background:#0d1117;border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:14px;font-family:'Courier New',monospace;font-size:.82rem;color:#a78bfa;white-space:pre-wrap;line-height:1.7" id="adText"></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="copyAd()">📋 Copy All</button>
+      </div>
+      {% if campaign.ad_copy %}
+      <div style="margin-top:14px">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Saved Ad Copy</div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:'Courier New',monospace;font-size:.8rem;color:#a78bfa;white-space:pre-wrap;line-height:1.7">{{ campaign.ad_copy }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Edit campaign -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">✏️ Edit Campaign</div>
+      <form method="POST" action="/marketing/campaigns/{{ campaign.id }}/edit">
+        <div class="form-group"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ campaign.name }}"></div>
+        <div class="form-group">
+          <label class="form-label">Audience</label>
+          <select name="audience" class="form-control">
+            {% for k, l in [('all','All VIP Members'),('birthday','Birthdays This Month'),('new','New Members (30 days)'),('top_customers','Top Customers')] %}
+            <option value="{{ k }}" {% if campaign.audience == k %}selected{% endif %}>{{ l }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Email Subject / Headline</label><input name="subject" class="form-control" value="{{ campaign.subject }}"></div>
+        <div class="form-group"><label class="form-label">Message Body</label><textarea name="message" class="form-control" rows="4">{{ campaign.message }}</textarea></div>
+        <div class="form-group"><label class="form-label">Ad Copy (manual)</label><textarea name="ad_copy" class="form-control" rows="4">{{ campaign.ad_copy }}</textarea></div>
+        <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Right: Recipients + send -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Send -->
+    {% if campaign.status != 'sent' %}
+    <div class="card" style="border-color:rgba(52,211,153,.3)">
+      <div class="card-title" style="margin-bottom:8px">🚀 Ready to Send?</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        <strong>{{ members|length }} recipients</strong> will receive this campaign.<br>
+        Copy the message, send via your email provider or SMS tool, then mark it sent here to track it.
+      </div>
+      <!-- Quick copy for email list -->
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:600">EMAIL LIST (copy & paste into your email tool)</div>
+      <div id="emailList" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:monospace;font-size:.75rem;color:#a78bfa;max-height:80px;overflow-y:auto;word-break:break-all;user-select:all">
+        {% for m in members %}{{ m.email }}{% if not loop.last %}, {% endif %}{% endfor %}
+      </div>
+      <button class="btn btn-ghost btn-xs" style="margin-top:6px;margin-bottom:14px" onclick="copyEl('emailList')">📋 Copy Email List</button>
+      <form method="POST" action="/marketing/campaigns/{{ campaign.id }}/mark-sent">
+        <input type="hidden" name="count" value="{{ members|length }}">
+        <button type="submit" class="btn btn-success">✅ Mark as Sent ({{ members|length }} members)</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Recipients -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👥 Recipients ({{ members|length }})</div>
+      </div>
+      {% if members %}
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto">
+        {% for m in members %}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--card2);border-radius:6px;border:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:.85rem">{{ m.name }}</div>
+            <div style="font-size:.72rem;color:var(--muted)">{{ m.email }}</div>
+          </div>
+          {% if m.phone %}<div style="font-size:.72rem;color:var(--muted)">{{ m.phone }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:24px;color:var(--muted);font-size:.85rem">
+        No members with email addresses in this audience yet.<br>
+        <a href="/loyalty" style="color:var(--accent3)">Grow your loyalty list →</a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+const CAMPAIGN_ID = {{ campaign.id }};
+async function generateAd() {
+  const btn = document.getElementById('genBtn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+  const res = await fetch(`/marketing/campaigns/${CAMPAIGN_ID}/generate-ad`, {method:'POST'});
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('adText').textContent = data.ad_copy;
+    document.getElementById('adResult').style.display = 'block';
+    btn.textContent = '✨ Regenerate';
+  } else {
+    alert('Error: ' + (data.error || 'Unknown error'));
+    btn.textContent = '✨ Generate Ad Copy';
+  }
+  btn.disabled = false;
+}
+function copyAd() {
+  navigator.clipboard.writeText(document.getElementById('adText').textContent);
+  alert('Copied!');
+}
+function copyEl(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent.trim()).then(() => alert('Copied!'));
+}
+</script>
+{% endblock %}
