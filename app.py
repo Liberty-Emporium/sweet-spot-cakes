@@ -781,6 +781,183 @@ def api_recipes():
     rows = db.execute("SELECT id,name,category,base_price FROM recipes WHERE active=1 ORDER BY name").fetchall()
     return jsonify([dict(r) for r in rows])
 
+# ── Cakely AI Agent API (Bearer token auth) ─────────────────────────────────
+CAKELY_TOKEN = os.environ.get('CAKELY_API_TOKEN', 'cakely-sweet-spot-2026')
+
+def cakely_auth():
+    auth = request.headers.get('Authorization', '')
+    return auth == f'Bearer {CAKELY_TOKEN}'
+
+@app.route('/cakely/api/orders')
+def cakely_orders():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    status = request.args.get('status', '')
+    q = request.args.get('q', '')
+    today = datetime.date.today().isoformat()
+    sql = 'SELECT * FROM orders WHERE 1=1'
+    params = []
+    if status: sql += ' AND status=?'; params.append(status)
+    if q: sql += ' AND (customer_name LIKE ? OR order_number LIKE ?)'; params += [f'%{q}%', f'%{q}%']
+    sql += ' ORDER BY created DESC LIMIT 20'
+    orders = [dict(r) for r in db.execute(sql, params).fetchall()]
+    return jsonify({'ok': True, 'orders': orders, 'count': len(orders)})
+
+@app.route('/cakely/api/orders/today')
+def cakely_orders_today():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    today = datetime.date.today().isoformat()
+    orders = [dict(r) for r in db.execute(
+        "SELECT * FROM orders WHERE date(created)=? OR pickup_date=? ORDER BY pickup_time",
+        (today, today)).fetchall()]
+    pending = [dict(r) for r in db.execute(
+        "SELECT * FROM orders WHERE status='pending' ORDER BY created DESC LIMIT 10").fetchall()]
+    ready = [dict(r) for r in db.execute(
+        "SELECT * FROM orders WHERE status='ready' ORDER BY pickup_date, pickup_time").fetchall()]
+    return jsonify({'ok': True, 'today': orders, 'pending': pending, 'ready': ready,
+                   'summary': f'{len(orders)} orders today, {len(pending)} pending, {len(ready)} ready for pickup'})
+
+@app.route('/cakely/api/inventory/low')
+def cakely_low_stock():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    items = [dict(r) for r in db.execute(
+        'SELECT name, quantity, unit, reorder_level, cost_per_unit FROM ingredients WHERE quantity<=reorder_level ORDER BY quantity ASC'
+    ).fetchall()]
+    return jsonify({'ok': True, 'low_stock': items, 'count': len(items),
+                   'summary': f'{len(items)} items at or below reorder level' if items else 'All stock levels OK ✅'})
+
+@app.route('/cakely/api/inventory')
+def cakely_inventory():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    items = [dict(r) for r in db.execute(
+        'SELECT name, quantity, unit, reorder_level, cost_per_unit FROM ingredients ORDER BY name'
+    ).fetchall()]
+    return jsonify({'ok': True, 'inventory': items, 'count': len(items)})
+
+@app.route('/cakely/api/customers')
+def cakely_customers():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    q = request.args.get('q', '')
+    if q:
+        custs = [dict(r) for r in db.execute(
+            'SELECT * FROM customers WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? ORDER BY name LIMIT 10',
+            (f'%{q}%', f'%{q}%', f'%{q}%')).fetchall()]
+    else:
+        custs = [dict(r) for r in db.execute('SELECT * FROM customers ORDER BY name LIMIT 20').fetchall()]
+    return jsonify({'ok': True, 'customers': custs, 'count': len(custs)})
+
+@app.route('/cakely/api/employees/status')
+def cakely_employee_status():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    clocked_in = [dict(r) for r in db.execute(
+        "SELECT e.name, e.role, t.clock_in FROM employees e "
+        "JOIN timesheets t ON t.employee_id=e.id WHERE t.clock_out IS NULL ORDER BY e.name"
+    ).fetchall()]
+    clocked_out = [dict(r) for r in db.execute(
+        "SELECT name, role FROM employees WHERE active=1 AND id NOT IN "
+        "(SELECT employee_id FROM timesheets WHERE clock_out IS NULL)"
+    ).fetchall()]
+    return jsonify({'ok': True, 'clocked_in': clocked_in, 'clocked_out': clocked_out,
+                   'summary': f'{len(clocked_in)} staff in, {len(clocked_out)} staff out'})
+
+@app.route('/cakely/api/dashboard')
+def cakely_dashboard():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    today = datetime.date.today().isoformat()
+    week_ago = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    data = {
+        'orders_today':   db.execute("SELECT COUNT(*) FROM orders WHERE date(created)=?", (today,)).fetchone()[0],
+        'orders_pending': db.execute("SELECT COUNT(*) FROM orders WHERE status='pending'").fetchone()[0],
+        'orders_ready':   db.execute("SELECT COUNT(*) FROM orders WHERE status='ready'").fetchone()[0],
+        'revenue_week':   round(db.execute("SELECT COALESCE(SUM(amount),0) FROM receipts WHERE date(created)>=?", (week_ago,)).fetchone()[0], 2),
+        'low_stock_count':db.execute("SELECT COUNT(*) FROM ingredients WHERE quantity<=reorder_level").fetchone()[0],
+        'staff_in':       db.execute("SELECT COUNT(*) FROM timesheets WHERE clock_out IS NULL").fetchone()[0],
+        'pickups_today':  db.execute("SELECT COUNT(*) FROM orders WHERE pickup_date=? AND status NOT IN ('delivered','cancelled')", (today,)).fetchone()[0],
+    }
+    return jsonify({'ok': True, 'dashboard': data,
+                   'summary': f"Today: {data['orders_today']} orders, {data['orders_ready']} ready for pickup, "
+                              f"${data['revenue_week']:.2f} revenue this week, {data['low_stock_count']} low stock items"})
+
+@app.route('/cakely/api/recipes')
+def cakely_recipes():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    recipes = [dict(r) for r in db.execute(
+        'SELECT name, category, base_price, servings, prep_mins, bake_mins, description FROM recipes WHERE active=1 ORDER BY name'
+    ).fetchall()]
+    return jsonify({'ok': True, 'recipes': recipes, 'count': len(recipes)})
+
+@app.route('/cakely/api/memory')
+def cakely_memory():
+    """Returns Cakely brain files so the AI Widget can pull them."""
+    IDENTITY = """# IDENTITY
+
+- Name: Cakely \U0001f382
+- Role: AI assistant for Sweet Spot Custom Cakes
+- Bakery: Sweet Spot Custom Cakes \u2014 custom cakes, cupcakes, and baked goods
+- App URL: Set BAKERY_URL in Railway env vars
+
+## What Cakely Can Help With
+- Looking up orders by customer name or order number
+- Checking inventory levels and low stock alerts
+- Finding customer information and history
+- Checking today's pickups and pending orders
+- Reporting on revenue and business stats
+- Answering questions about recipes and pricing
+- Checking which staff are clocked in
+
+## What Cakely Cannot Do
+- Create or modify orders directly (staff must do that in the app)
+- Process payments
+- Access systems outside Sweet Spot Custom Cakes"""
+
+    SOUL = """# SOUL
+
+## Personality
+Warm, cheerful, and professional \u2014 like a friendly bakery manager who knows everything.
+Proud of the bakery and genuinely helpful to all staff.
+
+## Communication Style
+- Short, clear answers with the key info upfront
+- Use \U0001f382 \U0001f9c1 \u2728 emojis sparingly to keep it fun
+- When you find data, present it in a readable way
+- Always offer a next step or follow-up question
+
+## Values
+- Accuracy: only report real data from your actions
+- Speed: get to the answer fast
+- Warmth: this is a bakery \u2014 keep it sweet!"""
+
+    MEMORY = f"""# MEMORY
+
+## About Sweet Spot Custom Cakes
+- A custom cake and bakery business
+- Uses Sweet Spot Cakes app for order management
+- Staff can clock in/out, manage orders, track inventory, and view reports
+
+## Cakely API Token
+- Token: {CAKELY_TOKEN}
+- Use Bearer auth: Authorization: Bearer {CAKELY_TOKEN}
+
+## Available Actions
+- get_dashboard: overall bakery stats (orders, revenue, staff, low stock)
+- get_todays_orders: all orders for today + pending + ready for pickup
+- lookup_order: search orders by customer name or order number
+- get_low_stock: ingredients at or below reorder level
+- get_inventory: full inventory list
+- lookup_customer: search customer by name/email/phone
+- get_employee_status: who is clocked in/out right now
+- get_recipes: all active recipes with pricing"""
+
+    return jsonify({'ok': True, 'identity_md': IDENTITY, 'soul_md': SOUL, 'memory_md': MEMORY})
+
+
 @app.route('/api/customers/search')
 @login_required
 def api_customers_search():
