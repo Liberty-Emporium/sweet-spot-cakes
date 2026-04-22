@@ -1513,6 +1513,20 @@ def recipe_add_ingredient(recipe_id):
     flash('Ingredient added to recipe.', 'success')
     return redirect(url_for('recipe_detail', recipe_id=recipe_id))
 
+@app.route('/recipes/<int:recipe_id>/update-ingredient/<int:ri_id>', methods=['POST'])
+@login_required
+def recipe_update_ingredient(recipe_id, ri_id):
+    try:
+        qty = float(request.form.get('quantity') or 0)
+    except (ValueError, TypeError):
+        qty = 0
+    if qty > 0:
+        db = get_db()
+        db.execute('UPDATE recipe_ingredients SET quantity=? WHERE id=? AND recipe_id=?',
+                   (qty, ri_id, recipe_id))
+        db.commit()
+    return redirect(url_for('recipe_detail', recipe_id=recipe_id))
+
 @app.route('/recipes/<int:recipe_id>/remove-ingredient/<int:ri_id>', methods=['POST'])
 @login_required
 def recipe_remove_ingredient(recipe_id, ri_id):
