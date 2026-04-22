@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Production Sheet #{{ order.order_number }} — {{ bakery }}{% endblock %}
+{% block page_title %}🍳 Production Sheet{% endblock %}
+{% block extra_css %}
+<style>
+  .sheet-header { background:linear-gradient(135deg,rgba(244,114,182,.12),rgba(236,72,153,.06)); border:1px solid rgba(244,114,182,.25); border-radius:14px; padding:20px 24px; margin-bottom:22px; display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:14px; }
+  .sheet-order-num { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; background:linear-gradient(135deg,#f472b6,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .sheet-meta div { font-size:.85rem; color:var(--muted); margin-bottom:4px; }
+  .sheet-meta span { color:var(--text); font-weight:600; }
+  .section-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:18px; }
+  .section-head { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .ingr-row { display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:8px; margin-bottom:4px; background:var(--card2); border:1px solid var(--border); }
+  .ingr-name-big { flex:1; font-weight:600; font-size:.88rem; }
+  .ingr-qty-big { font-family:monospace; font-size:.95rem; color:var(--pink); font-weight:800; white-space:nowrap; }
+  .ingr-unit { font-size:.78rem; color:var(--muted); width:40px; }
+  .ingr-loc { font-size:.75rem; color:var(--muted); white-space:nowrap; }
+  .stock-ok  { background:rgba(52,211,153,.1);  color:var(--green);  border:1px solid rgba(52,211,153,.2);  border-radius:12px; padding:1px 8px; font-size:.72rem; }
+  .stock-low { background:rgba(251,191,36,.1);  color:var(--yellow); border:1px solid rgba(251,191,36,.2);  border-radius:12px; padding:1px 8px; font-size:.72rem; }
+  .stock-out { background:rgba(248,113,113,.1); color:var(--red);    border:1px solid rgba(248,113,113,.2); border-radius:12px; padding:1px 8px; font-size:.72rem; }
+  .tool-row { display:flex; align-items:center; gap:12px; padding:8px 12px; border-radius:8px; margin-bottom:4px; background:var(--card2); border:1px solid var(--border); }
+  .tool-name-big { flex:1; font-weight:600; font-size:.88rem; }
+  .tool-cat { font-size:.72rem; background:rgba(244,114,182,.1); border:1px solid rgba(244,114,182,.2); color:var(--pink); border-radius:12px; padding:1px 8px; white-space:nowrap; }
+  .tool-loc-big { font-size:.78rem; color:var(--muted); }
+  .recipe-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; }
+  .recipe-title { font-weight:700; font-size:.9rem; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .time-chip { font-size:.72rem; background:rgba(96,165,250,.1); border:1px solid rgba(96,165,250,.25); color:var(--blue); border-radius:8px; padding:2px 8px; }
+  .no-items { color:var(--muted); font-size:.85rem; padding:10px 0; text-align:center; }
+  @media print {
+    .sidebar, .topbar, .no-print { display:none !important; }
+    .main { margin-left:0 !important; }
+    body { background:#fff !important; color:#000 !important; }
+    .card, .section-card, .sheet-header, .ingr-row, .tool-row, .recipe-card { border-color:#ccc !important; background:#fff !important; }
+  }
+</style>
+{% endblock %}
+{% block topbar_right %}
+<button onclick="window.print()" class="btn btn-ghost btn-sm no-print">🖨️ Print Sheet</button>
+<a href="/kitchen" class="btn btn-ghost btn-sm no-print">← Back to Queue</a>
+{% endblock %}
+{% block content %}
+
+<!-- Order Header -->
+<div class="sheet-header">
+  <div>
+    <div class="sheet-order-num">#{{ order.order_number }}</div>
+    <div style="font-size:1.1rem;font-weight:700;margin-top:4px">{{ order.customer_name }}</div>
+    {% if order.customer_phone %}<div style="font-size:.85rem;color:var(--muted)">📞 {{ order.customer_phone }}</div>{% endif %}
+    {% if order.special_notes %}<div style="margin-top:8px;font-size:.85rem;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:6px 10px;color:var(--yellow)">⚠️ <strong>Special Notes:</strong> {{ order.special_notes }}</div>{% endif %}
+  </div>
+  <div class="sheet-meta">
+    {% if order.pickup_date %}<div>📅 Pickup: <span>{{ order.pickup_date }}{% if order.pickup_time %} @ {{ order.pickup_time }}{% endif %}</span></div>{% endif %}
+    <div>Status: <span><span class="badge badge-{{ order.status }}">{{ order.status | replace('_',' ') | title }}</span></span></div>
+    <div>Items: <span>{{ items | length }}</span></div>
+    <div>Order Total: <span style="color:var(--green)">${{ "%.2f" | format(order.total) }}</span></div>
+  </div>
+</div>
+
+<!-- ── Per-Recipe breakdown ── -->
+<div class="section-card">
+  <div class="section-head">🎂 Items to Make</div>
+  {% for entry in items %}
+  {% set item = entry.item %}
+  <div class="recipe-card">
+    <div class="recipe-title">
+      <span>{{ item.name }}</span>
+      <span style="color:var(--muted);font-weight:400">× {{ item.quantity }}</span>
+      {% if item.prep_mins %}<span class="time-chip">⏱ {{ item.prep_mins }}m prep</span>{% endif %}
+      {% if item.bake_mins  %}<span class="time-chip">🔥 {{ item.bake_mins }}m bake</span>{% endif %}
+    </div>
+    {% if item.customizations %}
+    <div style="font-size:.82rem;color:var(--yellow);margin-bottom:8px">📝 <strong>Customizations:</strong> {{ item.customizations }}</div>
+    {% endif %}
+    {% if item.rdesc %}
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px">{{ item.rdesc }}</div>
+    {% endif %}
+
+    {% if entry.ingredients %}
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:5px">Ingredients (scaled × {{ item.quantity }})</div>
+    {% for ri in entry.ingredients %}
+    <div style="display:flex;gap:8px;font-size:.8rem;padding:3px 0;border-bottom:1px solid rgba(61,26,40,.2)">
+      <span style="flex:1;font-weight:500">{{ ri.name }}</span>
+      <span style="color:var(--pink);font-family:monospace;font-weight:700">{{ (ri.quantity * item.quantity) | round(2) }} {{ ri.unit }}</span>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if entry.tools %}
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:10px 0 5px">Tools Needed</div>
+    <div>{% for t in entry.tools %}<span class="tool-cat" style="margin:2px">{{ t.name }}</span>{% endfor %}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ── Consolidated Ingredient Pull List ── -->
+<div class="section-card">
+  <div class="section-head">🥄 Full Ingredient Pull List
+    <span style="font-size:.75rem;color:var(--muted);font-weight:400">(all items combined)</span>
+  </div>
+  {% if all_ingredients %}
+    {% set sorted_ingr = all_ingredients.items() | list %}
+    {% for name, info in sorted_ingr %}
+    <div class="ingr-row">
+      <span class="ingr-name-big">{{ name }}</span>
+      <span class="ingr-qty-big">{{ info.needed | round(2) }}</span>
+      <span class="ingr-unit">{{ info.unit }}</span>
+      {% if info.stock is not none %}
+        {% if info.stock <= 0 %}
+          <span class="stock-out">OUT OF STOCK</span>
+        {% elif info.stock < info.needed %}
+          <span class="stock-low">LOW — have {{ info.stock | round(1) }}</span>
+        {% else %}
+          <span class="stock-ok">✓ In Stock</span>
+        {% endif %}
+      {% endif %}
+      {% if info.location %}<span class="ingr-loc">📍 {{ info.location }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="no-items">No ingredients linked to recipes yet. <a href="/recipes">Add them in Recipes ↗</a></div>
+  {% endif %}
+</div>
+
+<!-- ── Consolidated Tool Pull List ── -->
+<div class="section-card">
+  <div class="section-head">🔧 Full Tool & Equipment List
+    <span style="font-size:.75rem;color:var(--muted);font-weight:400">(all items combined)</span>
+  </div>
+  {% if all_tools %}
+    {% for name, info in all_tools.items() %}
+    <div class="tool-row">
+      <span class="tool-name-big">{{ name }}</span>
+      <span class="tool-cat">{{ info.category }}</span>
+      {% if info.location %}<span class="tool-loc-big">📍 {{ info.location }}</span>{% endif %}
+      {% if info.notes %}<span style="font-size:.75rem;color:var(--muted)">{{ info.notes }}</span>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="no-items">No tools linked to recipes yet. <a href="/recipes">Link tools in Recipes ↗</a></div>
+  {% endif %}
+</div>
+
+<!-- Status update shortcut -->
+<div class="section-card no-print">
+  <div class="section-head">⚡ Update Order Status</div>
+  <form method="POST" action="/orders/{{ order.id }}/status" style="display:flex;gap:10px;flex-wrap:wrap">
+    <select name="status" class="form-control" style="max-width:200px">
+      <option value="pending" {% if order.status=='pending' %}selected{% endif %}>Pending</option>
+      <option value="confirmed" {% if order.status=='confirmed' %}selected{% endif %}>Confirmed</option>
+      <option value="in_production" {% if order.status=='in_production' %}selected{% endif %}>In Production</option>
+      <option value="ready" {% if order.status=='ready' %}selected{% endif %}>Ready for Pickup</option>
+      <option value="delivered" {% if order.status=='delivered' %}selected{% endif %}>Delivered</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Update Status</button>
+    <a href="/orders/{{ order.id }}" class="btn btn-ghost">Full Order Details</a>
+  </form>
+</div>
+
+{% endblock %}

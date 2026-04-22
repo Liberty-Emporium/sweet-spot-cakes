@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Tools & Equipment — {{ bakery }}{% endblock %}
+{% block page_title %}🔧 Tools & Equipment{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/tools" class="btn btn-sm {% if not cat %}btn-primary{% else %}btn-ghost{% endif %}">All</a>
+    {% for c in categories %}
+    <a href="/tools?cat={{ c }}" class="btn btn-sm {% if cat == c %}btn-primary{% else %}btn-ghost{% endif %}">{{ c }}</a>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Tool</button>
+</div>
+
+<form method="GET" style="margin-bottom:16px">
+  <input name="q" value="{{ q }}" class="form-control" style="max-width:340px" placeholder="🔍 Search tools...">
+</form>
+
+{% set categories_shown = tools | map(attribute='category') | unique | list %}
+{% for cat_name in categories_shown %}
+  {% set cat_tools = tools | selectattr('category', 'equalto', cat_name) | list %}
+  <div style="margin-bottom:28px">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+      <span>{{ cat_name }}</span>
+      <span style="background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.2);color:var(--pink);border-radius:20px;padding:1px 8px;font-size:.7rem">{{ cat_tools|length }}</span>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tool / Equipment</th>
+              <th>Qty</th>
+              <th>Unit</th>
+              <th>Location</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for tool in cat_tools %}
+          <tr id="row-{{ tool.id }}">
+            <td style="font-weight:600">{{ tool.name }}</td>
+            <td style="font-weight:700;color:var(--pink)">{{ tool.quantity }}</td>
+            <td style="color:var(--muted);font-size:.82rem">{{ tool.unit }}</td>
+            <td style="font-size:.82rem;color:var(--muted)">{{ tool.location or '—' }}</td>
+            <td style="font-size:.8rem;color:var(--muted);max-width:220px">{{ tool.notes or '—' }}</td>
+            <td>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-xs" onclick="openEdit({{ tool.id }}, '{{ tool.name|replace("'","\\'") }}', '{{ tool.category }}', {{ tool.quantity }}, '{{ tool.unit }}', '{{ tool.location|replace("'","\\'") }}', '{{ tool.notes|replace("'","\\'") }}')">Edit</button>
+                <form method="POST" action="/tools/{{ tool.id }}/delete" onsubmit="return confirm('Remove this tool?')">
+                  <button type="submit" class="btn btn-danger btn-xs">Remove</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="card" style="text-align:center;padding:48px;color:var(--muted)">
+    <div style="font-size:3rem;margin-bottom:12px">🔧</div>
+    <div>No tools found. Add your first piece of equipment!</div>
+  </div>
+{% endfor %}
+
+<!-- Add Tool Modal -->
+<div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="width:100%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:16px">🔧 Add Tool / Equipment</div>
+    <form method="POST" action="/tools/add">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input name="name" class="form-control" required placeholder="e.g. KitchenAid Mixer 7qt">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" class="form-control">
+            <option>Pans & Molds</option>
+            <option>Mixing & Prep</option>
+            <option>Decorating</option>
+            <option>Baking & Heating</option>
+            <option>Cutting</option>
+            <option>Measuring</option>
+            <option>Cooling</option>
+            <option>Equipment</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantity</label>
+          <input name="quantity" type="number" step="1" min="0" class="form-control" value="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select name="unit" class="form-control">
+            <option>each</option><option>set</option><option>pair</option><option>box</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location / Storage</label>
+        <input name="location" class="form-control" placeholder="e.g. Pan Rack A, Decor Station">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input name="notes" class="form-control" placeholder="Brand, specs, special handling...">
+      </div>
+      <button type="submit" class="btn btn-primary">Add Tool</button>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Tool Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="width:100%;max-width:520px;position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="document.getElementById('editModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:16px">✏️ Edit Tool</div>
+    <form method="POST" id="editForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input name="name" id="edit-name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category" id="edit-category" class="form-control">
+            <option>Pans & Molds</option><option>Mixing & Prep</option><option>Decorating</option>
+            <option>Baking & Heating</option><option>Cutting</option><option>Measuring</option>
+            <option>Cooling</option><option>Equipment</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Quantity</label>
+          <input name="quantity" id="edit-qty" type="number" step="1" min="0" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select name="unit" id="edit-unit" class="form-control">
+            <option>each</option><option>set</option><option>pair</option><option>box</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input name="location" id="edit-location" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input name="notes" id="edit-notes" class="form-control">
+      </div>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function openEdit(id, name, category, qty, unit, location, notes) {
+  document.getElementById('editForm').action = '/tools/' + id + '/edit';
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-qty').value = qty;
+  document.getElementById('edit-location').value = location;
+  document.getElementById('edit-notes').value = notes;
+  const catSel = document.getElementById('edit-category');
+  for (let opt of catSel.options) { opt.selected = opt.value === category; }
+  const unitSel = document.getElementById('edit-unit');
+  for (let opt of unitSel.options) { opt.selected = opt.value === unit; }
+  document.getElementById('editModal').style.display = 'flex';
+}
+</script>
+{% endblock %}

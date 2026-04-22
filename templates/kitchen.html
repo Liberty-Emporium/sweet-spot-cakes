@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}Kitchen — {{ bakery }}{% endblock %}
+{% block page_title %}🍳 Kitchen Production Queue{% endblock %}
+{% block extra_css %}
+<style>
+  .order-card { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:20px; overflow:hidden; }
+  .order-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; background:var(--card2); }
+  .order-meta { display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  .order-num { font-family:'Playfair Display',serif; font-size:1rem; font-weight:700; color:var(--pink); }
+  .order-customer { font-size:.88rem; font-weight:600; }
+  .order-pickup { font-size:.82rem; color:var(--muted); }
+  .item-row { padding:16px 20px; border-bottom:1px solid rgba(61,26,40,.4); }
+  .item-row:last-child { border-bottom:none; }
+  .item-name { font-weight:700; font-size:.95rem; margin-bottom:10px; display:flex; align-items:center; gap:10px; }
+  .details-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .detail-box { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .detail-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; margin-bottom:8px; }
+  .ingr-item { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:.82rem; border-bottom:1px solid rgba(61,26,40,.3); }
+  .ingr-item:last-child { border-bottom:none; }
+  .ingr-name { flex:1; font-weight:500; }
+  .ingr-qty { font-family:monospace; color:var(--pink); font-weight:700; white-space:nowrap; }
+  .ingr-stock { font-size:.72rem; border-radius:12px; padding:1px 7px; white-space:nowrap; }
+  .stock-ok { background:rgba(52,211,153,.1); color:var(--green); border:1px solid rgba(52,211,153,.2); }
+  .stock-low { background:rgba(251,191,36,.1); color:var(--yellow); border:1px solid rgba(251,191,36,.2); }
+  .stock-out { background:rgba(248,113,113,.1); color:var(--red); border:1px solid rgba(248,113,113,.2); }
+  .tool-chip { display:inline-flex; align-items:center; gap:5px; background:rgba(244,114,182,.08); border:1px solid rgba(244,114,182,.2); color:var(--rose); border-radius:20px; padding:3px 10px; font-size:.76rem; font-weight:600; margin:3px 3px 3px 0; }
+  .time-badge { font-size:.73rem; background:rgba(96,165,250,.1); border:1px solid rgba(96,165,250,.25); color:var(--blue); border-radius:8px; padding:3px 8px; }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div>
+    <div style="color:var(--muted);font-size:.85rem">Orders in: <strong style="color:var(--yellow)">Pending</strong> · <strong style="color:var(--blue)">Confirmed</strong> · <strong style="color:var(--pink)">In Production</strong></div>
+  </div>
+  <a href="/orders/new" class="btn btn-primary">+ New Order</a>
+</div>
+
+{% if production_orders %}
+  {% for po in production_orders %}
+  {% set order = po.order %}
+  <div class="order-card">
+    <div class="order-header">
+      <div class="order-meta">
+        <span class="order-num">#{{ order.order_number }}</span>
+        <span class="order-customer">{{ order.customer_name }}</span>
+        {% if order.pickup_date %}
+        <span class="order-pickup">📅 {{ order.pickup_date }}{% if order.pickup_time %} @ {{ order.pickup_time }}{% endif %}</span>
+        {% endif %}
+        {% if order.special_notes %}
+        <span style="font-size:.78rem;color:var(--yellow);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:2px 8px">⚠️ {{ order.special_notes[:60] }}{% if order.special_notes|length > 60 %}...{% endif %}</span>
+        {% endif %}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="badge badge-{{ order.status }}">{{ order.status | replace('_',' ') | title }}</span>
+        <a href="/kitchen/order/{{ order.id }}" class="btn btn-primary btn-sm">🍳 Full Sheet</a>
+        <a href="/orders/{{ order.id }}" class="btn btn-ghost btn-sm">View Order</a>
+      </div>
+    </div>
+
+    {% for entry in po.items %}
+    {% set item = entry.item %}
+    <div class="item-row">
+      <div class="item-name">
+        <span>🎂 {{ item.name }}</span>
+        <span style="font-size:.8rem;color:var(--muted);font-weight:400">× {{ item.quantity }}</span>
+        {% if item.prep_mins %}<span class="time-badge">⏱ {{ item.prep_mins }}m prep</span>{% endif %}
+        {% if item.bake_mins %}<span class="time-badge">🔥 {{ item.bake_mins }}m bake</span>{% endif %}
+      </div>
+
+      {% if item.customizations %}
+      <div style="font-size:.8rem;color:var(--yellow);margin-bottom:10px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:8px;padding:6px 10px">
+        📝 <strong>Custom:</strong> {{ item.customizations }}
+      </div>
+      {% endif %}
+
+      <div class="details-grid">
+        <!-- Ingredients -->
+        <div class="detail-box">
+          <div class="detail-label">🥄 Ingredients Needed</div>
+          {% if entry.ingredients %}
+            {% for ri in entry.ingredients %}
+            <div class="ingr-item">
+              <span class="ingr-name">{{ ri.name }}</span>
+              <span class="ingr-qty">{{ ri.quantity * item.quantity | round(2) }} {{ ri.unit }}</span>
+              {% if ri.stock is not none %}
+                {% if ri.stock <= 0 %}
+                  <span class="ingr-stock stock-out">OUT</span>
+                {% elif ri.stock < ri.quantity * item.quantity %}
+                  <span class="ingr-stock stock-low">LOW</span>
+                {% else %}
+                  <span class="ingr-stock stock-ok">OK</span>
+                {% endif %}
+              {% endif %}
+            </div>
+            {% endfor %}
+            {% if ri.location %}<div style="font-size:.7rem;color:var(--muted);margin-top:4px">📍 {{ ri.location }}</div>{% endif %}
+          {% else %}
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No ingredients linked yet. <a href="/recipes">Link via Recipes ↗</a></div>
+          {% endif %}
+        </div>
+
+        <!-- Tools -->
+        <div class="detail-box">
+          <div class="detail-label">🔧 Tools & Equipment</div>
+          {% if entry.tools %}
+            <div style="margin-top:2px">
+              {% for t in entry.tools %}
+              <span class="tool-chip">{{ t.name }}</span>
+              {% endfor %}
+            </div>
+            <div style="margin-top:8px">
+              {% for t in entry.tools %}
+              {% if t.location %}
+              <div style="font-size:.72rem;color:var(--muted)">📍 {{ t.name }} → {{ t.location }}</div>
+              {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No tools linked yet. <a href="/recipes">Link via Recipes ↗</a></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="order-card">
+    <div class="empty-state">
+      <div style="font-size:3.5rem;margin-bottom:16px">🎂</div>
+      <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px">Kitchen is clear!</div>
+      <div style="font-size:.88rem">No pending, confirmed, or in-production orders right now.</div>
+      <a href="/orders/new" class="btn btn-primary" style="margin-top:20px">+ Create First Order</a>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

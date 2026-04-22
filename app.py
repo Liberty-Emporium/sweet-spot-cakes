@@ -251,6 +251,25 @@ def init_db():
         source      TEXT DEFAULT 'qr',
         FOREIGN KEY(customer_id) REFERENCES customers(id)
     );
+    CREATE TABLE IF NOT EXISTS tools (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        category    TEXT DEFAULT 'Equipment',
+        quantity    INTEGER DEFAULT 1,
+        unit        TEXT DEFAULT 'each',
+        location    TEXT DEFAULT '',
+        notes       TEXT DEFAULT '',
+        active      INTEGER DEFAULT 1,
+        created     TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS recipe_tools (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipe_id INTEGER NOT NULL,
+        tool_id   INTEGER NOT NULL,
+        notes     TEXT DEFAULT '',
+        FOREIGN KEY(recipe_id) REFERENCES recipes(id),
+        FOREIGN KEY(tool_id)   REFERENCES tools(id)
+    );
     ''')
     db.commit()
 
@@ -259,6 +278,167 @@ def init_db():
     hashed = bcrypt.hashpw(admin_pw.encode(), bcrypt.gensalt()).decode()
     db.execute('''INSERT OR IGNORE INTO users(email,password,name,role)
                   VALUES(?,?,?,?)''', (ADMIN_EMAIL, hashed, 'Admin', 'admin'))
+    db.commit()
+
+    # ── Seed high-end bakery ingredients ──────────────────────────────────────
+    INGREDIENTS_SEED = [
+        # (name, unit, qty, reorder, cost, notes)
+        # Flours & Starches
+        ('Cake Flour (High-Protein)',    'lbs',  25, 10, 2.40,  'Store airtight, cool dry place'),
+        ('All-Purpose Flour',            'lbs',  30, 10, 1.80,  'King Arthur preferred'),
+        ('Bread Flour',                  'lbs',  15,  8, 2.10,  'For laminated doughs'),
+        ('Almond Flour',                 'lbs',  10,  5, 8.50,  'Blanched, fine grind'),
+        ('Hazelnut Flour',               'lbs',   5,  3, 9.20,  'For financiers & dacquoise'),
+        ('Cornstarch',                   'lbs',   8,  4, 1.60,  'Pie fillings & pastry cream'),
+        ('Tapioca Starch',               'lbs',   4,  2, 3.10,  'Gluten-free thickener'),
+        # Sugars & Sweeteners
+        ('Granulated Sugar',             'lbs',  40, 15, 0.90,  ''),
+        ('Powdered Sugar (10X)',         'lbs',  25, 10, 1.20,  'Sift before use'),
+        ('Light Brown Sugar',            'lbs',  15,  8, 1.30,  'Keep sealed'),
+        ('Dark Brown Sugar',             'lbs',  10,  5, 1.40,  'Keep sealed'),
+        ('Demerara Sugar',               'lbs',   5,  3, 2.80,  'Finishing sugar for tops'),
+        ('Turbinado Sugar',              'lbs',   5,  3, 2.60,  'Sanding & garnish'),
+        ('Honey (Wildflower)',           'lbs',   6,  3, 7.50,  'Raw, local sourced'),
+        ('Maple Syrup (Grade A Dark)',   'cups', 12,  6, 5.20,  'Refrigerate after open'),
+        ('Glucose Syrup',               'lbs',   8,  4, 4.10,  'Anti-crystallization'),
+        ('Invert Sugar (Trimoline)',     'lbs',   4,  2, 6.80,  'Keeps cakes moist longer'),
+        # Dairy & Eggs
+        ('Unsalted Butter (European)',   'lbs',  30, 15, 5.80,  '84% butterfat preferred'),
+        ('Heavy Cream (36%)',            'gallons', 5, 2, 6.40, 'Refrigerate, FIFO'),
+        ('Cream Cheese',                 'lbs',  10,  5, 4.20,  'Full fat Philadelphia or equiv'),
+        ('Whole Milk',                   'gallons', 3, 2, 4.10, 'Refrigerate'),
+        ('Buttermilk',                   'gallons', 2, 1, 4.80, 'Refrigerate'),
+        ('Sour Cream',                   'lbs',   6,  3, 3.60,  'Full fat'),
+        ('Mascarpone',                   'lbs',   4,  2, 9.20,  'Tiramisu & mousse cakes'),
+        ('Eggs (Large AA)',              'dozen', 12,  6, 4.50, 'Room temp before use'),
+        ('Egg Whites (Pasteurized)',     'lbs',   4,  2, 5.10,  'Meringues & macarons'),
+        # Chocolate & Cocoa
+        ('Valrhona Dark Chocolate 70%', 'lbs',   8,  4, 18.50, 'Couverture, temper for decor'),
+        ('Valrhona Milk Chocolate 40%', 'lbs',   6,  3, 16.80, 'Couverture'),
+        ('Valrhona White Chocolate',    'lbs',   5,  3, 17.20, 'Couverture'),
+        ('Dutch-Process Cocoa Powder',  'lbs',   6,  3,  8.40, 'Droste or Cacao Barry'),
+        ('Natural Cocoa Powder',        'lbs',   4,  2,  7.20, 'For red velvet'),
+        ('Black Cocoa Powder',          'lbs',   3,  2, 12.00, 'Ultra-dark Oreo flavor'),
+        # Leaveners & Salt
+        ('Baking Powder (alum-free)',   'lbs',   3,  2,  4.20, 'Test freshness monthly'),
+        ('Baking Soda',                 'lbs',   3,  2,  1.80, ''),
+        ('Fine Sea Salt',               'lbs',   5,  3,  3.20, ''),
+        ('Fleur de Sel',                'oz',   12,  4, 12.00, 'Finishing salt only'),
+        ('Cream of Tartar',             'lbs',   2,  1,  6.40, 'Stabilizes egg whites'),
+        # Extracts, Flavors & Spices
+        ('Pure Vanilla Extract',        'oz',   16,  6, 14.00, 'Nielsen-Massey or Rodelle'),
+        ('Vanilla Bean Paste',          'oz',   12,  4, 18.00, 'Seeds visible in frosting'),
+        ('Whole Vanilla Beans',         'each', 24,  8, 2.80,  'Madagascar Bourbon'),
+        ('Almond Extract',              'oz',    8,  3, 9.50,  ''),
+        ('Rose Water',                  'oz',    8,  3, 4.20,  'Middle Eastern brand'),
+        ('Orange Blossom Water',        'oz',    6,  2, 4.60,  ''),
+        ('Espresso Powder',             'oz',    8,  4, 8.80,  'Enhances chocolate'),
+        ('Cinnamon (Ceylon)',           'oz',   12,  4, 7.20,  'True cinnamon'),
+        ('Cardamom (Ground)',           'oz',    6,  3, 9.40,  ''),
+        ('Fleur de Sel Caramel Sauce',  'oz',   24,  8, 6.50,  'House-made or Fran\'s'),
+        # Nuts & Fruits
+        ('Blanched Almonds',            'lbs',   5,  3, 8.20,  'Whole & sliced'),
+        ('Pistachios (Raw, Shelled)',   'lbs',   4,  2, 14.50, 'Bright green color'),
+        ('Hazelnuts (Roasted)',         'lbs',   4,  2, 11.20, 'Skin-off preferred'),
+        ('Pecans (Halves)',             'lbs',   4,  2, 10.80, ''),
+        ('Dried Cherries',              'lbs',   3,  2,  9.20, 'Montmorency tart'),
+        ('Freeze-Dried Raspberries',    'oz',   12,  4, 16.00, 'Powder for buttercream'),
+        ('Freeze-Dried Strawberries',   'oz',   12,  4, 14.00, 'Powder for buttercream'),
+        # Specialty & Décor
+        ('Edible Gold Dust',            'each',  5,  2, 22.00, 'CK Products'),
+        ('Edible Silver Dust',          'each',  5,  2, 18.00, 'CK Products'),
+        ('Food Coloring Gel Set',       'each',  3,  1, 32.00, 'Americolor soft gel'),
+        ('Fondant (White, Premium)',    'lbs',  20,  8,  5.20, 'Satin Ice or Fondarific'),
+        ('Gum Paste',                   'lbs',   6,  3,  6.80, 'For sugar flowers'),
+        ('Isomalt',                     'lbs',   4,  2, 12.00, 'Sugar showpiece work'),
+        ('Luster Dust (Assorted)',      'each',  8,  3, 11.00, 'For metallic finishes'),
+        ('Parchment Paper (half-sheet)','boxes', 4,  2,  9.50, ''),
+        ('Piping Bags (16-inch)',        'boxes', 6,  3,  8.00, 'Disposable heavy duty'),
+        ('Acetate Sheets',              'each', 50, 20,  0.40, 'Entremet collars & glazing'),
+    ]
+    existing_ingr = {r['name'] for r in db.execute('SELECT name FROM ingredients').fetchall()}
+    for name, unit, qty, reorder, cost, notes in INGREDIENTS_SEED:
+        if name not in existing_ingr:
+            db.execute(
+                'INSERT INTO ingredients(name,unit,quantity,reorder_level,cost_per_unit,notes) VALUES(?,?,?,?,?,?)',
+                (name, unit, qty, reorder, cost, notes)
+            )
+    db.commit()
+
+    # ── Seed baker tools & equipment ──────────────────────────────────────────
+    TOOLS_SEED = [
+        # (name, category, qty, unit, location, notes)
+        # Pans & Molds
+        ('Round Cake Pan 6"',           'Pans & Molds',   12, 'each', 'Pan Rack A', '2" deep, anodized aluminum'),
+        ('Round Cake Pan 8"',           'Pans & Molds',   12, 'each', 'Pan Rack A', '2" deep, anodized aluminum'),
+        ('Round Cake Pan 10"',          'Pans & Molds',    8, 'each', 'Pan Rack A', '2" deep'),
+        ('Round Cake Pan 12"',          'Pans & Molds',    6, 'each', 'Pan Rack A', 'For tiered cakes'),
+        ('Half Sheet Pan (18x13")',      'Pans & Molds',   20, 'each', 'Pan Rack B', 'Aluminum, commercial'),
+        ('Quarter Sheet Pan (9x13")',    'Pans & Molds',   10, 'each', 'Pan Rack B', ''),
+        ('Bundt Pan (Nordic Ware)',      'Pans & Molds',    4, 'each', 'Pan Rack C', 'Heritage & anniversary'),
+        ('Springform Pan 9"',           'Pans & Molds',    6, 'each', 'Pan Rack C', 'Cheesecake & tarts'),
+        ('Tart Pan 9" (removable)',     'Pans & Molds',    6, 'each', 'Pan Rack C', 'Fluted edge'),
+        ('Loaf Pan 9x5"',               'Pans & Molds',    8, 'each', 'Pan Rack B', ''),
+        ('Silicone Sphere Mold',        'Pans & Molds',    4, 'each', 'Mold Shelf',  '6-cavity, entremet bombs'),
+        ('Silicone Half-Sphere Mold',   'Pans & Molds',    4, 'each', 'Mold Shelf',  '8-cavity'),
+        ('Entremet Ring 6"',            'Pans & Molds',    8, 'each', 'Mold Shelf',  'Stainless, adjustable'),
+        ('Entremet Ring 8"',            'Pans & Molds',    8, 'each', 'Mold Shelf',  'Stainless, adjustable'),
+        ('Cupcake/Muffin Tin (24-cup)', 'Pans & Molds',    6, 'each', 'Pan Rack B', 'Commercial aluminum'),
+        # Mixing & Prep
+        ('KitchenAid 7qt Commercial Mixer','Mixing & Prep', 2,'each', 'Prep Counter', 'Bowl-lift, 1 hp'),
+        ('Hobart 20qt Floor Mixer',     'Mixing & Prep',   1, 'each', 'Mixer Station','For large batches'),
+        ('Stainless Mixing Bowl Set',   'Mixing & Prep',   6, 'set',  'Shelf', '3qt, 5qt, 8qt, 12qt'),
+        ('Rubber Spatula (High-Temp)',  'Mixing & Prep',  12, 'each', 'Utensil Bin', 'Heat-safe to 800°F'),
+        ('Bench Scraper',               'Mixing & Prep',   8, 'each', 'Utensil Bin', 'Stainless, flat'),
+        ('Bowl Scraper (Flexible)',     'Mixing & Prep',   8, 'each', 'Utensil Bin', ''),
+        ('Hand Whisk (12")',            'Mixing & Prep',   8, 'each', 'Utensil Bin', 'Balloon style'),
+        ('Digital Kitchen Scale',       'Mixing & Prep',   4, 'each', 'Prep Counter', '0.1g precision, 11 lb cap'),
+        # Decorating
+        ('Turntable (Ateco Heavy)',     'Decorating',      4, 'each', 'Cake Decor Station', 'Cast iron base'),
+        ('Offset Spatula (9")',         'Decorating',      8, 'each', 'Utensil Bin',  'Frosting & spreading'),
+        ('Offset Spatula (4")',         'Decorating',      8, 'each', 'Utensil Bin',  'Detail work'),
+        ('Straight Spatula (12")',      'Decorating',      6, 'each', 'Utensil Bin',  ''),
+        ('Cake Smoother / Icing Comb',  'Decorating',      6, 'each', 'Decor Shelf',  'Acrylic, various textures'),
+        ('Piping Tips Set (Ateco)',     'Decorating',      4, 'set',  'Tip Box',      '55-piece set'),
+        ('Coupler Set',                 'Decorating',      8, 'set',  'Tip Box',      'Standard & large'),
+        ('Fondant Smoother',            'Decorating',      6, 'each', 'Decor Shelf',  'Double-sided'),
+        ('Rolling Pin (French)',        'Decorating',      4, 'each', 'Decor Shelf',  'For fondant & pastry'),
+        ('Fondant Mat (Non-stick)',     'Decorating',      4, 'each', 'Decor Shelf',  '24x24 inch'),
+        ('Flower Nail Set',             'Decorating',      2, 'set',  'Decor Shelf',  'Buttercream flowers'),
+        ('Petal Veiner & Cutter Set',  'Decorating',      2, 'set',  'Decor Shelf',  'Gum paste flowers'),
+        ('Airbrush Kit (Iwata)',        'Decorating',      2, 'each', 'Decor Station', 'Gravity feed, compressor incl'),
+        ('Cake Board (10" round)',      'Decorating',     50, 'each', 'Supply Shelf', 'Gold foil'),
+        ('Cake Board (12" round)',      'Decorating',     30, 'each', 'Supply Shelf', 'Gold foil'),
+        ('Cake Drum (14" round)',       'Decorating',     20, 'each', 'Supply Shelf', '1/2" thick'),
+        # Baking & Heating
+        ('Convection Oven (Full-Size)', 'Baking & Heating', 2,'each', 'Oven Bay',    'Commercial, 5-rack'),
+        ('Deck Oven',                   'Baking & Heating', 1,'each', 'Oven Bay',    '2-deck, steam injection'),
+        ('Instant-Read Thermometer',   'Baking & Heating', 6,'each', 'Utensil Bin', 'Thermapen or equiv'),
+        ('Candy/Sugar Thermometer',    'Baking & Heating', 4,'each', 'Utensil Bin', '100–400°F range'),
+        ('Oven Thermometer',           'Baking & Heating', 6,'each', 'Oven Bay',    'Verify oven accuracy'),
+        ('Bain-Marie / Double Boiler', 'Baking & Heating', 3,'each', 'Range Station','Chocolate & curd work'),
+        ('Kitchen Torch (Bernzomatic)','Baking & Heating', 3,'each', 'Burner Shelf', 'Brûlée & meringue'),
+        # Cutting & Measuring
+        ('Chef Knife (10", Wüsthof)',  'Cutting',          4, 'each', 'Knife Block', 'Keep razor sharp'),
+        ('Serrated Bread Knife (10")', 'Cutting',          4, 'each', 'Knife Block', 'Cake leveling & slicing'),
+        ('Cake Leveler / Slicer',      'Cutting',          3, 'each', 'Tool Shelf',  'Adjustable height wire'),
+        ('Pastry Cutter (Fluted)',     'Cutting',          4, 'each', 'Tool Shelf',  'For lattice & tart dough'),
+        ('Cookie Cutter Set',          'Cutting',          4, 'set',  'Tool Shelf',  'Assorted shapes & sizes'),
+        ('Measuring Cup Set (Dry)',    'Measuring',         4, 'set',  'Prep Counter','Stainless'),
+        ('Measuring Spoon Set',        'Measuring',         6, 'set',  'Prep Counter','1/8 tsp – 1 tbsp'),
+        # Cooling & Storage
+        ('Wire Cooling Rack (half-sheet)', 'Cooling',      10,'each', 'Rack Wall',   ''),
+        ('Cake Carrier (Tall)',         'Cooling',          6, 'each', 'Storage',     'Lockable, 18" tall'),
+        ('Sheet Pan Rack (20-shelf)',   'Cooling',          2, 'each', 'Walk-In',     'On wheels'),
+        ('Proofing Box / Cabinet',      'Cooling',          1, 'each', 'Kitchen',     'Humidity & temp control'),
+    ]
+    existing_tools = {r['name'] for r in db.execute('SELECT name FROM tools').fetchall()}
+    for name, category, qty, unit, location, notes in TOOLS_SEED:
+        if name not in existing_tools:
+            db.execute(
+                'INSERT INTO tools(name,category,quantity,unit,location,notes) VALUES(?,?,?,?,?,?)',
+                (name, category, qty, unit, location, notes)
+            )
     db.commit()
     db.close()
 
@@ -585,6 +765,201 @@ def inventory_edit(item_id):
     db.commit()
     flash('Updated.', 'success')
     return redirect(url_for('inventory'))
+
+
+# ── Tools & Equipment ─────────────────────────────────────────────────────────
+@app.route('/tools')
+@login_required
+def tools_list():
+    db = get_db()
+    q = request.args.get('q', '').strip()
+    cat = request.args.get('cat', '')
+    sql = 'SELECT * FROM tools WHERE active=1'
+    params = []
+    if q:   sql += ' AND name LIKE ?'; params.append(f'%{q}%')
+    if cat: sql += ' AND category=?';  params.append(cat)
+    sql += ' ORDER BY category, name'
+    all_tools = db.execute(sql, params).fetchall()
+    categories = [r['category'] for r in db.execute('SELECT DISTINCT category FROM tools WHERE active=1 ORDER BY category').fetchall()]
+    return render_template('tools.html', tools=all_tools, categories=categories, q=q, cat=cat, bakery=BAKERY_NAME)
+
+@app.route('/tools/add', methods=['POST'])
+@login_required
+def tools_add():
+    db = get_db()
+    db.execute('INSERT INTO tools(name,category,quantity,unit,location,notes) VALUES(?,?,?,?,?,?)',
+               (request.form['name'], request.form.get('category','Equipment'),
+                float(request.form.get('quantity', 1)), request.form.get('unit','each'),
+                request.form.get('location',''), request.form.get('notes','')))
+    db.commit()
+    flash('Tool added!', 'success')
+    return redirect(url_for('tools_list'))
+
+@app.route('/tools/<int:tool_id>/edit', methods=['POST'])
+@login_required
+def tools_edit(tool_id):
+    db = get_db()
+    db.execute('UPDATE tools SET name=?,category=?,quantity=?,unit=?,location=?,notes=? WHERE id=?',
+               (request.form['name'], request.form.get('category','Equipment'),
+                float(request.form.get('quantity', 1)), request.form.get('unit','each'),
+                request.form.get('location',''), request.form.get('notes',''), tool_id))
+    db.commit()
+    flash('Tool updated!', 'success')
+    return redirect(url_for('tools_list'))
+
+@app.route('/tools/<int:tool_id>/delete', methods=['POST'])
+@login_required
+def tools_delete(tool_id):
+    db = get_db()
+    db.execute('UPDATE tools SET active=0 WHERE id=?', (tool_id,))
+    db.commit()
+    flash('Tool removed.', 'success')
+    return redirect(url_for('tools_list'))
+
+# ── Kitchen Production View ───────────────────────────────────────────────────
+@app.route('/kitchen')
+@login_required
+def kitchen():
+    """Baker production view: all active orders with recipes, ingredients & tools."""
+    db = get_db()
+    statuses = ['pending', 'confirmed', 'in_production']
+    placeholders = ','.join('?' * len(statuses))
+    orders = db.execute(
+        f"SELECT * FROM orders WHERE status IN ({placeholders}) ORDER BY pickup_date ASC, pickup_time ASC",
+        statuses
+    ).fetchall()
+
+    production_orders = []
+    for order in orders:
+        items = db.execute(
+            'SELECT oi.*, r.prep_mins, r.bake_mins, r.description as rdesc '
+            'FROM order_items oi LEFT JOIN recipes r ON oi.recipe_id=r.id '
+            'WHERE oi.order_id=?', (order['id'],)
+        ).fetchall()
+
+        enriched_items = []
+        for item in items:
+            ingredients, tools = [], []
+            if item['recipe_id']:
+                ingredients = db.execute(
+                    'SELECT ri.quantity, ri.unit, i.name, i.location, i.quantity as stock '
+                    'FROM recipe_ingredients ri '
+                    'JOIN ingredients i ON ri.ingredient_id=i.id '
+                    'WHERE ri.recipe_id=? ORDER BY i.name',
+                    (item['recipe_id'],)
+                ).fetchall()
+                tools = db.execute(
+                    'SELECT t.name, t.category, t.location, t.notes '
+                    'FROM recipe_tools rt '
+                    'JOIN tools t ON rt.tool_id=t.id '
+                    'WHERE rt.recipe_id=? AND t.active=1 ORDER BY t.category, t.name',
+                    (item['recipe_id'],)
+                ).fetchall()
+            enriched_items.append({'item': item, 'ingredients': ingredients, 'tools': tools})
+
+        production_orders.append({'order': order, 'items': enriched_items})
+
+    return render_template('kitchen.html', production_orders=production_orders, bakery=BAKERY_NAME)
+
+@app.route('/kitchen/order/<int:order_id>')
+@login_required
+def kitchen_order(order_id):
+    """Single order production sheet — full consolidated ingredient + tool list."""
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('kitchen'))
+
+    items = db.execute(
+        'SELECT oi.*, r.prep_mins, r.bake_mins, r.description as rdesc '
+        'FROM order_items oi LEFT JOIN recipes r ON oi.recipe_id=r.id '
+        'WHERE oi.order_id=?', (order_id,)
+    ).fetchall()
+
+    enriched_items = []
+    all_ingredients = {}
+    all_tools = {}
+
+    for item in items:
+        qty_mult = item['quantity'] or 1
+        ingredients, tools = [], []
+        if item['recipe_id']:
+            raw_ingr = db.execute(
+                'SELECT ri.quantity, ri.unit, i.name, i.location, i.quantity as stock '
+                'FROM recipe_ingredients ri '
+                'JOIN ingredients i ON ri.ingredient_id=i.id '
+                'WHERE ri.recipe_id=? ORDER BY i.name',
+                (item['recipe_id'],)
+            ).fetchall()
+            raw_tools = db.execute(
+                'SELECT t.name, t.category, t.location, t.notes '
+                'FROM recipe_tools rt '
+                'JOIN tools t ON rt.tool_id=t.id '
+                'WHERE rt.recipe_id=? AND t.active=1 ORDER BY t.category, t.name',
+                (item['recipe_id'],)
+            ).fetchall()
+            for ri in raw_ingr:
+                needed = round(ri['quantity'] * qty_mult, 3)
+                if ri['name'] in all_ingredients:
+                    all_ingredients[ri['name']]['needed'] += needed
+                else:
+                    all_ingredients[ri['name']] = {
+                        'needed': needed, 'unit': ri['unit'],
+                        'location': ri['location'], 'stock': ri['stock']
+                    }
+            for t in raw_tools:
+                all_tools[t['name']] = {'category': t['category'], 'location': t['location'], 'notes': t['notes']}
+            ingredients = raw_ingr
+            tools = raw_tools
+        enriched_items.append({'item': item, 'ingredients': ingredients, 'tools': tools})
+
+    return render_template('kitchen_order.html',
+                           order=order, items=enriched_items,
+                           all_ingredients=all_ingredients,
+                           all_tools=all_tools,
+                           bakery=BAKERY_NAME)
+
+@app.route('/api/tools')
+@login_required
+def api_tools():
+    db = get_db()
+    tools = db.execute('SELECT id, name, category FROM tools WHERE active=1 ORDER BY category, name').fetchall()
+    return jsonify([dict(t) for t in tools])
+
+@app.route('/api/recipe-tools/<int:recipe_id>', methods=['GET'])
+@login_required
+def api_recipe_tools_get(recipe_id):
+    db = get_db()
+    tools = db.execute(
+        'SELECT rt.id, t.id as tool_id, t.name, t.category FROM recipe_tools rt '
+        'JOIN tools t ON rt.tool_id=t.id WHERE rt.recipe_id=?', (recipe_id,)
+    ).fetchall()
+    return jsonify([dict(t) for t in tools])
+
+@app.route('/api/recipe-tools/<int:recipe_id>', methods=['POST'])
+@login_required
+def api_recipe_tools_add(recipe_id):
+    db = get_db()
+    data = request.get_json()
+    tool_id = data.get('tool_id')
+    if not tool_id:
+        return jsonify({'error': 'tool_id required'}), 400
+    existing = db.execute('SELECT id FROM recipe_tools WHERE recipe_id=? AND tool_id=?', (recipe_id, tool_id)).fetchone()
+    if existing:
+        return jsonify({'ok': True, 'message': 'Already linked'})
+    db.execute('INSERT INTO recipe_tools(recipe_id, tool_id) VALUES(?,?)', (recipe_id, tool_id))
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/recipe-tools/remove/<int:rt_id>', methods=['POST'])
+@login_required
+def api_recipe_tools_remove(rt_id):
+    db = get_db()
+    db.execute('DELETE FROM recipe_tools WHERE id=?', (rt_id,))
+    db.commit()
+    return jsonify({'ok': True})
+
 
 # ── Suppliers ─────────────────────────────────────────────────────────────────
 @app.route('/suppliers')
