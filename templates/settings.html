@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Settings — {{ bakery }}{% endblock %}
+{% block page_title %}⚙️ Settings{% endblock %}
+{% block content %}
+
+<div class="grid-2">
+  <!-- Staff accounts -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">👤 Staff Accounts</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+      {% for u in users %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600;font-size:.88rem">{{ u.name or u.email }}</div>
+          <div style="font-size:.72rem;color:var(--muted)">{{ u.email }} · {{ u.role }}</div>
+        </div>
+        <span class="badge {% if u.active %}badge-ready{% else %}badge-cancelled{% endif %}">{{ 'Active' if u.active else 'Inactive' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <form method="POST" action="/settings/add-user">
+      <div class="card-title" style="font-size:.85rem;margin-bottom:10px">Add Staff Login</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Name</label><input name="name" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Role</label>
+          <select name="role" class="form-control"><option value="staff">Staff</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
+      <div class="form-group"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required minlength="6"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Add Staff Login</button>
+    </form>
+  </div>
+
+  <!-- System config -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">🔧 System Config</div>
+    <div style="font-size:.85rem;line-height:2.2">
+      <div><strong>Bakery Name:</strong> {{ bakery }}</div>
+      <div><strong>Admin Email:</strong> {{ admin_email }}</div>
+      <div><strong>Stripe:</strong>
+        {% if stripe_configured %}<span style="color:var(--green)">✅ Connected</span>
+        {% else %}<span style="color:var(--red)">❌ Not configured</span>{% endif %}
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px;background:var(--card2);border-radius:8px;border:1px solid var(--border);font-size:.8rem;color:var(--muted)">
+      <strong style="color:var(--text)">Railway Environment Variables</strong><br><br>
+      Set these in your Railway dashboard:<br>
+      <code>STRIPE_SECRET_KEY</code> — from Stripe dashboard<br>
+      <code>STRIPE_PUBLISHABLE_KEY</code> — from Stripe dashboard<br>
+      <code>ADMIN_EMAIL</code> — your email<br>
+      <code>ADMIN_PASSWORD</code> — admin login password<br>
+      <code>BAKERY_NAME</code> — your bakery name<br>
+      <code>TAX_RATE</code> — e.g. 0.07 for 7%
+    </div>
+  </div>
+</div>
+{% endblock %}

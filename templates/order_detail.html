@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% block title %}{{ order.order_number }} — {{ bakery }}{% endblock %}
+{% block page_title %}🎂 {{ order.order_number }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <a href="/orders" class="btn btn-ghost btn-sm">← Orders</a>
+  <span class="badge badge-{{ order.status.replace('in_production','production') }}" style="font-size:.85rem;padding:6px 14px">{{ order.status|upper }}</span>
+  {% if order.paid_in_full %}<span style="color:var(--green);font-weight:700;font-size:.85rem">✅ PAID IN FULL</span>{% endif %}
+</div>
+
+<div class="grid-2">
+  <!-- Left: Order details -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Customer info -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">👥 Customer</div>
+      <div style="font-size:.88rem;line-height:2">
+        <div style="font-size:1.1rem;font-weight:700">{{ order.customer_name }}</div>
+        {% if order.customer_email %}<div>📧 {{ order.customer_email }}</div>{% endif %}
+        {% if order.customer_phone %}<div>📞 {{ order.customer_phone }}</div>{% endif %}
+        {% if order.pickup_date %}<div>📅 Pickup: <strong>{{ order.pickup_date }} {{ order.pickup_time or '' }}</strong></div>{% endif %}
+        {% if order.special_notes %}<div style="margin-top:8px;padding:10px;background:var(--card2);border-radius:8px;border-left:3px solid var(--pink);font-size:.83rem;color:var(--muted)">{{ order.special_notes }}</div>{% endif %}
+      </div>
+    </div>
+
+    <!-- Status update -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">📋 Update Status</div>
+      <form method="POST" action="/orders/{{ order.id }}/status" style="display:flex;gap:8px;flex-wrap:wrap">
+        {% for s in ['pending','confirmed','in_production','ready','delivered','cancelled'] %}
+        <button name="status" value="{{ s }}" type="submit"
+          class="btn btn-sm {% if order.status == s %}btn-primary{% else %}btn-ghost{% endif %}">
+          {{ s.replace('_',' ')|title }}
+        </button>
+        {% endfor %}
+      </form>
+    </div>
+
+    <!-- Add item -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">➕ Add Item</div>
+      <form method="POST" action="/orders/{{ order.id }}/add-item">
+        <div class="form-group">
+          <label class="form-label">Item Name</label>
+          <input name="name" class="form-control" required placeholder="6-inch Custom Birthday Cake" id="itemName">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Qty</label>
+            <input name="quantity" type="number" class="form-control" value="1" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit Price $</label>
+            <input name="unit_price" type="number" step="0.01" class="form-control" value="0" id="itemPrice">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Recipe (opt)</label>
+            <select name="recipe_id" class="form-control" id="recipeSelect" onchange="fillFromRecipe(this)">
+              <option value="">— Select —</option>
+              {% for r in [] %}{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Customizations</label>
+          <input name="customizations" class="form-control" placeholder="Colors, flavors, special requests...">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Add to Order</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Right: Totals, payment, items -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Order items -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">🎂 Order Items</div>
+      {% if items %}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        {% for item in items %}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 12px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.88rem">{{ item.name }}</div>
+            {% if item.customizations %}<div style="font-size:.75rem;color:var(--muted)">{{ item.customizations }}</div>{% endif %}
+            <div style="font-size:.75rem;color:var(--muted)">qty {{ item.quantity }} × ${{ "%.2f"|format(item.unit_price) }}</div>
+          </div>
+          <div style="font-weight:700;color:var(--pink);white-space:nowrap">${{ "%.2f"|format(item.total) }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;font-size:.88rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotal</span><span>${{ "%.2f"|format(order.subtotal or 0) }}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--muted)"><span>Tax (7%)</span><span>${{ "%.2f"|format(order.tax or 0) }}</span></div>
+        {% if order.discount %}<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green)"><span>Discount</span><span>-${{ "%.2f"|format(order.discount) }}</span></div>{% endif %}
+        <div style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:800;margin-top:8px;color:var(--pink)"><span>TOTAL</span><span>${{ "%.2f"|format(order.total or 0) }}</span></div>
+      </div>
+      {% else %}
+      <div style="color:var(--muted);font-size:.85rem;padding:16px 0;text-align:center">No items yet. Add items above.</div>
+      {% endif %}
+    </div>
+
+    <!-- Payment -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">💳 Payment</div>
+      <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:12px">
+        <div>
+          <div>Deposit Paid: <strong style="color:var(--green)">${{ "%.2f"|format(order.deposit_paid or 0) }}</strong></div>
+          <div style="margin-top:4px">Balance Due: <strong class="{% if order.balance_due > 0 %}low-stock{% else %}ok-stock{% endif %}">${{ "%.2f"|format(order.balance_due or 0) }}</strong></div>
+        </div>
+      </div>
+
+      {% if order.total and order.total > 0 %}
+      <!-- Stripe checkout -->
+      <form method="POST" action="/orders/{{ order.id }}/checkout" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select name="amount_type" class="form-control" style="flex:1;min-width:140px">
+          <option value="balance">Pay Balance (${{ "%.2f"|format(order.balance_due or 0) }})</option>
+          <option value="deposit">50% Deposit (${{ "%.2f"|format((order.total or 0) * 0.5) }})</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">💳 Stripe Checkout</button>
+      </form>
+
+      <!-- Cash/card payment -->
+      <form method="POST" action="/orders/{{ order.id }}/cash-payment" style="display:flex;gap:8px;flex-wrap:wrap">
+        <input name="amount" type="number" step="0.01" class="form-control" placeholder="Amount" style="flex:1;min-width:100px">
+        <select name="method" class="form-control" style="max-width:100px">
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="check">Check</option>
+          <option value="zelle">Zelle</option>
+        </select>
+        <button type="submit" class="btn btn-success btn-sm">Record Payment</button>
+      </form>
+      {% endif %}
+
+      <!-- Receipt history -->
+      {% if receipts %}
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px;font-weight:600">PAYMENT HISTORY</div>
+        {% for r in receipts %}
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;padding:5px 0;border-bottom:1px solid rgba(61,26,40,.4)">
+          <span style="color:var(--muted)">{{ r.created[:16] }} · {{ r.method }}</span>
+          <span style="font-weight:700;color:var(--green)">${{ "%.2f"|format(r.amount) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+// Load recipes for item selector
+fetch('/api/recipes').then(r=>r.json()).then(data => {
+  const sel = document.getElementById('recipeSelect');
+  data.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id; opt.textContent = r.name; opt.dataset.price = r.base_price;
+    sel.appendChild(opt);
+  });
+});
+function fillFromRecipe(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.price) {
+    document.getElementById('itemName').value = opt.text;
+    document.getElementById('itemPrice').value = parseFloat(opt.dataset.price).toFixed(2);
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Suppliers — {{ bakery }}{% endblock %}
+{% block page_title %}🚚 Suppliers{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Supplier</button>
+</div>
+
+<div class="grid-3">
+  {% for s in suppliers %}
+  <div class="card" style="transition:border-color .2s" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="font-size:1.4rem;margin-bottom:8px">🏭</div>
+    <div style="font-weight:700;font-size:.95rem;margin-bottom:6px">{{ s.name }}</div>
+    {% if s.contact %}<div style="font-size:.82rem;color:var(--muted)">👤 {{ s.contact }}</div>{% endif %}
+    {% if s.email %}<div style="font-size:.82rem;color:var(--muted)">📧 {{ s.email }}</div>{% endif %}
+    {% if s.phone %}<div style="font-size:.82rem;color:var(--muted)">📞 {{ s.phone }}</div>{% endif %}
+    {% if s.address %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px">📍 {{ s.address }}</div>{% endif %}
+    {% if s.notes %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic">{{ s.notes }}</div>{% endif %}
+  </div>
+  {% else %}
+  <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
+    <div style="font-size:3rem;margin-bottom:12px">🚚</div>
+    <div>No suppliers yet. Add your first one!</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Add Supplier Modal -->
+<div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="width:100%;max-width:480px;position:relative">
+    <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:16px">Add Supplier</div>
+    <form method="POST" action="/suppliers/add">
+      <div class="form-group"><label class="form-label">Company Name *</label><input name="name" class="form-control" required placeholder="Sweet Supply Co."></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Contact Person</label><input name="contact" class="form-control" placeholder="John Smith"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input name="phone" class="form-control" placeholder="555-1234"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Email</label><input name="email" type="email" class="form-control" placeholder="orders@supplier.com"></div>
+      <div class="form-group"><label class="form-label">Address</label><input name="address" class="form-control" placeholder="123 Main St, City, NC"></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea name="notes" class="form-control" rows="2" placeholder="Payment terms, delivery schedule..."></textarea></div>
+      <button type="submit" class="btn btn-primary">Add Supplier</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

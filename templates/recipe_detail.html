@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}{{ recipe.name }} — {{ bakery }}{% endblock %}
+{% block page_title %}📖 {{ recipe.name }}{% endblock %}
+{% block content %}
+
+<a href="/recipes" class="btn btn-ghost btn-sm" style="margin-bottom:16px">← Recipes</a>
+
+<div class="grid-2">
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:1.2rem;font-weight:800;font-family:'Playfair Display',serif">{{ recipe.name }}</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:3px">{{ recipe.category }} · {{ recipe.servings }} servings</div>
+      </div>
+      <div style="font-size:1.5rem;font-weight:900;color:var(--pink)">${{ "%.2f"|format(recipe.base_price) }}</div>
+    </div>
+    {% if recipe.description %}<p style="font-size:.85rem;color:var(--muted);line-height:1.6;margin-bottom:14px">{{ recipe.description }}</p>{% endif %}
+    <div style="display:flex;gap:16px;font-size:.82rem;color:var(--muted)">
+      <span>⏱ Prep: {{ recipe.prep_mins }} min</span>
+      <span>🔥 Bake: {{ recipe.bake_mins }} min</span>
+      <span>⏰ Total: {{ recipe.prep_mins + recipe.bake_mins }} min</span>
+    </div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px">
+        <span>Ingredient Cost:</span><span style="font-weight:700">${{ "%.2f"|format(cost) }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px">
+        <span>Sale Price:</span><span style="font-weight:700;color:var(--pink)">${{ "%.2f"|format(recipe.base_price) }}</span>
+      </div>
+      {% if recipe.base_price > cost %}
+      <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--green)">
+        <span>Profit Margin:</span>
+        <span style="font-weight:700">${{ "%.2f"|format(recipe.base_price - cost) }} ({{ "%.0f"|format((recipe.base_price - cost) / recipe.base_price * 100 if recipe.base_price else 0) }}%)</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Ingredients -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">🧂 Ingredients</div>
+    {% if ingreds %}
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+      {% for i in ingreds %}
+      <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--card2);border-radius:6px;border:1px solid var(--border);font-size:.84rem">
+        <span>{{ i.ing_name }}</span>
+        <span style="color:var(--muted)">{{ i.quantity }} {{ i.unit or i.ing_unit }} <span style="color:var(--pink)">${{ "%.2f"|format(i.quantity * i.cost_per_unit) }}</span></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--muted);font-size:.84rem;margin-bottom:14px">No ingredients added yet.</div>
+    {% endif %}
+
+    <!-- Add ingredient -->
+    <form method="POST" action="/recipes/{{ recipe.id }}/add-ingredient" style="border-top:1px solid var(--border);padding-top:14px">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ingredient</label>
+          <select name="ingredient_id" class="form-control" required>
+            <option value="">— Select —</option>
+            {% for i in all_ingreds %}<option value="{{ i.id }}">{{ i.name }} ({{ i.unit }})</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity</label>
+          <input name="quantity" type="number" step="0.01" class="form-control" value="1" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">+ Add to Recipe</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

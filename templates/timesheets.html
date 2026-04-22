@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Timesheets — {{ emp.name }}{% endblock %}
+{% block page_title %}⏱️ {{ emp.name }} — Timesheets{% endblock %}
+{% block content %}
+
+<a href="/employees" class="btn btn-ghost btn-sm" style="margin-bottom:16px">← Back to Employees</a>
+
+<div class="grid-2" style="margin-bottom:20px">
+  <div class="card" style="text-align:center">
+    <div class="stat-num">{{ total_hours }}</div>
+    <div class="stat-label">Hours This Period</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div class="stat-num green">${{ "%.2f"|format(total_hours * emp.hourly_rate) }}</div>
+    <div class="stat-label">Gross Pay (${{"%.2f"|format(emp.hourly_rate)}}/hr)</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">⏱️ Time Log</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Break</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for t in timesheets %}
+      {% set ci = t.clock_in %}
+      <tr>
+        <td style="font-family:monospace;font-size:.82rem">{{ t.clock_in[:16] if t.clock_in else '—' }}</td>
+        <td style="font-family:monospace;font-size:.82rem">{{ t.clock_out[:16] if t.clock_out else '<span style="color:var(--green)">Still In</span>'|safe }}</td>
+        <td style="font-weight:700">
+          {% if t.clock_out %}
+            {% set hrs = ((t.clock_out | replace('T',' ') | string | length) and 0) %}
+            —
+          {% else %}—{% endif %}
+        </td>
+        <td style="font-size:.82rem;color:var(--muted)">{{ t.break_mins or 0 }} min</td>
+        <td>{% if t.approved %}<span class="badge badge-ready">Approved</span>{% else %}<span class="badge badge-pending">Pending</span>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">No timesheet records yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

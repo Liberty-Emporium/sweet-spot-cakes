@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Inventory — {{ bakery }}{% endblock %}
+{% block page_title %}📦 Inventory{% endblock %}
+{% block content %}
+
+<!-- Add ingredient modal trigger -->
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+  <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Ingredient</button>
+</div>
+
+<!-- Low stock banner -->
+{% set low = ingredients | selectattr('quantity', 'le', 5) | list %}
+{% if low %}<div class="alert alert-warning">⚠️ {{ low|length }} item(s) at or below reorder level. Time to reorder!</div>{% endif %}
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Ingredient</th><th>In Stock</th><th>Unit</th><th>Reorder At</th><th>Cost/Unit</th><th>Supplier</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for item in ingredients %}
+      <tr>
+        <td style="font-weight:600">{{ item.name }}</td>
+        <td class="{% if item.quantity <= item.reorder_level %}low-stock{% else %}ok-stock{% endif %}" style="font-size:1rem;font-weight:700">{{ item.quantity }}</td>
+        <td style="color:var(--muted);font-size:.82rem">{{ item.unit }}</td>
+        <td style="color:var(--muted);font-size:.82rem">{{ item.reorder_level }}</td>
+        <td style="font-size:.82rem">${{ "%.2f"|format(item.cost_per_unit) }}</td>
+        <td style="font-size:.82rem;color:var(--muted)">{{ item.supplier_name or '—' }}</td>
+        <td>
+          {% if item.quantity <= 0 %}<span class="badge badge-cancelled">OUT</span>
+          {% elif item.quantity <= item.reorder_level %}<span class="badge badge-pending">LOW</span>
+          {% else %}<span class="badge badge-ready">OK</span>{% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <form method="POST" action="/inventory/{{ item.id }}/adjust" style="display:inline">
+              <input name="delta" type="number" step="0.5" placeholder="±qty" class="form-control" style="width:70px;padding:4px 8px;display:inline">
+              <button type="submit" class="btn btn-ghost btn-xs">Adjust</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="width:100%;max-width:480px;position:relative">
+    <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:16px">Add Ingredient</div>
+    <form method="POST" action="/inventory/add">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Name *</label><input name="name" class="form-control" required placeholder="All-Purpose Flour"></div>
+        <div class="form-group"><label class="form-label">Unit</label>
+          <select name="unit" class="form-control"><option>lbs</option><option>oz</option><option>cups</option><option>gallons</option><option>liters</option><option>each</option><option>dozen</option><option>bags</option><option>boxes</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Qty on Hand</label><input name="quantity" type="number" step="0.5" class="form-control" value="0"></div>
+        <div class="form-group"><label class="form-label">Reorder Level</label><input name="reorder_level" type="number" step="0.5" class="form-control" value="5"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cost per Unit $</label><input name="cost_per_unit" type="number" step="0.01" class="form-control" value="0"></div>
+        <div class="form-group"><label class="form-label">Supplier</label>
+          <select name="supplier_id" class="form-control">
+            <option value="">— None —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input name="notes" class="form-control" placeholder="Storage location, brand..."></div>
+      <button type="submit" class="btn btn-primary">Add Ingredient</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

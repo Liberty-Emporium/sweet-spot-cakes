@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Reports — {{ bakery }}{% endblock %}
+{% block page_title %}📊 Reports — {{ month }}{% endblock %}
+{% block content %}
+
+<div class="stats-grid">
+  <div class="stat-tile">
+    <div class="stat-num green">${{ "%.2f"|format(revenue_month) }}</div>
+    <div class="stat-label">Revenue This Month</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num">{{ orders_month }}</div>
+    <div class="stat-label">Orders This Month</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num yellow">${{ "%.2f"|format(revenue_month / orders_month if orders_month else 0) }}</div>
+    <div class="stat-label">Avg Order Value</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:20px">
+
+  <!-- Top Items -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">🏆 Top Selling Items</div>
+    {% if top_items %}
+    {% set max_rev = top_items[0].rev %}
+    {% for item in top_items %}
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:4px">
+        <span style="font-weight:600">{{ item.name }}</span>
+        <span style="color:var(--pink);font-weight:700">${{ "%.2f"|format(item.rev) }}</span>
+      </div>
+      <div style="height:5px;background:var(--card2);border-radius:3px;overflow:hidden">
+        <div style="height:100%;background:linear-gradient(90deg,var(--pink),var(--rose));border-radius:3px;width:{{ [((item.rev / max_rev)*100)|int, 100]|min }}%"></div>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:2px">{{ item.qty }} sold</div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">No sales data yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Revenue by Day -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">📈 Revenue by Day ({{ month }})</div>
+    {% if revenue_by_day %}
+    {% set max_rev = revenue_by_day | map(attribute='total') | max %}
+    <div style="display:flex;flex-direction:column;gap:5px">
+    {% for row in revenue_by_day %}
+    <div style="display:flex;align-items:center;gap:10px;font-size:.78rem">
+      <span style="color:var(--muted);min-width:60px">{{ row.day[5:] }}</span>
+      <div style="flex:1;height:14px;background:var(--card2);border-radius:7px;overflow:hidden">
+        <div style="height:100%;background:var(--grad);border-radius:7px;width:{{ [((row.total / max_rev)*100)|int, 100]|min }}%"></div>
+      </div>
+      <span style="font-weight:700;min-width:60px;text-align:right">${{ "%.0f"|format(row.total) }}</span>
+    </div>
+    {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">No revenue recorded this month.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Employee Hours -->
+<div class="card">
+  <div class="card-title" style="margin-bottom:14px">👩‍🍳 Employee Hours — {{ month }}</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Employee</th><th>Hours</th><th>Rate</th><th>Gross Pay</th></tr></thead>
+      <tbody>
+      {% for row in employee_hours %}
+      <tr>
+        <td style="font-weight:600">{{ row.name }}</td>
+        <td style="font-weight:700">{{ row.hours }}</td>
+        <td style="color:var(--muted)">${{ "%.2f"|format(row.hourly_rate) }}/hr</td>
+        <td style="font-weight:700;color:var(--green)">${{ "%.2f"|format(row.hours * row.hourly_rate) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted)">No timesheet data this month.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if employee_hours %}
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:.88rem">
+    <span style="font-weight:700">Total Payroll Est.</span>
+    <span style="font-weight:800;color:var(--red)">${{ "%.2f"|format(employee_hours | sum(attribute='hours') * 15) }}</span>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

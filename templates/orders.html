@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Orders — {{ bakery }}{% endblock %}
+{% block page_title %}🎂 Orders{% endblock %}
+{% block topbar_right %}
+<a href="/orders/new" class="btn btn-primary btn-sm">+ New Order</a>
+{% endblock %}
+{% block content %}
+
+<!-- Filters -->
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+  <form method="GET" style="display:flex;gap:8px;flex:1;flex-wrap:wrap">
+    <input name="q" value="{{ q }}" placeholder="Search customer or order #..." class="form-control" style="max-width:260px">
+    <select name="status" class="form-control" style="max-width:160px" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      {% for s in ['pending','confirmed','in_production','ready','delivered','cancelled'] %}
+      <option {% if status==s %}selected{% endif %} value="{{ s }}">{{ s|title }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-ghost">Search</button>
+    {% if status or q %}<a href="/orders" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+</div>
+
+<!-- Status pills -->
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+  {% for s, label, color in [('pending','Pending','yellow'),('confirmed','Confirmed','blue'),('in_production','In Production','pink'),('ready','Ready','green'),('delivered','Delivered','muted'),('cancelled','Cancelled','red')] %}
+  <a href="/orders?status={{ s }}" class="badge badge-{{ s.replace('in_production','production') }}" style="cursor:pointer;padding:5px 14px;font-size:.76rem;{% if status==s %}outline:2px solid currentColor;{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Order #</th><th>Customer</th><th>Type</th><th>Pickup</th><th>Items</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% if orders %}
+        {% for o in orders %}
+        <tr>
+          <td style="font-family:monospace;font-size:.78rem;color:var(--pink);white-space:nowrap">{{ o.order_number }}</td>
+          <td>
+            <div style="font-weight:600;font-size:.88rem">{{ o.customer_name }}</div>
+            <div style="font-size:.72rem;color:var(--muted)">{{ o.customer_phone }}</div>
+          </td>
+          <td style="font-size:.78rem;color:var(--muted)">{{ o.type }}</td>
+          <td style="font-size:.82rem;white-space:nowrap">
+            {% if o.pickup_date %}<div>{{ o.pickup_date }}</div><div style="font-size:.72rem;color:var(--muted)">{{ o.pickup_time or '' }}</div>{% else %}—{% endif %}
+          </td>
+          <td style="font-size:.82rem">{{ o.special_notes[:30] + '…' if o.special_notes and o.special_notes|length > 30 else (o.special_notes or '—') }}</td>
+          <td style="font-weight:700;white-space:nowrap">${{ "%.2f"|format(o.total or 0) }}</td>
+          <td style="white-space:nowrap">
+            {% if o.paid_in_full %}<span style="color:var(--green);font-size:.78rem">✅ Paid</span>
+            {% else %}<span style="color:var(--yellow);font-weight:700">${{ "%.2f"|format(o.balance_due or 0) }}</span>{% endif %}
+          </td>
+          <td><span class="badge badge-{{ o.status.replace('in_production','production') }}">{{ o.status }}</span></td>
+          <td><a href="/orders/{{ o.id }}" class="btn btn-ghost btn-xs">View →</a></td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">No orders found.</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

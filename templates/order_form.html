@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}New Order — {{ bakery }}{% endblock %}
+{% block page_title %}🎂 New Order{% endblock %}
+{% block content %}
+
+<div style="max-width:700px">
+  <a href="/orders" class="btn btn-ghost btn-sm" style="margin-bottom:16px">← Back to Orders</a>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Create New Order</div></div>
+    <form method="POST">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Customer Name *</label>
+          <input name="customer_name" class="form-control" required placeholder="Jane Smith" id="cname" autocomplete="off">
+          <div id="cust-suggestions" style="position:absolute;background:var(--card2);border:1px solid var(--border);border-radius:8px;z-index:50;width:300px;display:none"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Order Type</label>
+          <select name="type" class="form-control">
+            <option value="custom">Custom Cake</option>
+            <option value="walkin">Walk-In</option>
+            <option value="online">Online</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Customer Email</label>
+          <input name="customer_email" type="email" class="form-control" placeholder="jane@email.com" id="cemail">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Customer Phone</label>
+          <input name="customer_phone" class="form-control" placeholder="555-1234" id="cphone">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Pickup Date</label>
+          <input name="pickup_date" type="date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pickup Time</label>
+          <input name="pickup_time" type="time" class="form-control">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Special Notes / Customizations</label>
+        <textarea name="special_notes" class="form-control" rows="3" placeholder="Flavor, size, colors, theme, allergies..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Create Order →</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let timer;
+document.getElementById('cname').addEventListener('input', function() {
+  clearTimeout(timer);
+  const q = this.value.trim();
+  if (q.length < 2) { document.getElementById('cust-suggestions').style.display='none'; return; }
+  timer = setTimeout(async () => {
+    const res = await fetch('/api/customers/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    const box = document.getElementById('cust-suggestions');
+    if (!data.length) { box.style.display='none'; return; }
+    box.innerHTML = data.map(c => `<div onclick="fillCustomer('${c.name}','${c.email}','${c.phone}')"
+      style="padding:10px 14px;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--border)"
+      onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''"
+    >${c.name} <span style="color:var(--muted);font-size:.75rem">${c.email}</span></div>`).join('');
+    box.style.display='block';
+  }, 300);
+});
+function fillCustomer(name, email, phone) {
+  document.getElementById('cname').value = name;
+  document.getElementById('cemail').value = email;
+  document.getElementById('cphone').value = phone;
+  document.getElementById('cust-suggestions').style.display = 'none';
+}
+document.addEventListener('click', () => document.getElementById('cust-suggestions').style.display='none');
+</script>
+{% endblock %}

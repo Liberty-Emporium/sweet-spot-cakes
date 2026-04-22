@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Customers — {{ bakery }}{% endblock %}
+{% block page_title %}👥 Customers{% endblock %}
+{% block content %}
+
+<form method="GET" style="display:flex;gap:8px;margin-bottom:20px">
+  <input name="q" value="{{ q }}" placeholder="Search by name, email, phone..." class="form-control" style="max-width:340px">
+  <button type="submit" class="btn btn-ghost">Search</button>
+  {% if q %}<a href="/customers" class="btn btn-ghost">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Birthday</th><th>Notes</th><th>Since</th></tr></thead>
+      <tbody>
+      {% for c in customers %}
+      <tr>
+        <td style="font-weight:600">{{ c.name }}</td>
+        <td style="font-size:.82rem;color:var(--muted)">{{ c.email or '—' }}</td>
+        <td style="font-size:.82rem">{{ c.phone or '—' }}</td>
+        <td style="font-size:.82rem;color:var(--pink)">{{ c.birthday or '—' }}</td>
+        <td style="font-size:.78rem;color:var(--muted)">{{ c.notes[:40] + '…' if c.notes and c.notes|length > 40 else (c.notes or '') }}</td>
+        <td style="font-size:.75rem;color:var(--muted)">{{ c.created[:10] }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">No customers yet. They're created automatically when you add orders.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

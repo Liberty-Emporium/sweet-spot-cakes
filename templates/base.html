@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ bakery }}{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pink:#f472b6; --pink2:#ec4899; --rose:#fda4af; --cream:#fdf2f8;
+      --bg:#0d0408; --bg2:#160b10; --card:#1f0d16; --card2:#2a1020;
+      --border:#3d1a28; --text:#fdf2f8; --muted:#9d8890;
+      --green:#34d399; --yellow:#fbbf24; --red:#f87171; --blue:#60a5fa;
+      --grad:linear-gradient(135deg,#f472b6,#ec4899,#db2777);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    a{color:var(--pink);text-decoration:none}
+    a:hover{color:var(--rose)}
+
+    /* Sidebar */
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:230px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;z-index:100;overflow-y:auto}
+    .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+    .logo-cake{font-size:1.6rem;margin-bottom:4px}
+    .logo-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
+    .logo-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+    .nav-section{padding:12px 20px 4px;font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#5a3040;font-weight:700}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;color:var(--muted);text-decoration:none;font-size:.85rem;font-weight:500;transition:all .15s;border-left:3px solid transparent}
+    .nav-item:hover{color:var(--text);background:rgba(244,114,182,.06);border-left-color:rgba(244,114,182,.3)}
+    .nav-item.active{color:var(--pink);background:rgba(244,114,182,.08);border-left-color:var(--pink)}
+    .sidebar-footer{margin-top:auto;padding:14px 20px;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted)}
+
+    /* Main */
+    .main{margin-left:230px;min-height:100vh}
+    .topbar{background:rgba(13,4,8,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .topbar-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600}
+    .content{padding:28px}
+
+    /* Cards */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+    .card-title{font-weight:700;font-size:.95rem;font-family:'Playfair Display',serif}
+
+    /* Stat tiles */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+    .stat-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+    .stat-num{font-size:2rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:'Playfair Display',serif}
+    .stat-num.green{background:var(--green);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-num.red{background:var(--red);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-num.yellow{background:var(--yellow);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .stat-label{font-size:.75rem;color:var(--muted);margin-top:3px}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:all .2s;font-family:'Inter',sans-serif}
+    .btn-primary{background:var(--grad);color:#fff}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px);color:#fff}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+    .btn-ghost:hover{border-color:var(--pink);color:var(--text)}
+    .btn-danger{background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);color:var(--red)}
+    .btn-success{background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+    .btn-sm{padding:5px 12px;font-size:.76rem}
+    .btn-xs{padding:3px 9px;font-size:.72rem}
+
+    /* Table */
+    .table-wrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.84rem}
+    thead th{text-align:left;padding:10px 14px;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);font-weight:600}
+    tbody td{padding:10px 14px;border-bottom:1px solid rgba(61,26,40,.5);vertical-align:middle}
+    tbody tr:hover{background:rgba(244,114,182,.03)}
+
+    /* Badges */
+    .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700}
+    .badge-pending{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+    .badge-confirmed{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.3)}
+    .badge-production{background:rgba(244,114,182,.1);color:var(--pink);border:1px solid rgba(244,114,182,.3)}
+    .badge-ready{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+    .badge-delivered{background:rgba(156,163,175,.1);color:#9ca3af;border:1px solid rgba(156,163,175,.2)}
+    .badge-cancelled{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+
+    /* Forms */
+    .form-group{margin-bottom:14px}
+    .form-label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+    .form-control{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:.875rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+    .form-control:focus{border-color:var(--pink)}
+    select.form-control option{background:var(--card2)}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+    /* Alerts */
+    .alert{padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .alert-success{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--green)}
+    .alert-error{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--red)}
+    .alert-warning{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:var(--yellow)}
+    .alert-info{background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.3);color:var(--blue)}
+
+    /* Grid */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+
+    /* Low stock */
+    .low-stock{color:var(--red)!important;font-weight:700}
+    .ok-stock{color:var(--green)}
+
+    @media(max-width:900px){
+      .sidebar{width:60px}
+      .logo-name,.logo-sub,.nav-section,.sidebar-footer,.nav-item span{display:none}
+      .nav-item{justify-content:center;padding:12px}
+      .main{margin-left:60px}
+      .form-row,.form-row-3,.grid-2,.grid-3{grid-template-columns:1fr}
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-cake">🎂</div>
+    <div class="logo-name">{{ bakery }}</div>
+    <div class="logo-sub">Bakery Management</div>
+  </div>
+  <nav style="padding:8px 0;flex:1">
+    <div class="nav-section">Main</div>
+    <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' or request.path == '/' %}active{% endif %}">🏠 <span>Dashboard</span></a>
+    <a href="/orders" class="nav-item {% if '/orders' in request.path %}active{% endif %}">🎂 <span>Orders</span></a>
+    <a href="/customers" class="nav-item {% if '/customers' in request.path %}active{% endif %}">👥 <span>Customers</span></a>
+
+    <div class="nav-section">Kitchen</div>
+    <a href="/recipes" class="nav-item {% if '/recipes' in request.path %}active{% endif %}">📖 <span>Recipes</span></a>
+    <a href="/inventory" class="nav-item {% if '/inventory' in request.path %}active{% endif %}">📦 <span>Inventory</span></a>
+    <a href="/suppliers" class="nav-item {% if '/suppliers' in request.path %}active{% endif %}">🚚 <span>Suppliers</span></a>
+
+    <div class="nav-section">Team</div>
+    <a href="/employees" class="nav-item {% if '/employees' in request.path or '/timesheets' in request.path %}active{% endif %}">👩‍🍳 <span>Employees</span></a>
+
+    <div class="nav-section">Business</div>
+    <a href="/reports" class="nav-item {% if '/reports' in request.path %}active{% endif %}">📊 <span>Reports</span></a>
+    <a href="/settings" class="nav-item {% if '/settings' in request.path %}active{% endif %}">⚙️ <span>Settings</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <span>👤 {{ session.get('name','') }}</span>
+    <a href="/logout" style="margin-left:8px;font-size:.72rem;color:var(--muted)">logout</a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">{% block page_title %}{{ bakery }}{% endblock %}</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:.78rem;color:var(--muted)" id="clock"></span>
+      {% block topbar_right %}{% endblock %}
+    </div>
+  </div>
+  <div class="content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script>
+function tick(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+tick(); setInterval(tick,1000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

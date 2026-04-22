@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login — {{ bakery }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0d0408;color:#fdf2f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .box{background:#1f0d16;border:1px solid #3d1a28;border-radius:18px;padding:40px 36px;width:100%;max-width:400px}
+    .logo{text-align:center;margin-bottom:28px}
+    .logo-icon{font-size:3rem;margin-bottom:8px}
+    .logo-name{font-family:'Playfair Display',serif;font-size:1.4rem;background:linear-gradient(135deg,#f472b6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .logo-sub{font-size:.8rem;color:#9d8890;margin-top:4px}
+    label{display:block;font-size:.8rem;font-weight:600;color:#9d8890;margin-bottom:5px}
+    input{width:100%;background:#2a1020;border:1px solid #3d1a28;border-radius:8px;padding:11px 14px;color:#fdf2f8;font-size:.9rem;font-family:'Inter',sans-serif;outline:none;margin-bottom:16px;transition:border-color .2s}
+    input:focus{border-color:#f472b6}
+    .btn{width:100%;background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff;border:none;border-radius:8px;padding:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .2s}
+    .btn:hover{opacity:.88}
+    .alert{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:16px}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">
+      <div class="logo-icon">🎂</div>
+      <div class="logo-name">{{ bakery }}</div>
+      <div class="logo-sub">Staff Portal</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="alert">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="POST">
+      <label>Email</label>
+      <input type="email" name="email" required placeholder="you@sweetspot.com" autofocus>
+      <label>Password</label>
+      <input type="password" name="password" required placeholder="••••••••">
+      <button type="submit" class="btn">Sign In →</button>
+    </form>
+  </div>
+</body>
+</html>
