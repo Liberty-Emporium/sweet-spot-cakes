@@ -815,6 +815,111 @@ def api_recipes():
     rows = db.execute("SELECT id,name,category,base_price FROM recipes WHERE active=1 ORDER BY name").fetchall()
     return jsonify([dict(r) for r in rows])
 
+# ── Public Order (no login required) ──────────────────────────────────────────────
+@app.route('/order', methods=['GET', 'POST'])
+def public_order():
+    if request.method == 'POST':
+        db = get_db()
+        # Customer info
+        cname       = request.form.get('name', '').strip()
+        cemail      = request.form.get('email', '').strip().lower()
+        cphone      = request.form.get('phone', '').strip()
+        pickup_date = request.form.get('pickup_date', '').strip()
+        pickup_time = request.form.get('pickup_time', '').strip()
+        # Cake details
+        size        = request.form.get('size', '').strip()
+        flavor      = request.form.get('flavor', '').strip()
+        addons      = request.form.getlist('addons')
+        message_txt = request.form.get('message_text', '').strip()
+        occasion    = request.form.get('occasion', '').strip()
+        notes       = request.form.get('special_notes', '').strip()
+
+        if not cname or not pickup_date:
+            flash('Please fill in your name and pickup date.', 'error')
+            return redirect(url_for('public_order'))
+
+        # Build description
+        details = []
+        if size:        details.append(f'Size: {size}')
+        if flavor:      details.append(f'Flavor: {flavor}')
+        if occasion:    details.append(f'Occasion: {occasion}')
+        if addons:      details.append(f'Add-ons: {", ".join(addons)}')
+        if message_txt: details.append(f'Message on cake: "{message_txt}"')
+        if notes:       details.append(f'Notes: {notes}')
+        full_notes = '\n'.join(details)
+
+        # Find or create customer
+        cust_id = None
+        if cemail:
+            existing = db.execute('SELECT id FROM customers WHERE email=?', (cemail,)).fetchone()
+            if existing:
+                cust_id = existing['id']
+                if cphone:
+                    db.execute('UPDATE customers SET phone=? WHERE id=?', (cphone, cust_id))
+            else:
+                cur = db.execute('INSERT INTO customers(name,email,phone,notes) VALUES(?,?,?,?)',
+                                 (cname, cemail, cphone, 'Online order'))
+                cust_id = cur.lastrowid
+
+        # Calculate base price from size selection
+        size_prices = {
+            '6" Round (serves 8-10)': 45,
+            '8" Round (serves 12-16)': 65,
+            '10" Round (serves 20-24)': 90,
+            '12" Round (serves 28-35)': 120,
+            '2-Tier (serves 30-40)': 175,
+            '3-Tier (serves 60-80)': 275,
+            'Sheet Cake (serves 24-48)': 95,
+        }
+        addon_prices = {
+            'Fondant Decorations': 25,
+            'Fresh Flowers': 20,
+            'Gold/Silver Leaf': 30,
+            'Photo Print Topper': 15,
+            'Extra Frosting Layer': 10,
+            'Gluten-Free Option': 15,
+            'Vegan Option': 15,
+        }
+        base = float(size_prices.get(size, 0))
+        addon_total = sum(float(addon_prices.get(a, 0)) for a in addons)
+        subtotal = base + addon_total
+        tax_amt  = round(subtotal * tax_rate(), 2)
+        total    = round(subtotal + tax_amt, 2)
+
+        onum = gen_order_number()
+        cur = db.execute(
+            '''INSERT INTO orders(order_number,customer_id,customer_name,customer_email,
+               customer_phone,type,status,pickup_date,pickup_time,special_notes,
+               subtotal,tax,total,balance_due)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (onum, cust_id, cname, cemail, cphone, 'online', 'pending',
+             pickup_date, pickup_time, full_notes,
+             subtotal, tax_amt, total, total)
+        )
+        order_id = cur.lastrowid
+
+        # Add order item
+        item_name = f'{size} — {flavor}' if size and flavor else (size or flavor or 'Custom Cake')
+        if addons:
+            item_name += f' + {", ".join(addons)}'
+        db.execute(
+            'INSERT INTO order_items(order_id,name,description,quantity,unit_price,total,customizations) VALUES(?,?,?,?,?,?,?)',
+            (order_id, item_name, full_notes, 1, subtotal, subtotal, full_notes)
+        )
+        db.commit()
+        return redirect(url_for('order_confirmation', order_number=onum))
+
+    return render_template('public_order.html', bakery=BAKERY_NAME,
+                           cake_sizes=CAKE_SIZES, flavors=FLAVORS, add_ons=ADD_ONS)
+
+
+@app.route('/order/confirmation/<order_number>')
+def order_confirmation(order_number):
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE order_number=?', (order_number,)).fetchone()
+    return render_template('order_confirmation.html', order=order, bakery=BAKERY_NAME)
+
+
 # ── Loyalty / QR Signup ────────────────────────────────────────────────────────────
 @app.route('/join', methods=['GET', 'POST'])
 def join():

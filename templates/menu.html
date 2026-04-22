@@ -150,7 +150,7 @@
     <a href="#pricing">Pricing</a>
     <a href="#order">Order</a>
     <a href="/join">VIP Club</a>
-    <a href="mailto:info@sweetspotcustomcakes.com" class="cta">📧 Order Now</a>
+    <a href="/order" class="cta">🎂 Order Now</a>
   </div>
 </nav>
 
@@ -159,7 +159,7 @@
   <div class="hero-eyebrow">✨ Handcrafted in Liberty, NC</div>
   <h1 class="hero-title">Every Cake Tells<br><em>Your</em> Story</h1>
   <p class="hero-sub">Custom-designed cakes baked from scratch for birthdays, weddings, celebrations, and every sweet moment in between.</p>
-  <a href="#order" class="hero-cta">🎂 Build Your Cake</a>
+  <a href="/order" class="hero-cta">🎂 Order Now</a>
   <div class="hero-badges">
     <span class="badge">🏡 Made from Scratch</span>
     <span class="badge">🎨 Custom Designs</span>
@@ -304,7 +304,7 @@
     </div>
     <div class="price-display" id="priceDisplay">Select options above</div>
     <div class="price-note">* Starting estimate. Final price confirmed at order time.</div>
-    <a href="mailto:info@sweetspotcustomcakes.com?subject=Custom Cake Order" id="orderBtn"
+    <a href="/order" id="orderBtn"
        style="display:block;background:var(--grad);color:#fff;text-align:center;padding:15px;border-radius:12px;font-weight:700;font-size:1rem;transition:opacity .2s">
       🎂 Email Us Your Order →
     </a>
@@ -383,7 +383,7 @@
   <h2>Ready to Order Your Dream Cake?</h2>
   <p>Every cake is made with love, baked fresh, and designed to make your moment unforgettable. Let's create something beautiful together.</p>
   <div class="cta-btns">
-    <a href="mailto:info@sweetspotcustomcakes.com?subject=Custom Cake Order" class="hero-cta" style="display:inline-flex">🎂 Email Your Order</a>
+    <a href="/order" class="hero-cta" style="display:inline-flex">🎂 Order Online Now</a>
     <a href="/join" class="btn-outline">⭐ Join VIP Club</a>
   </div>
 </div>
@@ -431,7 +431,7 @@ function updatePrice() {
   const addons = Array.from(document.querySelectorAll('[data-type="addon"].selected')).map(b => b.textContent.trim()).join(', ');
   const subject = encodeURIComponent(`Custom Cake Order — ${sizeName} ${flavorName ? '| ' + flavorName : ''}`);
   const body = encodeURIComponent(`Hi! I'd like to order:\n\nSize: ${sizeName}\nFlavor: ${flavorName || 'TBD'}\nAdd-ons: ${addons || 'None'}\nEstimated price: $${total}\n\nPickup date: \nOccasion: \nSpecial requests: `);
-  orderBtn.href = `mailto:info@sweetspotcustomcakes.com?subject=${subject}&body=${body}`;
+  orderBtn.href = '/order';
 }
 
 // FAQ

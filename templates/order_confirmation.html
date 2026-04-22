@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Confirmed — {{ bakery }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--pink:#f472b6;--rose:#fda4af;--bg:#0d0408;--card:#1f0d16;--card2:#2a1020;--border:#3d1a28;--text:#fdf2f8;--muted:#9d8890;--green:#34d399;--grad:linear-gradient(135deg,#f472b6,#ec4899)}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:var(--card);border:1px solid rgba(244,114,182,.3);border-radius:24px;padding:48px 40px;max-width:540px;width:100%;text-align:center}
+    .icon{font-size:5rem;margin-bottom:20px;animation:pop .5s cubic-bezier(.175,.885,.32,1.275)}
+    @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+    h1{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
+    .sub{color:var(--muted);font-size:.9rem;line-height:1.7;margin-bottom:28px}
+    .order-box{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:left;margin-bottom:24px}
+    .order-num{font-family:monospace;font-size:1.3rem;font-weight:800;color:var(--pink);margin-bottom:4px}
+    .order-detail{font-size:.83rem;color:var(--muted);line-height:2}
+    .order-detail strong{color:var(--text)}
+    .steps{display:flex;flex-direction:column;gap:12px;margin-bottom:28px;text-align:left}
+    .step{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--card2);border-radius:10px;border:1px solid var(--border)}
+    .step-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px}
+    .step-text{font-size:.83rem;line-height:1.6;color:var(--muted)}
+    .step-text strong{color:var(--text)}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:12px 24px;border-radius:10px;font-size:.88rem;font-weight:700;text-decoration:none;transition:all .2s;margin:4px}
+    .btn-primary{background:var(--grad);color:#fff}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px);color:#fff}
+    .btn-ghost{border:1.5px solid rgba(244,114,182,.3);color:var(--rose)}
+    .btn-ghost:hover{border-color:var(--pink);color:var(--pink)}
+    .total-pill{display:inline-block;background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.3);border-radius:30px;padding:8px 20px;font-size:1rem;font-weight:800;color:var(--pink);margin-bottom:20px}
+    .confetti{position:fixed;inset:0;pointer-events:none;z-index:0}
+  </style>
+</head>
+<body>
+<div class="card" style="position:relative;z-index:1">
+  <div class="icon">🎉</div>
+  <h1>Order Received!</h1>
+  <p class="sub">Thank you! We've got your order and we're already excited to bake for you. We'll reach out within <strong>24 hours</strong> to confirm details and collect your deposit.</p>
+
+  {% if order %}
+  <div class="total-pill">
+    💰 Estimated Total: ${{ "%.2f"|format(order.total or 0) }}
+  </div>
+
+  <div class="order-box">
+    <div class="order-num">{{ order.order_number }}</div>
+    <div class="order-detail">
+      <div><strong>Name:</strong> {{ order.customer_name }}</div>
+      {% if order.customer_email %}<div><strong>Email:</strong> {{ order.customer_email }}</div>{% endif %}
+      {% if order.customer_phone %}<div><strong>Phone:</strong> {{ order.customer_phone }}</div>{% endif %}
+      <div><strong>Pickup:</strong> {{ order.pickup_date }} {{ order.pickup_time or '' }}</div>
+      {% if order.special_notes %}
+      <div style="margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:8px;font-size:.78rem;white-space:pre-line">{{ order.special_notes }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-icon">📞</div>
+      <div class="step-text"><strong>We'll contact you within 24 hours</strong> to confirm your order details and answer any questions.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">💳</div>
+      <div class="step-text"><strong>50% deposit required</strong> to lock in your pickup date. We accept card, Zelle, and cash.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">🎂</div>
+      <div class="step-text"><strong>We bake fresh</strong> — your cake will be made from scratch with love and the finest ingredients.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">🎉</div>
+      <div class="step-text"><strong>Pickup day!</strong> Come in on your scheduled date and prepare for the "WOW" moment.</div>
+    </div>
+  </div>
+
+  <div>
+    <a href="/menu" class="btn btn-primary">🎂 Back to Menu</a>
+    <a href="/join" class="btn btn-ghost">⭐ Join VIP Club</a>
+  </div>
+
+  <div style="margin-top:20px;font-size:.78rem;color:var(--muted)">
+    Questions? Email us at <a href="mailto:info@sweetspotcustomcakes.com" style="color:var(--pink)">info@sweetspotcustomcakes.com</a>
+  </div>
+</div>
+
+<script src="https://ai-agent-widget-production.up.railway.app/widget/Fx9e5L1JSpqJtjnhl2jLsQ.js"></script>
+</body>
+</html>
