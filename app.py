@@ -894,8 +894,14 @@ def order_add_item(order_id):
     order = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not order: return jsonify({'error': 'not found'}), 404
     name   = request.form.get('name', '').strip()
-    qty    = int(request.form.get('quantity', 1))
-    price  = float(request.form.get('unit_price', 0))
+    try:
+        qty = int(request.form.get('quantity') or 1)
+    except (ValueError, TypeError):
+        qty = 1
+    try:
+        price = float(request.form.get('unit_price') or 0)
+    except (ValueError, TypeError):
+        price = 0
     custom = request.form.get('customizations', '')
     recipe_id = request.form.get('recipe_id') or None
     total  = qty * price
@@ -994,7 +1000,10 @@ def payment_success(order_id):
 @login_required
 def cash_payment(order_id):
     db = get_db()
-    amount = float(request.form.get('amount', 0))
+    try:
+        amount = float(request.form.get('amount') or 0)
+    except (ValueError, TypeError):
+        amount = 0
     method = request.form.get('method', 'cash')
     if amount > 0:
         order = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
