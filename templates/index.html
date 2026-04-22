@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweet Spot Custom Cakes — Custom Cakes & Bakery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0d0408;color:#fdf2f8;min-height:100vh}
+
+    /* Hero */
+    .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%, rgba(244,114,182,.15) 0%, transparent 70%)}
+    .hero-icon{font-size:5rem;margin-bottom:20px;animation:float 3s ease-in-out infinite}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+    .hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.5rem,6vw,4.5rem);font-weight:800;line-height:1.1;margin-bottom:16px;background:linear-gradient(135deg,#f9fafb,#f472b6,#fda4af);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hero-sub{font-size:1.1rem;color:#9d8890;max-width:520px;line-height:1.7;margin-bottom:36px}
+    .hero-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;border:none}
+    .btn-primary{background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff}
+    .btn-primary:hover{opacity:.88;transform:translateY(-2px)}
+    .btn-ghost{background:transparent;border:1.5px solid rgba(244,114,182,.3);color:#fda4af}
+    .btn-ghost:hover{border-color:#f472b6;color:#f472b6}
+
+    /* Features */
+    .section{padding:80px 20px;max-width:1100px;margin:0 auto}
+    .section-title{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;text-align:center;margin-bottom:12px}
+    .section-sub{text-align:center;color:#9d8890;font-size:.95rem;margin-bottom:48px}
+    .features{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+    .feature{background:#1f0d16;border:1px solid #3d1a28;border-radius:16px;padding:28px;text-align:center;transition:all .25s}
+    .feature:hover{border-color:rgba(244,114,182,.4);transform:translateY(-4px)}
+    .feature-icon{font-size:2.5rem;margin-bottom:14px}
+    .feature-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:8px}
+    .feature-desc{font-size:.85rem;color:#9d8890;line-height:1.6}
+
+    /* CTA strip */
+    .cta-strip{background:linear-gradient(135deg,rgba(244,114,182,.12),rgba(236,72,153,.08));border-top:1px solid rgba(244,114,182,.15);border-bottom:1px solid rgba(244,114,182,.15);padding:64px 20px;text-align:center}
+    .cta-strip h2{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:12px}
+    .cta-strip p{color:#9d8890;margin-bottom:28px;font-size:.95rem}
+
+    /* AI chat callout */
+    .chat-callout{background:#1f0d16;border:1px solid rgba(244,114,182,.3);border-radius:16px;padding:32px;max-width:560px;margin:0 auto 80px;text-align:center}
+    .chat-callout h3{font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:10px}
+    .chat-callout p{font-size:.88rem;color:#9d8890;line-height:1.7;margin-bottom:20px}
+    .chat-bubble{background:#2a1020;border:1px solid #3d1a28;border-radius:12px;padding:14px 18px;text-align:left;font-size:.85rem;color:#fdf2f8;margin-bottom:8px;position:relative}
+    .chat-bubble::before{content:'🎂';margin-right:8px}
+    .chat-bubble.user{background:#3d1a28;border-color:rgba(244,114,182,.2)}
+    .chat-bubble.user::before{content:'👤'}
+
+    /* Nav */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(13,4,8,.8);backdrop-filter:blur(12px);border-bottom:1px solid rgba(61,26,40,.5)}
+    .nav-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,#f472b6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-links{display:flex;gap:20px;align-items:center}
+    .nav-links a{color:#9d8890;text-decoration:none;font-size:.88rem;font-weight:500;transition:color .2s}
+    .nav-links a:hover{color:#f472b6}
+
+    /* Footer */
+    footer{text-align:center;padding:40px 20px;color:#4b2535;font-size:.82rem;border-top:1px solid #1f0d16}
+
+    @media(max-width:600px){.hero-btns{flex-direction:column;align-items:center}.nav-links{display:none}}
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🎂 Sweet Spot</div>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#ordering">Ordering</a>
+    <a href="/login" style="color:#f472b6;font-weight:600">Staff Login →</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero" style="padding-top:80px">
+  <div class="hero-icon">🎂</div>
+  <h1 class="hero-title">Sweet Spot<br>Custom Cakes</h1>
+  <p class="hero-sub">Handcrafted custom cakes for every occasion. Birthdays, weddings, celebrations — made with love and the finest ingredients.</p>
+  <div class="hero-btns">
+    <a href="#order" class="btn btn-primary">🎂 Order a Cake</a>
+    <a href="#about" class="btn btn-ghost">Learn More</a>
+  </div>
+</div>
+
+<!-- Features -->
+<div class="section" id="about">
+  <h2 class="section-title">Why Sweet Spot?</h2>
+  <p class="section-sub">Made from scratch, baked with care, delivered with love.</p>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🧁</div>
+      <div class="feature-title">Fully Custom</div>
+      <div class="feature-desc">Every cake is made to order. Your flavors, your design, your vision — we make it real.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🌿</div>
+      <div class="feature-title">Fresh Ingredients</div>
+      <div class="feature-desc">We use only the finest, freshest ingredients. No preservatives, no shortcuts.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎨</div>
+      <div class="feature-title">Artistic Designs</div>
+      <div class="feature-desc">From elegant wedding tiers to fun birthday themes — our decorators bring it to life.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📅</div>
+      <div class="feature-title">Easy Ordering</div>
+      <div class="feature-desc">Place your order, choose your pickup date, and we handle the rest.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">💳</div>
+      <div class="feature-title">Secure Payments</div>
+      <div class="feature-desc">Pay a 50% deposit to confirm your order. Balance due at pickup. Stripe-secured.</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">AI-Powered Service</div>
+      <div class="feature-desc">Chat with Cakely, our AI assistant. Ask about orders, flavors, pricing — anytime.</div>
+    </div>
+  </div>
+</div>
+
+<!-- AI chat callout -->
+<div class="section" id="ordering" style="padding-top:0">
+  <h2 class="section-title">Meet Cakely 🎂</h2>
+  <p class="section-sub">Our AI bakery assistant. Ask her anything — she knows the whole menu.</p>
+  <div class="chat-callout">
+    <h3>Ask me anything about Sweet Spot!</h3>
+    <p>I can tell you about our cakes, flavors, pricing, and help you figure out what's right for your occasion.</p>
+    <div class="chat-bubble user">What custom cakes do you offer?</div>
+    <div class="chat-bubble">We have a full menu of custom cakes! I can tell you all about our flavors, sizes, and pricing. Click the 🎂 button in the corner to start chatting!</div>
+    <div style="margin-top:16px;font-size:.82rem;color:#9d8890">👇 Chat button is in the bottom right corner</div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-strip" id="order">
+  <h2>Ready to Order?</h2>
+  <p>Contact us to start your custom cake order today. We'd love to make something special for you.</p>
+  <div class="hero-btns">
+    <a href="mailto:hello@sweetspotcakes.com" class="btn btn-primary">📧 Email Us</a>
+    <a href="tel:+1" class="btn btn-ghost">📞 Call Us</a>
+  </div>
+</div>
+
+<footer>
+  <div style="font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:8px;background:linear-gradient(135deg,#f472b6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">🎂 Sweet Spot Custom Cakes</div>
+  Handcrafted with love · Powered by Alexander AI Integrated Solutions
+</footer>
+
+<!-- Cakely AI Widget -->
+<script src="https://ai-agent-widget-production.up.railway.app/widget/Fx9e5L1JSpqJtjnhl2jLsQ.js"></script>
+
+</body>
+</html>

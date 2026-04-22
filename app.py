@@ -291,6 +291,9 @@ def logout():
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @app.route('/')
+def index():
+    return render_template('index.html', bakery=BAKERY_NAME)
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
