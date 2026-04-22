@@ -1111,8 +1111,70 @@ def tools_delete(tool_id):
     return redirect(url_for('tools_list'))
 
 # ── Kitchen Production View ───────────────────────────────────────────────────
+def _run_migrations(db):
+    """Safe schema migrations for all tables — ALTER TABLE ADD COLUMN is idempotent via try/except."""
+    migrations = {
+        'orders': [
+            ('type',         "TEXT DEFAULT 'custom'"),
+            ('special_notes', "TEXT DEFAULT ''"),
+            ('deposit_paid',  'REAL DEFAULT 0'),
+            ('balance_due',   'REAL DEFAULT 0'),
+            ('stripe_pi',     "TEXT DEFAULT ''"),
+            ('paid_in_full',  'INTEGER DEFAULT 0'),
+            ('discount',      'REAL DEFAULT 0'),
+        ],
+        'order_items': [
+            ('customizations', "TEXT DEFAULT ''"),
+            ('description',    "TEXT DEFAULT ''"),
+        ],
+        'recipes': [
+            ('prep_mins',   'INTEGER DEFAULT 60'),
+            ('bake_mins',   'INTEGER DEFAULT 45'),
+            ('image_url',   "TEXT DEFAULT ''"),
+            ('description', "TEXT DEFAULT ''"),
+            ('active',      'INTEGER DEFAULT 1'),
+        ],
+        'ingredients': [
+            ('location',      "TEXT DEFAULT ''"),
+            ('notes',         "TEXT DEFAULT ''"),
+            ('supplier_id',   'INTEGER'),
+            ('reorder_level', 'REAL DEFAULT 5'),
+            ('cost_per_unit', 'REAL DEFAULT 0'),
+        ],
+        'tools': [
+            ('location', "TEXT DEFAULT ''"),
+            ('notes',    "TEXT DEFAULT ''"),
+            ('quantity', 'INTEGER DEFAULT 1'),
+            ('unit',     "TEXT DEFAULT 'each'"),
+            ('active',   'INTEGER DEFAULT 1'),
+            ('category', "TEXT DEFAULT 'Equipment'"),
+            ('created',  "TEXT DEFAULT (datetime('now'))"),
+        ],
+        'customers': [
+            ('birthday',  "TEXT DEFAULT ''"),
+            ('stripe_id', "TEXT DEFAULT ''"),
+            ('address',   "TEXT DEFAULT ''"),
+        ],
+        'users': [
+            ('pin',         "TEXT DEFAULT ''"),
+            ('hourly_rate', 'REAL DEFAULT 15.0'),
+        ],
+        'employees': [
+            ('pin',         "TEXT DEFAULT ''"),
+            ('hourly_rate', 'REAL DEFAULT 15.0'),
+            ('notes',       "TEXT DEFAULT ''"),
+        ],
+    }
+    for table, cols in migrations.items():
+        for col, defn in cols:
+            try:
+                db.execute(f'ALTER TABLE {table} ADD COLUMN {col} {defn}')
+            except Exception:
+                pass  # column already exists — fine
+    db.commit()
+
 def _ensure_kitchen_tables(db):
-    """Ensure tools/recipe_tools tables exist — safe migration for live DBs."""
+    """Ensure tools/recipe_tools tables exist and all columns are present."""
     db.execute('''
         CREATE TABLE IF NOT EXISTS tools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1129,19 +1191,7 @@ def _ensure_kitchen_tables(db):
             FOREIGN KEY(recipe_id) REFERENCES recipes(id),
             FOREIGN KEY(tool_id) REFERENCES tools(id)
         )''')
-    # Safe column migrations — tolerate already-existing columns
-    for col, defn in [
-        ('location', "TEXT DEFAULT ''"),
-        ('notes',    "TEXT DEFAULT ''"),
-        ('quantity', 'INTEGER DEFAULT 1'),
-        ('unit',     "TEXT DEFAULT 'each'"),
-        ('active',   'INTEGER DEFAULT 1'),
-        ('created',  "TEXT DEFAULT (datetime('now'))"),
-    ]:
-        try:
-            db.execute(f'ALTER TABLE tools ADD COLUMN {col} {defn}')
-        except Exception:
-            pass  # column already exists — that's fine
+    _run_migrations(db)
     db.commit()
 
 @app.route('/kitchen')
@@ -2243,6 +2293,14 @@ def api_customers_search():
     rows = db.execute("SELECT id,name,email,phone FROM customers WHERE name LIKE ? OR email LIKE ? LIMIT 10",
                       (f'%{q}%', f'%{q}%')).fetchall()
     return jsonify([dict(r) for r in rows])
+
+# Run migrations on startup to patch any live DBs missing columns
+# (defined after _run_migrations so the function exists at this point)
+with app.app_context():
+    _mig_db = sqlite3.connect(DB_PATH)
+    _mig_db.row_factory = sqlite3.Row
+    _run_migrations(_mig_db)
+    _mig_db.close()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
