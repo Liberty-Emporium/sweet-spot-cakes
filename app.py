@@ -2287,6 +2287,49 @@ def cakely_update_order_status():
                    'message': f'Order {order["order_number"]} ({order["customer_name"]}) → {status}'})
 
 
+@app.route('/cakely/api/suppliers', methods=['GET'])
+def cakely_suppliers():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    rows = db.execute("SELECT id,name,contact,email,phone,address,notes FROM suppliers WHERE active=1 ORDER BY name").fetchall()
+    return jsonify({'suppliers': [dict(r) for r in rows]})
+
+@app.route('/cakely/api/suppliers/add', methods=['POST'])
+def cakely_supplier_add():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    data = request.get_json(force=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    db = get_db()
+    db.execute(
+        "INSERT INTO suppliers(name,contact,email,phone,address,notes) VALUES(?,?,?,?,?,?)",
+        (name, data.get('contact',''), data.get('email',''),
+         data.get('phone',''), data.get('address',''), data.get('notes',''))
+    )
+    db.commit()
+    supplier_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return jsonify({'ok': True, 'supplier_id': supplier_id, 'name': name,
+                    'message': f'Supplier "{name}" added successfully.'})
+
+@app.route('/cakely/api/suppliers/update', methods=['POST'])
+def cakely_supplier_update():
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    data = request.get_json(force=True) or {}
+    supplier_id = data.get('supplier_id')
+    if not supplier_id:
+        return jsonify({'error': 'supplier_id is required'}), 400
+    db = get_db()
+    supplier = db.execute('SELECT * FROM suppliers WHERE id=?', (supplier_id,)).fetchone()
+    if not supplier:
+        return jsonify({'error': 'Supplier not found'}), 404
+    fields = ['name','contact','email','phone','address','notes']
+    for f in fields:
+        if f in data:
+            db.execute(f'UPDATE suppliers SET {f}=? WHERE id=?', (data[f], supplier_id))
+    db.commit()
+    return jsonify({'ok': True, 'supplier_id': supplier_id, 'message': 'Supplier updated.'})
+
 @app.route('/cakely/api/memory')
 def cakely_memory():
     """Returns Cakely brain files so the AI Widget can pull them."""
@@ -2347,7 +2390,10 @@ Proud of the bakery and genuinely helpful to all staff.
 - get_inventory: full inventory list
 - lookup_customer: search customer by name/email/phone
 - get_employee_status: who is clocked in/out right now
-- get_recipes: all active recipes with pricing"""
+- get_recipes: all active recipes with pricing
+- get_suppliers: list all active suppliers
+- add_supplier: add a new supplier (name required; optional: contact, email, phone, address, notes)
+- update_supplier: update supplier fields by supplier_id"""
 
     return jsonify({'ok': True, 'identity_md': IDENTITY, 'soul_md': SOUL, 'memory_md': MEMORY})
 
