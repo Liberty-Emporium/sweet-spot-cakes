@@ -1010,6 +1010,27 @@ def cash_payment(order_id):
     return redirect(url_for('order_detail', order_id=order_id))
 
 # ── Inventory ─────────────────────────────────────────────────────────────────
+
+# ── Order Delete (admin only) ─────────────────────────────────────────────────
+@app.route('/orders/<int:order_id>/delete', methods=['POST'])
+@login_required
+def order_delete(order_id):
+    if session.get('role') != 'admin':
+        flash('Admin access required to delete orders.', 'error')
+        return redirect(url_for('order_detail', order_id=order_id))
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    order_number = order['order_number']
+    db.execute('DELETE FROM receipts WHERE order_id=?', (order_id,))
+    db.execute('DELETE FROM order_items WHERE order_id=?', (order_id,))
+    db.execute('DELETE FROM orders WHERE id=?', (order_id,))
+    db.commit()
+    flash(f'Order {order_number} has been deleted.', 'success')
+    return redirect(url_for('orders'))
+
 @app.route('/inventory')
 @login_required
 def inventory():

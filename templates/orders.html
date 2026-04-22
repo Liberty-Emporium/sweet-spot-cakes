@@ -52,7 +52,15 @@
             {% else %}<span style="color:var(--yellow);font-weight:700">${{ "%.2f"|format(o.balance_due or 0) }}</span>{% endif %}
           </td>
           <td><span class="badge badge-{{ o.status.replace('in_production','production') }}">{{ o.status }}</span></td>
-          <td><a href="/orders/{{ o.id }}" class="btn btn-ghost btn-xs">View →</a></td>
+          <td style="display:flex;gap:6px;align-items:center">
+            <a href="/orders/{{ o.id }}" class="btn btn-ghost btn-xs">View →</a>
+            {% if session.get('role') == 'admin' %}
+            <form method="POST" action="/orders/{{ o.id }}/delete" style="display:inline"
+                  onsubmit="return confirm('Delete order {{ o.order_number }}? This cannot be undone.')">
+              <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       {% else %}
