@@ -2313,36 +2313,6 @@ def debug_kitchen_error():
     """Temporarily expose kitchen route errors for debugging."""
     import traceback
     try:
-        db = get_db()
-        _ensure_kitchen_tables(db)
-        statuses = ['pending', 'confirmed', 'in_production']
-        placeholders = ','.join('?' * len(statuses))
-        orders = db.execute(
-            f"SELECT * FROM orders WHERE status IN ({placeholders}) ORDER BY pickup_date ASC, pickup_time ASC",
-            statuses
-        ).fetchall()
-
-        production_orders = []
-        for order in orders:
-            items = db.execute(
-                'SELECT oi.*, r.prep_mins, r.bake_mins, r.description as rdesc '
-                'FROM order_items oi LEFT JOIN recipes r ON oi.recipe_id=r.id '
-                'WHERE oi.order_id=?', (order['id'],)
-            ).fetchall()
-            for item in items:
-                if item['recipe_id']:
-                    ingredients = db.execute(
-                        'SELECT ri.quantity, ri.unit, i.name, i.location, i.quantity as stock '
-                        'FROM recipe_ingredients ri '
-                        'JOIN ingredients i ON ri.ingredient_id=i.id '
-                        'WHERE ri.recipe_id=?', (item['recipe_id'],)
-                    ).fetchall()
-                    tools = db.execute(
-                        'SELECT t.name, t.category, t.location, t.notes '
-                        'FROM recipe_tools rt '
-                        'JOIN tools t ON rt.tool_id=t.id '
-                        'WHERE rt.recipe_id=? AND t.active=1', (item['recipe_id'],)
-                    ).fetchall()
-        return jsonify({'ok': True, 'orders_count': len(orders)})
+        return kitchen()
     except Exception as e:
-        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 200
