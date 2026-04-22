@@ -1235,7 +1235,7 @@ def kitchen():
                 ).fetchall()
             enriched_items.append({'item': item, 'ingredients': ingredients, 'tools': tools})
 
-        production_orders.append({'order': order, 'items': enriched_items})
+        production_orders.append({'order': order, 'order_items': enriched_items})
 
     return render_template('kitchen.html', production_orders=production_orders, bakery=BAKERY_NAME)
 
@@ -2305,14 +2305,3 @@ with app.app_context():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
 
-
-# ── Debug endpoint (temporary) ─────────────────────────────────────────────
-@app.route('/debug/kitchen-error')
-@login_required
-def debug_kitchen_error():
-    """Temporarily expose kitchen route errors for debugging."""
-    import traceback
-    try:
-        return kitchen()
-    except Exception as e:
-        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 200
