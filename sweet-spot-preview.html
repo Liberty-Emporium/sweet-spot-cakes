@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sweet Spot Custom Cakes — Device Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --pink:#f472b6;--rose:#fda4af;--bg:#0d0408;--bg2:#111827;--card:#1f0d16;
+      --border:#3d1a28;--text:#fdf2f8;--muted:#9d8890;--green:#34d399;
+      --grad:linear-gradient(135deg,#f472b6,#ec4899);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh}
+
+    /* ── Header ── */
+    .header{background:rgba(15,23,42,.95);border-bottom:1px solid rgba(244,114,182,.2);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;backdrop-filter:blur(12px)}
+    .header-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .header-badges{display:flex;gap:10px;flex-wrap:wrap}
+    .badge-live{display:flex;align-items:center;gap:5px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:#34d399;padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700}
+    .pulse{width:7px;height:7px;background:#34d399;border-radius:50%;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+
+    /* ── Layout ── */
+    .container{max-width:1400px;margin:0 auto;padding:32px 24px}
+
+    /* ── Page Tabs ── */
+    .page-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:8px}
+    .page-tab{padding:9px 18px;border-radius:10px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:#64748b;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px}
+    .page-tab:hover{color:#f1f5f9;background:rgba(255,255,255,.06)}
+    .page-tab.active{background:var(--grad);color:#fff}
+
+    /* ── Device selector ── */
+    .device-bar{display:flex;gap:10px;margin-bottom:28px;align-items:center;flex-wrap:wrap}
+    .device-btn{display:flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:.83rem;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);background:transparent;color:#64748b;transition:all .2s;font-family:'Inter',sans-serif}
+    .device-btn:hover{border-color:var(--pink);color:#f1f5f9}
+    .device-btn.active{background:rgba(244,114,182,.12);border-color:var(--pink);color:var(--pink)}
+    .device-label{margin-left:auto;font-size:.78rem;color:#475569}
+
+    /* ── Device frames ── */
+    .frame-area{display:flex;justify-content:center;align-items:flex-start;gap:32px;flex-wrap:wrap;min-height:600px}
+
+    /* Desktop */
+    .device-desktop .frame-shell{background:#1e293b;border-radius:12px 12px 6px 6px;padding:0;box-shadow:0 32px 80px rgba(0,0,0,.6);border:2px solid #334155;overflow:hidden}
+    .device-desktop .chrome-bar{background:#334155;padding:10px 16px;display:flex;align-items:center;gap:8px}
+    .device-desktop .chrome-dot{width:10px;height:10px;border-radius:50%}
+    .device-desktop .chrome-url{flex:1;background:#1e293b;border-radius:4px;padding:5px 12px;font-size:.72rem;color:#64748b;font-family:monospace;margin:0 12px}
+
+    /* Tablet */
+    .device-tablet .frame-shell{background:#1e293b;border-radius:24px;padding:16px;box-shadow:0 24px 64px rgba(0,0,0,.6);border:3px solid #334155;position:relative}
+    .device-tablet .frame-shell::before{content:'';position:absolute;top:50%;right:6px;transform:translateY(-50%);width:3px;height:40px;background:#334155;border-radius:2px}
+    .device-tablet .frame-shell::after{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:30px;height:4px;background:#334155;border-radius:2px}
+
+    /* Phone */
+    .device-phone .frame-shell{background:#1e293b;border-radius:40px;padding:18px 12px;box-shadow:0 24px 64px rgba(0,0,0,.7);border:3px solid #334155;position:relative}
+    .device-phone .frame-shell::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:80px;height:5px;background:#334155;border-radius:3px}
+    .device-phone .frame-shell::after{content:'';position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:40px;height:4px;background:#334155;border-radius:2px}
+
+    iframe{border:none;display:block;border-radius:6px;background:#fff}
+
+    /* ── Links panel ── */
+    .links-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-top:32px}
+    .links-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:#64748b;font-weight:700;margin-bottom:16px}
+    .links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .link-card{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;text-decoration:none;color:#f1f5f9;transition:all .2s;cursor:pointer}
+    .link-card:hover{border-color:var(--pink);background:rgba(244,114,182,.06)}
+    .link-icon{font-size:1.2rem;flex-shrink:0}
+    .link-name{font-size:.84rem;font-weight:600}
+    .link-url{font-size:.7rem;color:#64748b;font-family:monospace}
+    .link-open{margin-left:auto;font-size:.75rem;color:var(--pink)}
+
+    /* ── Info bar ── */
+    .info-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:28px}
+    .info-tile{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;text-align:center}
+    .info-num{font-size:1.6rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:'Playfair Display',serif}
+    .info-label{font-size:.72rem;color:#64748b;margin-top:3px}
+
+    /* Tips */
+    .tip{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.15);border-radius:10px;font-size:.82rem;color:#cbd5e1;line-height:1.6;margin-bottom:10px}
+
+    @media(max-width:768px){
+      .header{padding:12px 16px}
+      .container{padding:20px 12px}
+      .frame-area{gap:16px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">🎂 Sweet Spot — Device Preview</div>
+  <div class="header-badges">
+    <div class="badge-live"><span class="pulse"></span> LIVE</div>
+    <div style="font-size:.75rem;color:#64748b" id="liveClock"></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Info tiles -->
+  <div class="info-bar">
+    <div class="info-tile"><div class="info-num">8</div><div class="info-label">Pages to Test</div></div>
+    <div class="info-tile"><div class="info-num">3</div><div class="info-label">Device Formats</div></div>
+    <div class="info-tile"><div class="info-num" style="font-size:1.1rem">🎂</div><div class="info-label">Sweet Spot is Live</div></div>
+    <div class="info-tile"><div class="info-num" style="font-size:1.1rem">🤖</div><div class="info-label">Cakely AI Active</div></div>
+  </div>
+
+  <!-- Tips -->
+  <div class="tip">💡 <span><strong>How to use:</strong> Select a page tab, pick a device size, and the page loads inside the frame. Click any link card below to open the real page in a new tab.</span></div>
+  <div class="tip">📱 <span><strong>On your tablet/home screen:</strong> Save this HTML file to Google Drive → open in browser → test any page at any size instantly.</span></div>
+
+  <!-- Page tabs -->
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="loadPage('/', this)">🏠 Homepage</button>
+    <button class="page-tab" onclick="loadPage('/menu', this)">🎂 Menu</button>
+    <button class="page-tab" onclick="loadPage('/order', this)">📝 Order Form</button>
+    <button class="page-tab" onclick="loadPage('/join', this)">⭐ VIP Join</button>
+    <button class="page-tab" onclick="loadPage('/qr', this)">🖨️ QR Code</button>
+    <button class="page-tab" onclick="loadPage('/dashboard', this)">📊 Staff Dashboard</button>
+    <button class="page-tab" onclick="loadPage('/orders', this)">🎂 Orders</button>
+    <button class="page-tab" onclick="loadPage('/loyalty', this)">💎 Loyalty</button>
+    <button class="page-tab" onclick="loadPage('/marketing', this)">📣 Marketing</button>
+  </div>
+
+  <!-- Device selector -->
+  <div class="device-bar">
+    <button class="device-btn active" onclick="setDevice('desktop', this)">🖥️ Desktop <span style="font-size:.72rem;color:#64748b">(1280px)</span></button>
+    <button class="device-btn" onclick="setDevice('tablet', this)">📱 Tablet <span style="font-size:.72rem;color:#64748b">(768px)</span></button>
+    <button class="device-btn" onclick="setDevice('phone', this)">📱 Phone <span style="font-size:.72rem;color:#64748b">(390px)</span></button>
+    <div class="device-label" id="deviceLabel">Viewing: Desktop (1280 × 800)</div>
+  </div>
+
+  <!-- Frame area -->
+  <div class="frame-area" id="frameArea">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Quick links panel -->
+  <div class="links-panel">
+    <div class="links-title">🔗 All Pages — Click to Open in New Tab</div>
+    <div class="links-grid">
+      <a href="https://sweet-spot-cakes.up.railway.app/" target="_blank" class="link-card">
+        <span class="link-icon">🏠</span>
+        <div><div class="link-name">Homepage</div><div class="link-url">/</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/menu" target="_blank" class="link-card">
+        <span class="link-icon">🎂</span>
+        <div><div class="link-name">Menu</div><div class="link-url">/menu</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/order" target="_blank" class="link-card">
+        <span class="link-icon">📝</span>
+        <div><div class="link-name">Order Form</div><div class="link-url">/order</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/join" target="_blank" class="link-card">
+        <span class="link-icon">⭐</span>
+        <div><div class="link-name">VIP Join Page</div><div class="link-url">/join</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/qr" target="_blank" class="link-card">
+        <span class="link-icon">🖨️</span>
+        <div><div class="link-name">QR Code (Print)</div><div class="link-url">/qr</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/login" target="_blank" class="link-card">
+        <span class="link-icon">🔐</span>
+        <div><div class="link-name">Staff Login</div><div class="link-url">/login</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/dashboard" target="_blank" class="link-card">
+        <span class="link-icon">📊</span>
+        <div><div class="link-name">Staff Dashboard</div><div class="link-url">/dashboard</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/orders" target="_blank" class="link-card">
+        <span class="link-icon">🎂</span>
+        <div><div class="link-name">Orders</div><div class="link-url">/orders</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/inventory" target="_blank" class="link-card">
+        <span class="link-icon">📦</span>
+        <div><div class="link-name">Inventory</div><div class="link-url">/inventory</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/recipes" target="_blank" class="link-card">
+        <span class="link-icon">📖</span>
+        <div><div class="link-name">Recipes</div><div class="link-url">/recipes</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/employees" target="_blank" class="link-card">
+        <span class="link-icon">👩‍🍳</span>
+        <div><div class="link-name">Employees</div><div class="link-url">/employees</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/loyalty" target="_blank" class="link-card">
+        <span class="link-icon">💎</span>
+        <div><div class="link-name">VIP Loyalty</div><div class="link-url">/loyalty</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/marketing" target="_blank" class="link-card">
+        <span class="link-icon">📣</span>
+        <div><div class="link-name">Marketing</div><div class="link-url">/marketing</div></div>
+        <span class="link-open">↗</span>
+      </a>
+      <a href="https://sweet-spot-cakes.up.railway.app/reports" target="_blank" class="link-card">
+        <span class="link-icon">📊</span>
+        <div><div class="link-name">Reports</div><div class="link-url">/reports</div></div>
+        <span class="link-open">↗</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Credentials hint -->
+  <div style="margin-top:16px;padding:14px 18px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:12px;font-size:.82rem;color:#94a3b8;line-height:1.8">
+    🔐 <strong style="color:#f1f5f9">Staff Login:</strong> info@sweetspotcustomcakes.com &nbsp;·&nbsp;
+    <strong style="color:#f1f5f9">Password:</strong> sweetspot2026 &nbsp;·&nbsp;
+    <span style="color:#64748b">(Set ADMIN_EMAIL + ADMIN_PASSWORD in Railway to change)</span>
+  </div>
+
+</div>
+
+<script>
+const BASE = 'https://sweet-spot-cakes.up.railway.app';
+let currentPage = '/';
+let currentDevice = 'desktop';
+
+const DEVICES = {
+  desktop: { w: 1280, h: 800,  scale: 0.72, label: 'Desktop (1280 × 800)' },
+  tablet:  { w: 768,  h: 1024, scale: 0.75, label: 'Tablet iPad (768 × 1024)' },
+  phone:   { w: 390,  h: 844,  scale: 0.85, label: 'Phone iPhone (390 × 844)' },
+};
+
+function buildFrame(device, page) {
+  const d = DEVICES[device];
+  const fw = Math.round(d.w * d.scale);
+  const fh = Math.round(d.h * d.scale);
+  const iw = d.w;
+  const ih = d.h;
+
+  if (device === 'desktop') {
+    return `
+    <div class="device-desktop" style="width:${fw + 4}px">
+      <div class="frame-shell">
+        <div class="chrome-bar">
+          <div class="chrome-dot" style="background:#ef4444"></div>
+          <div class="chrome-dot" style="background:#f59e0b"></div>
+          <div class="chrome-dot" style="background:#10b981"></div>
+          <div class="chrome-url">${BASE}${page}</div>
+        </div>
+        <div style="overflow:hidden;height:${fh}px;background:#fff">
+          <iframe src="${BASE}${page}" width="${iw}" height="${Math.round(ih/d.scale)}"
+            style="transform:scale(${d.scale});transform-origin:0 0;width:${iw}px;height:${Math.round(ih/d.scale)}px"></iframe>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (device === 'tablet') {
+    return `
+    <div class="device-tablet" style="width:${fw + 36}px">
+      <div class="frame-shell">
+        <div style="overflow:hidden;border-radius:8px;height:${fh}px;background:#fff">
+          <iframe src="${BASE}${page}" width="${iw}" height="${Math.round(fh/d.scale)}"
+            style="transform:scale(${d.scale});transform-origin:0 0;width:${iw}px;height:${Math.round(fh/d.scale)}px"></iframe>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // phone
+  return `
+    <div class="device-phone" style="width:${fw + 28}px">
+      <div class="frame-shell">
+        <div style="overflow:hidden;border-radius:20px;height:${fh}px;background:#fff;margin-top:8px">
+          <iframe src="${BASE}${page}" width="${iw}" height="${Math.round(fh/d.scale)}"
+            style="transform:scale(${d.scale});transform-origin:0 0;width:${iw}px;height:${Math.round(fh/d.scale)}px"></iframe>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFrame() {
+  document.getElementById('frameArea').innerHTML = buildFrame(currentDevice, currentPage);
+  document.getElementById('deviceLabel').textContent = 'Viewing: ' + DEVICES[currentDevice].label;
+}
+
+function loadPage(path, btn) {
+  currentPage = path;
+  document.querySelectorAll('.page-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFrame();
+}
+
+function setDevice(device, btn) {
+  currentDevice = device;
+  document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFrame();
+}
+
+// Clock
+function tick() {
+  document.getElementById('liveClock').textContent =
+    new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+tick(); setInterval(tick, 1000);
+
+// Initial render
+renderFrame();
+</script>
+</body>
+</html>
