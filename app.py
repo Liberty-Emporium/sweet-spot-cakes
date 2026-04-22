@@ -440,6 +440,299 @@ def init_db():
                 (name, category, qty, unit, location, notes)
             )
     db.commit()
+
+    # ── Seed high-end recipes ──────────────────────────────────────────
+    ingr_map = {r['name']: r['id'] for r in db.execute('SELECT id, name FROM ingredients').fetchall()}
+    tool_map = {r['name']: r['id'] for r in db.execute('SELECT id, name FROM tools WHERE active=1').fetchall()}
+    existing_recipes = {r['name'] for r in db.execute('SELECT name FROM recipes').fetchall()}
+
+    def _seed_recipe(name, category, description, servings, prep_mins, bake_mins, base_price, ingredients, tools_list):
+        if name in existing_recipes:
+            return
+        cur2 = db.execute(
+            'INSERT INTO recipes(name,category,description,servings,prep_mins,bake_mins,base_price,active) VALUES(?,?,?,?,?,?,?,1)',
+            (name, category, description, servings, prep_mins, bake_mins, base_price)
+        )
+        rid = cur2.lastrowid
+        for iname, qty, unit in ingredients:
+            iid = ingr_map.get(iname)
+            if iid:
+                db.execute('INSERT INTO recipe_ingredients(recipe_id,ingredient_id,quantity,unit) VALUES(?,?,?,?)', (rid, iid, qty, unit))
+        for tname in tools_list:
+            tid = tool_map.get(tname)
+            if tid:
+                existing_rt = db.execute('SELECT id FROM recipe_tools WHERE recipe_id=? AND tool_id=?', (rid, tid)).fetchone()
+                if not existing_rt:
+                    db.execute('INSERT INTO recipe_tools(recipe_id,tool_id) VALUES(?,?)', (rid, tid))
+        db.commit()
+
+    RECIPE_SEED = [
+        {
+            'name': 'Classic French Vanilla Layer Cake',
+            'category': 'Cake',
+            'description': 'Four light genoise layers soaked in vanilla syrup, filled and frosted with silky French buttercream. Finished with vanilla bean flecks and a smooth ganache drip.',
+            'servings': 16, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 145.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 3.0, 'cups'), ('Granulated Sugar', 2.0, 'cups'),
+                ('Unsalted Butter (European)', 1.0, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
+                ('Whole Milk', 1.0, 'cups'), ('Baking Powder (alum-free)', 2.5, 'tsp'),
+                ('Fine Sea Salt', 0.5, 'tsp'), ('Vanilla Bean Paste', 2.0, 'tbsp'),
+                ('Pure Vanilla Extract', 1.0, 'tsp'), ('Heavy Cream (36%)', 2.0, 'cups'),
+                ('Powdered Sugar (10X)', 3.0, 'cups'),
+            ],
+            'tools': ['Round Cake Pan 8"','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Rubber Spatula (High-Temp)','Offset Spatula (9")','Turntable (Ateco Heavy)',
+                      'Cake Smoother / Icing Comb','Serrated Bread Knife (10")','Instant-Read Thermometer',
+                      'Wire Cooling Rack (half-sheet)','Cake Board (10" round)','Piping Tips Set (Ateco)'],
+        },
+        {
+            'name': 'Dark Chocolate Espresso Entremet',
+            'category': 'Entremet',
+            'description': 'Modern mirror-glaze entremet: hazelnut dacquoise base, espresso cremeux insert, Valrhona 70% chocolate mousse, and a glossy dark mirror glaze.',
+            'servings': 12, 'prep_mins': 180, 'bake_mins': 20, 'base_price': 220.00,
+            'ingredients': [
+                ('Valrhona Dark Chocolate 70%', 1.5, 'lbs'), ('Hazelnut Flour', 1.0, 'cups'),
+                ('Powdered Sugar (10X)', 0.75, 'cups'), ('Egg Whites (Pasteurized)', 0.5, 'cups'),
+                ('Heavy Cream (36%)', 3.0, 'cups'), ('Granulated Sugar', 1.0, 'cups'),
+                ('Espresso Powder', 2.0, 'tbsp'), ('Glucose Syrup', 0.5, 'cups'),
+                ('Unsalted Butter (European)', 0.25, 'cups'), ('Eggs (Large AA)', 3.0, 'each'),
+                ('Dutch-Process Cocoa Powder', 0.25, 'cups'), ('Fleur de Sel', 0.5, 'tsp'),
+            ],
+            'tools': ['Entremet Ring 8"','Silicone Half-Sphere Mold','KitchenAid 7qt Commercial Mixer',
+                      'Bain-Marie / Double Boiler','Digital Kitchen Scale','Instant-Read Thermometer',
+                      'Candy/Sugar Thermometer','Acetate Sheets','Offset Spatula (4")','Wire Cooling Rack (half-sheet)',
+                      'Half Sheet Pan (18x13")'],
+        },
+        {
+            'name': 'Lemon Lavender Chiffon Cake',
+            'category': 'Cake',
+            'description': 'Ultra-light chiffon layers with fresh lemon curd filling, whipped mascarpone cream, and edible lavender petals. Elegant and floral.',
+            'servings': 14, 'prep_mins': 75, 'bake_mins': 35, 'base_price': 165.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 2.5, 'cups'), ('Granulated Sugar', 1.75, 'cups'),
+                ('Eggs (Large AA)', 6.0, 'each'), ('Whole Milk', 0.75, 'cups'),
+                ('Baking Powder (alum-free)', 1.5, 'tsp'), ('Fine Sea Salt', 0.5, 'tsp'),
+                ('Cream of Tartar', 0.5, 'tsp'), ('Mascarpone', 1.0, 'lbs'),
+                ('Heavy Cream (36%)', 2.0, 'cups'), ('Powdered Sugar (10X)', 1.5, 'cups'),
+                ('Pure Vanilla Extract', 1.0, 'tsp'), ('Edible Gold Dust', 1.0, 'each'),
+            ],
+            'tools': ['Round Cake Pan 8"','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Rubber Spatula (High-Temp)','Hand Whisk (12")','Offset Spatula (9")','Turntable (Ateco Heavy)',
+                      'Cake Smoother / Icing Comb','Instant-Read Thermometer','Wire Cooling Rack (half-sheet)',
+                      'Cake Board (10" round)'],
+        },
+        {
+            'name': 'Salted Caramel Praline Cake',
+            'category': 'Cake',
+            'description': 'Brown butter vanilla cake with house-made salted caramel buttercream, crunchy hazelnut praline, and a dramatic caramel drip. Rich and indulgent.',
+            'servings': 16, 'prep_mins': 120, 'bake_mins': 32, 'base_price': 195.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 3.0, 'cups'), ('Dark Brown Sugar', 2.0, 'cups'),
+                ('Unsalted Butter (European)', 1.25, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
+                ('Buttermilk', 1.0, 'cups'), ('Baking Soda', 1.5, 'tsp'),
+                ('Fine Sea Salt', 0.75, 'tsp'), ('Fleur de Sel Caramel Sauce', 8.0, 'oz'),
+                ('Hazelnuts (Roasted)', 1.0, 'cups'), ('Granulated Sugar', 1.0, 'cups'),
+                ('Heavy Cream (36%)', 1.5, 'cups'), ('Fleur de Sel', 1.0, 'tsp'),
+                ('Invert Sugar (Trimoline)', 2.0, 'tbsp'),
+            ],
+            'tools': ['Round Cake Pan 8"','Round Cake Pan 6"','KitchenAid 7qt Commercial Mixer',
+                      'Digital Kitchen Scale','Candy/Sugar Thermometer','Bain-Marie / Double Boiler',
+                      'Offset Spatula (9")','Turntable (Ateco Heavy)','Cake Smoother / Icing Comb',
+                      'Kitchen Torch (Bernzomatic)','Cake Board (10" round)','Wire Cooling Rack (half-sheet)'],
+        },
+        {
+            'name': 'Raspberry Rose Macaron Tower',
+            'category': 'Pastry',
+            'description': 'French-style macarons with almond shells, raspberry-rose ganache filling, and fresh raspberry jam. Hand-assembled into a towering display.',
+            'servings': 40, 'prep_mins': 240, 'bake_mins': 14, 'base_price': 280.00,
+            'ingredients': [
+                ('Almond Flour', 2.0, 'cups'), ('Powdered Sugar (10X)', 2.0, 'cups'),
+                ('Egg Whites (Pasteurized)', 0.75, 'cups'), ('Granulated Sugar', 0.75, 'cups'),
+                ('Cream of Tartar', 0.25, 'tsp'), ('Valrhona White Chocolate', 0.5, 'lbs'),
+                ('Heavy Cream (36%)', 0.75, 'cups'), ('Freeze-Dried Raspberries', 2.0, 'oz'),
+                ('Rose Water', 1.0, 'tbsp'), ('Food Coloring Gel Set', 1.0, 'each'),
+            ],
+            'tools': ['Half Sheet Pan (18x13")','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Piping Tips Set (Ateco)','Piping Bags (16-inch)','Measuring Spoon Set',
+                      'Rubber Spatula (High-Temp)','Instant-Read Thermometer','Wire Cooling Rack (half-sheet)',
+                      'Stainless Mixing Bowl Set'],
+        },
+        {
+            'name': 'Gateau Opera',
+            'category': 'Entremet',
+            'description': 'Classic Parisian opera cake: almond joconde sponge soaked in espresso syrup, layered with coffee buttercream and dark chocolate ganache, finished with a perfect chocolate glaze.',
+            'servings': 14, 'prep_mins': 200, 'bake_mins': 12, 'base_price': 210.00,
+            'ingredients': [
+                ('Almond Flour', 1.5, 'cups'), ('Powdered Sugar (10X)', 1.5, 'cups'),
+                ('Eggs (Large AA)', 6.0, 'each'), ('Egg Whites (Pasteurized)', 0.5, 'cups'),
+                ('Cake Flour (High-Protein)', 0.5, 'cups'), ('Unsalted Butter (European)', 0.25, 'cups'),
+                ('Valrhona Dark Chocolate 70%', 1.0, 'lbs'), ('Heavy Cream (36%)', 1.5, 'cups'),
+                ('Espresso Powder', 3.0, 'tbsp'), ('Granulated Sugar', 1.0, 'cups'),
+                ('Glucose Syrup', 2.0, 'tbsp'), ('Fine Sea Salt', 0.25, 'tsp'),
+            ],
+            'tools': ['Half Sheet Pan (18x13")','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Bain-Marie / Double Boiler','Offset Spatula (4")','Offset Spatula (9")',
+                      'Bench Scraper','Instant-Read Thermometer','Acetate Sheets',
+                      'Serrated Bread Knife (10")','Rubber Spatula (High-Temp)'],
+        },
+        {
+            'name': 'Strawberry Champagne Celebration Cake',
+            'category': 'Celebration',
+            'description': 'Light champagne chiffon layers with fresh strawberry compote, champagne Italian meringue buttercream, and a sugar-shard crown.',
+            'servings': 20, 'prep_mins': 150, 'bake_mins': 28, 'base_price': 295.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 3.5, 'cups'), ('Granulated Sugar', 2.5, 'cups'),
+                ('Eggs (Large AA)', 5.0, 'each'), ('Egg Whites (Pasteurized)', 0.75, 'cups'),
+                ('Unsalted Butter (European)', 1.0, 'cups'), ('Heavy Cream (36%)', 2.0, 'cups'),
+                ('Baking Powder (alum-free)', 2.5, 'tsp'), ('Fine Sea Salt', 0.5, 'tsp'),
+                ('Pure Vanilla Extract', 2.0, 'tsp'), ('Freeze-Dried Strawberries', 2.0, 'oz'),
+                ('Cream of Tartar', 0.5, 'tsp'), ('Powdered Sugar (10X)', 2.0, 'cups'),
+                ('Edible Gold Dust', 2.0, 'each'), ('Isomalt', 0.5, 'lbs'),
+            ],
+            'tools': ['Round Cake Pan 10"','Round Cake Pan 8"','Round Cake Pan 6"',
+                      'KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale','Candy/Sugar Thermometer',
+                      'Turntable (Ateco Heavy)','Cake Smoother / Icing Comb','Offset Spatula (9")',
+                      'Offset Spatula (4")','Kitchen Torch (Bernzomatic)','Cake Board (12" round)',
+                      'Cake Drum (14" round)','Piping Tips Set (Ateco)','Piping Bags (16-inch)',
+                      'Airbrush Kit (Iwata)'],
+        },
+        {
+            'name': 'Valrhona Chocolate Lava Cakes',
+            'category': 'Dessert',
+            'description': 'Individual molten chocolate cakes with a Valrhona 70% dark chocolate center that flows when cut. Served with crème anglaise and edible gold dust.',
+            'servings': 8, 'prep_mins': 30, 'bake_mins': 12, 'base_price': 85.00,
+            'ingredients': [
+                ('Valrhona Dark Chocolate 70%', 0.5, 'lbs'), ('Unsalted Butter (European)', 0.5, 'cups'),
+                ('Eggs (Large AA)', 4.0, 'each'), ('Granulated Sugar', 0.5, 'cups'),
+                ('Cake Flour (High-Protein)', 0.25, 'cups'), ('Fine Sea Salt', 0.25, 'tsp'),
+                ('Fleur de Sel', 0.5, 'tsp'), ('Pure Vanilla Extract', 1.0, 'tsp'),
+                ('Edible Gold Dust', 1.0, 'each'), ('Heavy Cream (36%)', 1.0, 'cups'),
+                ('Whole Vanilla Beans', 1.0, 'each'),
+            ],
+            'tools': ['Bain-Marie / Double Boiler','Digital Kitchen Scale','Springform Pan 9"',
+                      'Rubber Spatula (High-Temp)','Hand Whisk (12")','Instant-Read Thermometer',
+                      'Oven Thermometer','Stainless Mixing Bowl Set','Measuring Spoon Set'],
+        },
+        {
+            'name': 'Pistachio Raspberry Wedding Tiers',
+            'category': 'Wedding',
+            'description': 'Three-tier wedding cake: pistachio sponge with fresh raspberry jam, whipped white chocolate ganache, and fondant-finished tiers with handcrafted sugar roses. Serves 60.',
+            'servings': 60, 'prep_mins': 480, 'bake_mins': 40, 'base_price': 850.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 6.0, 'cups'), ('Pistachios (Raw, Shelled)', 2.0, 'cups'),
+                ('Granulated Sugar', 5.0, 'cups'), ('Unsalted Butter (European)', 3.0, 'cups'),
+                ('Eggs (Large AA)', 10.0, 'each'), ('Whole Milk', 2.0, 'cups'),
+                ('Baking Powder (alum-free)', 3.0, 'tsp'), ('Fine Sea Salt', 1.0, 'tsp'),
+                ('Almond Extract', 1.0, 'tsp'), ('Valrhona White Chocolate', 2.0, 'lbs'),
+                ('Heavy Cream (36%)', 4.0, 'cups'), ('Freeze-Dried Raspberries', 3.0, 'oz'),
+                ('Fondant (White, Premium)', 10.0, 'lbs'), ('Gum Paste', 2.0, 'lbs'),
+                ('Food Coloring Gel Set', 1.0, 'each'), ('Luster Dust (Assorted)', 2.0, 'each'),
+                ('Edible Gold Dust', 2.0, 'each'),
+            ],
+            'tools': ['Round Cake Pan 6"','Round Cake Pan 8"','Round Cake Pan 10"','Round Cake Pan 12"',
+                      'KitchenAid 7qt Commercial Mixer','Hobart 20qt Floor Mixer','Digital Kitchen Scale',
+                      'Turntable (Ateco Heavy)','Cake Smoother / Icing Comb','Fondant Smoother',
+                      'Rolling Pin (French)','Fondant Mat (Non-stick)','Flower Nail Set',
+                      'Petal Veiner & Cutter Set','Offset Spatula (9")','Offset Spatula (4")',
+                      'Cake Board (10" round)','Cake Board (12" round)','Cake Drum (14" round)',
+                      'Serrated Bread Knife (10")','Airbrush Kit (Iwata)'],
+        },
+        {
+            'name': 'Black Forest Gateau',
+            'category': 'Cake',
+            'description': 'Black cocoa sponge with Morello cherry compote, kirsch syrup, and clouds of freshly whipped cream. Chocolate shavings and glazed cherries on top.',
+            'servings': 14, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 155.00,
+            'ingredients': [
+                ('Black Cocoa Powder', 0.75, 'cups'), ('Cake Flour (High-Protein)', 2.0, 'cups'),
+                ('Granulated Sugar', 2.0, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
+                ('Unsalted Butter (European)', 0.75, 'cups'), ('Buttermilk', 1.0, 'cups'),
+                ('Baking Soda', 1.5, 'tsp'), ('Baking Powder (alum-free)', 0.5, 'tsp'),
+                ('Fine Sea Salt', 0.5, 'tsp'), ('Heavy Cream (36%)', 3.0, 'cups'),
+                ('Dried Cherries', 1.0, 'cups'), ('Valrhona Dark Chocolate 70%', 0.5, 'lbs'),
+                ('Pure Vanilla Extract', 1.0, 'tsp'), ('Powdered Sugar (10X)', 0.5, 'cups'),
+            ],
+            'tools': ['Round Cake Pan 8"','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Turntable (Ateco Heavy)','Cake Smoother / Icing Comb','Offset Spatula (9")',
+                      'Bench Scraper','Serrated Bread Knife (10")','Cake Leveler / Slicer',
+                      'Wire Cooling Rack (half-sheet)','Piping Tips Set (Ateco)','Piping Bags (16-inch)',
+                      'Cake Board (10" round)'],
+        },
+        {
+            'name': 'Earl Grey & Honey Chiffon Cake',
+            'category': 'Cake',
+            'description': 'Earl Grey-infused chiffon layers with whipped honey mascarpone, fresh orange curd, and a candied citrus crown.',
+            'servings': 12, 'prep_mins': 80, 'bake_mins': 35, 'base_price': 175.00,
+            'ingredients': [
+                ('Cake Flour (High-Protein)', 2.0, 'cups'), ('Granulated Sugar', 1.5, 'cups'),
+                ('Eggs (Large AA)', 5.0, 'each'), ('Cream of Tartar', 0.5, 'tsp'),
+                ('Whole Milk', 0.75, 'cups'), ('Honey (Wildflower)', 0.5, 'cups'),
+                ('Mascarpone', 0.75, 'lbs'), ('Heavy Cream (36%)', 1.5, 'cups'),
+                ('Orange Blossom Water', 1.0, 'tbsp'), ('Fine Sea Salt', 0.25, 'tsp'),
+                ('Baking Powder (alum-free)', 1.5, 'tsp'), ('Turbinado Sugar', 0.25, 'cups'),
+            ],
+            'tools': ['Round Cake Pan 8"','KitchenAid 7qt Commercial Mixer','Digital Kitchen Scale',
+                      'Rubber Spatula (High-Temp)','Hand Whisk (12")','Turntable (Ateco Heavy)',
+                      'Offset Spatula (9")','Cake Smoother / Icing Comb','Wire Cooling Rack (half-sheet)',
+                      'Cake Board (10" round)','Kitchen Torch (Bernzomatic)'],
+        },
+        {
+            'name': 'Classic Tarte Tatin',
+            'category': 'Pastry',
+            'description': 'Upside-down caramelized apple tart in buttery rough puff pastry. Amber Demerara caramel, salted butter, and perfectly softened apples. Served warm with crème fraiche.',
+            'servings': 8, 'prep_mins': 60, 'bake_mins': 40, 'base_price': 80.00,
+            'ingredients': [
+                ('All-Purpose Flour', 2.0, 'cups'), ('Unsalted Butter (European)', 1.0, 'cups'),
+                ('Granulated Sugar', 1.0, 'cups'), ('Demerara Sugar', 0.5, 'cups'),
+                ('Fine Sea Salt', 0.5, 'tsp'), ('Fleur de Sel', 0.5, 'tsp'),
+                ('Cream of Tartar', 0.25, 'tsp'), ('Heavy Cream (36%)', 0.25, 'cups'),
+                ('Whole Vanilla Beans', 1.0, 'each'),
+            ],
+            'tools': ['Tart Pan 9" (removable)','Candy/Sugar Thermometer','Digital Kitchen Scale',
+                      'Rolling Pin (French)','Bench Scraper','Pastry Cutter (Fluted)',
+                      'Bain-Marie / Double Boiler','Instant-Read Thermometer','Oven Thermometer',
+                      'Half Sheet Pan (18x13")'],
+        },
+        {
+            'name': 'Beurre Croissants (Laminated)',
+            'category': 'Viennoiserie',
+            'description': 'Classic laminated croissants with 27 buttery layers. 84% fat European butter locked into a yeasted dough through four double turns. Golden, shattering exterior with honeycomb crumb.',
+            'servings': 12, 'prep_mins': 720, 'bake_mins': 20, 'base_price': 48.00,
+            'ingredients': [
+                ('Bread Flour', 4.0, 'cups'), ('Granulated Sugar', 0.25, 'cups'),
+                ('Fine Sea Salt', 1.5, 'tsp'), ('Unsalted Butter (European)', 2.5, 'cups'),
+                ('Whole Milk', 1.25, 'cups'), ('Eggs (Large AA)', 2.0, 'each'),
+            ],
+            'tools': ['Rolling Pin (French)','Bench Scraper','Digital Kitchen Scale',
+                      'Proofing Box / Cabinet','Half Sheet Pan (18x13")','Instant-Read Thermometer',
+                      'Oven Thermometer','Pastry Cutter (Fluted)','Measuring Cup Set (Dry)',
+                      'Measuring Spoon Set'],
+        },
+        {
+            'name': 'Creme Brulee Tart',
+            'category': 'Pastry',
+            'description': 'Crisp pate sucree shell filled with silky vanilla creme brulee custard, torched Demerara sugar crust, finished with edible gold dust and seasonal berries.',
+            'servings': 10, 'prep_mins': 60, 'bake_mins': 45, 'base_price': 95.00,
+            'ingredients': [
+                ('All-Purpose Flour', 1.5, 'cups'), ('Powdered Sugar (10X)', 0.5, 'cups'),
+                ('Unsalted Butter (European)', 0.5, 'cups'), ('Eggs (Large AA)', 3.0, 'each'),
+                ('Heavy Cream (36%)', 2.5, 'cups'), ('Granulated Sugar', 0.5, 'cups'),
+                ('Demerara Sugar', 0.5, 'cups'), ('Whole Vanilla Beans', 2.0, 'each'),
+                ('Fine Sea Salt', 0.25, 'tsp'), ('Edible Gold Dust', 1.0, 'each'),
+            ],
+            'tools': ['Tart Pan 9" (removable)','Digital Kitchen Scale','Rolling Pin (French)',
+                      'Bench Scraper','Pastry Cutter (Fluted)','Bain-Marie / Double Boiler',
+                      'Instant-Read Thermometer','Kitchen Torch (Bernzomatic)','Candy/Sugar Thermometer',
+                      'Wire Cooling Rack (half-sheet)','Measuring Spoon Set'],
+        },
+    ]
+
+    for r in RECIPE_SEED:
+        _seed_recipe(
+            r['name'], r['category'], r['description'], r['servings'],
+            r['prep_mins'], r['bake_mins'], r['base_price'],
+            r['ingredients'], r['tools']
+        )
+
     db.close()
 
 init_db()
