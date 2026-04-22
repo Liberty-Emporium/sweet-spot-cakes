@@ -126,10 +126,10 @@
     <a href="/customers" class="nav-item {% if '/customers' in request.path %}active{% endif %}">👥 <span>Customers</span></a>
 
     <div class="nav-section">Kitchen</div>
-    <a href="/kitchen" class="nav-item {% if '/kitchen' in request.path %}active{% endif %}" style="color:var(--pink);font-weight:700;background:rgba(244,114,182,.07)">🍳 <span>Kitchen Queue</span></a>
-    <a href="/recipes" class="nav-item {% if '/recipes' in request.path %}active{% endif %}">📖 <span>Recipes</span></a>
-    <a href="/inventory" class="nav-item {% if '/inventory' in request.path %}active{% endif %}">📦 <span>Inventory</span></a>
-    <a href="/tools" class="nav-item {% if '/tools' in request.path %}active{% endif %}">🔧 <span>Tools</span></a>
+    <a href="/kitchen" class="nav-item {% if request.path == '/kitchen' or request.path.startswith('/kitchen/') %}active{% endif %}">🍳 <span>Kitchen Queue</span></a>
+    <a href="/recipes" class="nav-item {% if request.path == '/recipes' or request.path.startswith('/recipes/') %}active{% endif %}">📖 <span>Recipes</span></a>
+    <a href="/inventory" class="nav-item {% if request.path == '/inventory' or request.path.startswith('/inventory/') %}active{% endif %}">📦 <span>Inventory</span></a>
+    <a href="/tools" class="nav-item {% if request.path == '/tools' or request.path.startswith('/tools/') %}active{% endif %}">🔧 <span>Tools</span></a>
     <a href="/suppliers" class="nav-item {% if '/suppliers' in request.path %}active{% endif %}">🚚 <span>Suppliers</span></a>
 
     <div class="nav-section">Team</div>

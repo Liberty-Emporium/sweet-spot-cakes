@@ -1065,6 +1065,7 @@ def inventory_edit(item_id):
 @login_required
 def tools_list():
     db = get_db()
+    _ensure_kitchen_tables(db)
     q = request.args.get('q', '').strip()
     cat = request.args.get('cat', '')
     sql = 'SELECT * FROM tools WHERE active=1'
@@ -1110,11 +1111,32 @@ def tools_delete(tool_id):
     return redirect(url_for('tools_list'))
 
 # ── Kitchen Production View ───────────────────────────────────────────────────
+def _ensure_kitchen_tables(db):
+    """Ensure tools/recipe_tools tables exist — safe migration for live DBs."""
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS tools (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL, category TEXT DEFAULT 'Equipment',
+            quantity INTEGER DEFAULT 1, unit TEXT DEFAULT 'each',
+            location TEXT DEFAULT '', notes TEXT DEFAULT '',
+            active INTEGER DEFAULT 1, created TEXT DEFAULT (datetime('now'))
+        )''')
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS recipe_tools (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipe_id INTEGER NOT NULL, tool_id INTEGER NOT NULL,
+            notes TEXT DEFAULT '',
+            FOREIGN KEY(recipe_id) REFERENCES recipes(id),
+            FOREIGN KEY(tool_id) REFERENCES tools(id)
+        )''')
+    db.commit()
+
 @app.route('/kitchen')
 @login_required
 def kitchen():
     """Baker production view: all active orders with recipes, ingredients & tools."""
     db = get_db()
+    _ensure_kitchen_tables(db)
     statuses = ['pending', 'confirmed', 'in_production']
     placeholders = ','.join('?' * len(statuses))
     orders = db.execute(
@@ -1159,6 +1181,7 @@ def kitchen():
 def kitchen_order(order_id):
     """Single order production sheet — full consolidated ingredient + tool list."""
     db = get_db()
+    _ensure_kitchen_tables(db)
     order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
     if not order:
         flash('Order not found.', 'error')
@@ -1217,6 +1240,7 @@ def kitchen_order(order_id):
 @login_required
 def api_tools():
     db = get_db()
+    _ensure_kitchen_tables(db)
     tools = db.execute('SELECT id, name, category FROM tools WHERE active=1 ORDER BY category, name').fetchall()
     return jsonify([dict(t) for t in tools])
 
