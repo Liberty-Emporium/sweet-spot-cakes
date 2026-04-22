@@ -27,7 +27,7 @@ STRIPE_PK      = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WH      = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 BAKERY_NAME    = os.environ.get('BAKERY_NAME', 'Sweet Spot Custom Cakes')
-ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'admin@sweetspotcakes.com')
+ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'info@sweetspotcustomcakes.com')
 
 # ── DB ─────────────────────────────────────────────────────────────────────────
 def get_db():
