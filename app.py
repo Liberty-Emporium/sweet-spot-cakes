@@ -1129,6 +1129,19 @@ def _ensure_kitchen_tables(db):
             FOREIGN KEY(recipe_id) REFERENCES recipes(id),
             FOREIGN KEY(tool_id) REFERENCES tools(id)
         )''')
+    # Safe column migrations — tolerate already-existing columns
+    for col, defn in [
+        ('location', "TEXT DEFAULT ''"),
+        ('notes',    "TEXT DEFAULT ''"),
+        ('quantity', 'INTEGER DEFAULT 1'),
+        ('unit',     "TEXT DEFAULT 'each'"),
+        ('active',   'INTEGER DEFAULT 1'),
+        ('created',  "TEXT DEFAULT (datetime('now'))"),
+    ]:
+        try:
+            db.execute(f'ALTER TABLE tools ADD COLUMN {col} {defn}')
+        except Exception:
+            pass  # column already exists — that's fine
     db.commit()
 
 @app.route('/kitchen')
