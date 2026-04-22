@@ -914,6 +914,56 @@ def special_toggle(special_id):
     return redirect(url_for('loyalty'))
 
 
+# ── Public Menu ─────────────────────────────────────────────────────────────────
+
+# Cake size/flavor/tier pricing (can be overridden by env or DB later)
+CAKE_SIZES = [
+    {'label': '6" Round (serves 8-10)',    'price': 45,  'emoji': '🎂'},
+    {'label': '8" Round (serves 12-16)',   'price': 65,  'emoji': '🎂'},
+    {'label': '10" Round (serves 20-24)',  'price': 90,  'emoji': '🎂'},
+    {'label': '12" Round (serves 28-35)', 'price': 120, 'emoji': '🎂'},
+    {'label': '2-Tier (serves 30-40)',    'price': 175, 'emoji': '✨'},
+    {'label': '3-Tier (serves 60-80)',    'price': 275, 'emoji': '✨'},
+    {'label': 'Sheet Cake (serves 24-48)','price': 95,  'emoji': '🎂'},
+]
+
+FLAVORS = [
+    {'name': 'Classic Vanilla',        'desc': 'Light, fluffy vanilla sponge with silky vanilla buttercream',              'emoji': '🧁', 'popular': True},
+    {'name': 'Rich Chocolate',         'desc': 'Deep, fudgy chocolate cake with chocolate ganache frosting',               'emoji': '🍫', 'popular': True},
+    {'name': 'Strawberry Dream',       'desc': 'Fresh strawberry cake with whipped cream and strawberry compote',          'emoji': '🍓', 'popular': True},
+    {'name': 'Red Velvet',             'desc': 'Velvety red cake with tangy cream cheese frosting',                        'emoji': '❤️', 'popular': True},
+    {'name': 'Lemon Blueberry',        'desc': 'Bright lemon sponge with fresh blueberry jam and lemon curd frosting',    'emoji': '🍋', 'popular': False},
+    {'name': 'Funfetti Celebration',   'desc': 'Vanilla cake packed with rainbow sprinkles inside and out',               'emoji': '🎈', 'popular': False},
+    {'name': 'Carrot Cake',            'desc': 'Warmly spiced carrot cake with decadent cream cheese frosting',           'emoji': '🥕', 'popular': False},
+    {'name': 'Cookies & Cream',        'desc': 'Chocolate cake layered with Oreo cream and cookies & cream frosting',     'emoji': '🍪', 'popular': False},
+    {'name': 'Caramel Pecan',          'desc': 'Butter pecan cake drizzled with homemade caramel and praline crunch',    'emoji': '🥜', 'popular': False},
+    {'name': 'Marble',                 'desc': 'Swirled vanilla and chocolate sponge with vanilla or chocolate frosting', 'emoji': '🌀', 'popular': False},
+]
+
+ADD_ONS = [
+    {'name': 'Custom Message',          'price': 0,  'desc': 'Personalized text piped on your cake'},
+    {'name': 'Fondant Decorations',     'price': 25, 'desc': 'Custom fondant figures, flowers, or toppers'},
+    {'name': 'Fresh Flowers',           'price': 20, 'desc': 'Real edible flowers or silk florals'},
+    {'name': 'Gold/Silver Leaf',        'price': 30, 'desc': 'Luxurious metallic leaf accent details'},
+    {'name': 'Photo Print Topper',      'price': 15, 'desc': 'Edible photo printed on frosting sheet'},
+    {'name': 'Extra Frosting Layer',    'price': 10, 'desc': 'Double the frosting — because why not?'},
+    {'name': 'Gluten-Free Option',      'price': 15, 'desc': 'Gluten-free flour blend at no compromise in taste'},
+    {'name': 'Vegan Option',            'price': 15, 'desc': '100% plant-based ingredients'},
+]
+
+
+@app.route('/menu')
+def menu():
+    db = get_db()
+    # Get actual recipes from DB too
+    db_recipes = db.execute(
+        "SELECT * FROM recipes WHERE active=1 ORDER BY category, name"
+    ).fetchall()
+    return render_template('menu.html', bakery=BAKERY_NAME,
+                           cake_sizes=CAKE_SIZES, flavors=FLAVORS,
+                           add_ons=ADD_ONS, db_recipes=db_recipes)
+
+
 # ── Marketing & Ads ─────────────────────────────────────────────────────────────────
 @app.route('/marketing')
 @login_required
