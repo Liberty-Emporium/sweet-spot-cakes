@@ -1513,6 +1513,29 @@ def recipe_add_ingredient(recipe_id):
     flash('Ingredient added to recipe.', 'success')
     return redirect(url_for('recipe_detail', recipe_id=recipe_id))
 
+@app.route('/recipes/<int:recipe_id>/remove-ingredient/<int:ri_id>', methods=['POST'])
+@login_required
+def recipe_remove_ingredient(recipe_id, ri_id):
+    db = get_db()
+    db.execute('DELETE FROM recipe_ingredients WHERE id=? AND recipe_id=?', (ri_id, recipe_id))
+    db.commit()
+    flash('Ingredient removed.', 'success')
+    return redirect(url_for('recipe_detail', recipe_id=recipe_id))
+
+@app.route('/recipes/<int:recipe_id>/delete', methods=['POST'])
+@login_required
+def recipe_delete(recipe_id):
+    if session.get('role') != 'admin':
+        flash('Admin access required.', 'error')
+        return redirect(url_for('recipe_detail', recipe_id=recipe_id))
+    db = get_db()
+    db.execute('DELETE FROM recipe_ingredients WHERE recipe_id=?', (recipe_id,))
+    db.execute('DELETE FROM recipe_tools WHERE recipe_id=?', (recipe_id,))
+    db.execute('DELETE FROM recipes WHERE id=?', (recipe_id,))
+    db.commit()
+    flash('Recipe deleted.', 'success')
+    return redirect(url_for('recipes'))
+
 # ── Customers ─────────────────────────────────────────────────────────────────
 @app.route('/customers')
 @login_required

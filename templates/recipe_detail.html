@@ -3,7 +3,15 @@
 {% block page_title %}📖 {{ recipe.name }}{% endblock %}
 {% block content %}
 
-<a href="/recipes" class="btn btn-ghost btn-sm" style="margin-bottom:16px">← Recipes</a>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+  <a href="/recipes" class="btn btn-ghost btn-sm">← Recipes</a>
+  {% if session.get('role') == 'admin' %}
+  <form method="POST" action="/recipes/{{ recipe.id }}/delete" style="margin-left:auto"
+        onsubmit="return confirm('Delete recipe {{ recipe.name }}? This cannot be undone.')">
+    <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete Recipe</button>
+  </form>
+  {% endif %}
+</div>
 
 <div class="grid-2">
   <div class="card">
@@ -43,9 +51,15 @@
     {% if ingreds %}
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
       {% for i in ingreds %}
-      <div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--card2);border-radius:6px;border:1px solid var(--border);font-size:.84rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--card2);border-radius:6px;border:1px solid var(--border);font-size:.84rem">
         <span>{{ i.ing_name }}</span>
-        <span style="color:var(--muted)">{{ i.quantity }} {{ i.unit or i.ing_unit }} <span style="color:var(--pink)">${{ "%.2f"|format(i.quantity * i.cost_per_unit) }}</span></span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="color:var(--muted)">{{ i.quantity }} {{ i.unit or i.ing_unit }} <span style="color:var(--pink)">${{ "%.2f"|format(i.quantity * i.cost_per_unit) }}</span></span>
+          <form method="POST" action="/recipes/{{ recipe.id }}/remove-ingredient/{{ i.id }}"
+                onsubmit="return confirm('Remove {{ i.ing_name }} from this recipe?')">
+            <button type="submit" class="btn btn-danger btn-xs" title="Remove">×</button>
+          </form>
+        </div>
       </div>
       {% endfor %}
     </div>
