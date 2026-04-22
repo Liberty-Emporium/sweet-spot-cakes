@@ -81,21 +81,22 @@
           <div class="detail-label">🥄 Ingredients Needed</div>
           {% if entry.ingredients %}
             {% for ri in entry.ingredients %}
+            {% set needed = (ri.quantity * (item.quantity or 1)) | round(2) %}
             <div class="ingr-item">
               <span class="ingr-name">{{ ri.name }}</span>
-              <span class="ingr-qty">{{ ri.quantity * item.quantity | round(2) }} {{ ri.unit }}</span>
+              <span class="ingr-qty">{{ needed }} {{ ri.unit }}</span>
               {% if ri.stock is not none %}
                 {% if ri.stock <= 0 %}
                   <span class="ingr-stock stock-out">OUT</span>
-                {% elif ri.stock < ri.quantity * item.quantity %}
+                {% elif ri.stock < needed %}
                   <span class="ingr-stock stock-low">LOW</span>
                 {% else %}
                   <span class="ingr-stock stock-ok">OK</span>
                 {% endif %}
               {% endif %}
+              {% if ri.location %}<span style="font-size:.7rem;color:var(--muted);margin-left:4px">📍 {{ ri.location }}</span>{% endif %}
             </div>
             {% endfor %}
-            {% if ri.location %}<div style="font-size:.7rem;color:var(--muted);margin-top:4px">📍 {{ ri.location }}</div>{% endif %}
           {% else %}
             <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No ingredients linked yet. <a href="/recipes">Link via Recipes ↗</a></div>
           {% endif %}

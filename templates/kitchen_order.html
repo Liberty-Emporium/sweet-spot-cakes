@@ -79,7 +79,7 @@
     {% for ri in entry.ingredients %}
     <div style="display:flex;gap:8px;font-size:.8rem;padding:3px 0;border-bottom:1px solid rgba(61,26,40,.2)">
       <span style="flex:1;font-weight:500">{{ ri.name }}</span>
-      <span style="color:var(--pink);font-family:monospace;font-weight:700">{{ (ri.quantity * item.quantity) | round(2) }} {{ ri.unit }}</span>
+      <span style="color:var(--pink);font-family:monospace;font-weight:700">{{ (ri.quantity * (item.quantity or 1)) | round(2) }} {{ ri.unit }}</span>
     </div>
     {% endfor %}
     {% endif %}
