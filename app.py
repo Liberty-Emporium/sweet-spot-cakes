@@ -220,6 +220,25 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_ts_employee ON timesheets(employee_id);
     CREATE INDEX IF NOT EXISTS idx_oi_order ON order_items(order_id);
+    CREATE TABLE IF NOT EXISTS specials (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        title       TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        discount    TEXT DEFAULT '',
+        valid_from  TEXT DEFAULT (date('now')),
+        valid_until TEXT DEFAULT '',
+        active      INTEGER DEFAULT 1,
+        created     TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS loyalty_members (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER UNIQUE NOT NULL,
+        joined_at   TEXT DEFAULT (datetime('now')),
+        points      INTEGER DEFAULT 0,
+        tier        TEXT DEFAULT 'member',
+        source      TEXT DEFAULT 'qr',
+        FOREIGN KEY(customer_id) REFERENCES customers(id)
+    );
     ''')
     db.commit()
 
@@ -783,6 +802,105 @@ def api_recipes():
     db = get_db()
     rows = db.execute("SELECT id,name,category,base_price FROM recipes WHERE active=1 ORDER BY name").fetchall()
     return jsonify([dict(r) for r in rows])
+
+# ── Loyalty / QR Signup ────────────────────────────────────────────────────────────
+@app.route('/join', methods=['GET', 'POST'])
+def join():
+    """Public QR signup page — no login required."""
+    success = False
+    if request.method == 'POST':
+        name     = request.form.get('name', '').strip()
+        email    = request.form.get('email', '').strip().lower()
+        phone    = request.form.get('phone', '').strip()
+        birthday = request.form.get('birthday', '').strip()
+        if name:
+            db = get_db()
+            # Check if already a customer by email or phone
+            existing = None
+            if email:
+                existing = db.execute('SELECT id FROM customers WHERE email=?', (email,)).fetchone()
+            if not existing and phone:
+                existing = db.execute('SELECT id FROM customers WHERE phone=?', (phone,)).fetchone()
+            if existing:
+                cust_id = existing['id']
+                # Update birthday if provided
+                if birthday:
+                    db.execute('UPDATE customers SET birthday=? WHERE id=?', (birthday, cust_id))
+            else:
+                cur = db.execute('INSERT INTO customers(name,email,phone,birthday,notes) VALUES(?,?,?,?,?)',
+                                 (name, email, phone, birthday, 'QR loyalty signup'))
+                cust_id = cur.lastrowid
+            # Add to loyalty if not already there
+            db.execute('INSERT OR IGNORE INTO loyalty_members(customer_id,source) VALUES(?,?)',
+                       (cust_id, 'qr'))
+            db.commit()
+            success = True
+    # Get active specials to show on signup page
+    db = get_db()
+    specials = db.execute("SELECT * FROM specials WHERE active=1 ORDER BY created DESC LIMIT 3").fetchall()
+    return render_template('join.html', success=success, specials=specials, bakery=BAKERY_NAME)
+
+
+@app.route('/qr')
+def qr_code():
+    """Generate a QR code image for the /join page."""
+    import urllib.parse
+    base = request.host_url.rstrip('/')
+    join_url = f'{base}/join'
+    # Use Google Charts QR API (no install needed)
+    encoded = urllib.parse.quote(join_url)
+    qr_url = f'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={encoded}&bgcolor=fff&color=6b0029'
+    return render_template('qr.html', qr_url=qr_url, join_url=join_url, bakery=BAKERY_NAME)
+
+
+@app.route('/loyalty')
+@login_required
+def loyalty():
+    db = get_db()
+    members = db.execute('''
+        SELECT c.*, lm.joined_at, lm.points, lm.tier, lm.source,
+               (SELECT COUNT(*) FROM orders WHERE customer_id=c.id) as order_count
+        FROM loyalty_members lm
+        JOIN customers c ON c.id=lm.customer_id
+        ORDER BY lm.joined_at DESC
+    ''').fetchall()
+    specials = db.execute("SELECT * FROM specials ORDER BY created DESC").fetchall()
+    today = datetime.date.today()
+    # Find birthdays this month
+    month = str(today.month).zfill(2)
+    birthdays = db.execute(
+        "SELECT c.name, c.email, c.phone, c.birthday FROM customers c "
+        "JOIN loyalty_members lm ON lm.customer_id=c.id "
+        "WHERE c.birthday LIKE ?",(f'%-{month}-%',)
+    ).fetchall()
+    return render_template('loyalty.html', members=members, specials=specials,
+                           birthdays=birthdays, bakery=BAKERY_NAME,
+                           total=len(members))
+
+
+@app.route('/loyalty/specials/add', methods=['POST'])
+@login_required
+def special_add():
+    db = get_db()
+    db.execute('INSERT INTO specials(title,description,discount,valid_from,valid_until) VALUES(?,?,?,?,?)',
+               (request.form['title'], request.form.get('description',''),
+                request.form.get('discount',''), request.form.get('valid_from', datetime.date.today().isoformat()),
+                request.form.get('valid_until','')))
+    db.commit()
+    flash('Special added! ✨', 'success')
+    return redirect(url_for('loyalty'))
+
+
+@app.route('/loyalty/specials/<int:special_id>/toggle', methods=['POST'])
+@login_required
+def special_toggle(special_id):
+    db = get_db()
+    s = db.execute('SELECT active FROM specials WHERE id=?', (special_id,)).fetchone()
+    if s:
+        db.execute('UPDATE specials SET active=? WHERE id=?', (0 if s['active'] else 1, special_id))
+        db.commit()
+    return redirect(url_for('loyalty'))
+
 
 # ── Cakely AI Agent API (Bearer token auth) ─────────────────────────────────
 CAKELY_TOKEN = os.environ.get('CAKELY_API_TOKEN', 'cakely-sweet-spot-2026')

@@ -134,6 +134,8 @@
     <a href="/employees" class="nav-item {% if '/employees' in request.path or '/timesheets' in request.path %}active{% endif %}">👩‍🍳 <span>Employees</span></a>
 
     <div class="nav-section">Business</div>
+    <a href="/loyalty" class="nav-item {% if '/loyalty' in request.path %}active{% endif %}">⭐ <span>VIP Loyalty</span></a>
+    <a href="/qr" class="nav-item" target="_blank">📑 <span>QR Code</span></a>
     <a href="/reports" class="nav-item {% if '/reports' in request.path %}active{% endif %}">📊 <span>Reports</span></a>
     <a href="/settings" class="nav-item {% if '/settings' in request.path %}active{% endif %}">⚙️ <span>Settings</span></a>
   </nav>

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}VIP Loyalty — {{ bakery }}{% endblock %}
+{% block page_title %}⭐ VIP Loyalty Club{% endblock %}
+{% block topbar_right %}
+<a href="/qr" class="btn btn-primary btn-sm" target="_blank">🖨️ Print QR Code</a>
+{% endblock %}
+{% block content %}
+
+<div class="stats-grid" style="margin-bottom:24px">
+  <div class="stat-tile">
+    <div class="stat-num">{{ total }}</div>
+    <div class="stat-label">VIP Members</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num yellow">{{ birthdays|length }}</div>
+    <div class="stat-label">Birthdays This Month 🎂</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num green">{{ specials|selectattr('active','equalto',1)|list|length }}</div>
+    <div class="stat-label">Active Specials</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px">
+
+  <!-- Birthdays this month -->
+  {% if birthdays %}
+  <div class="card" style="border-color:rgba(244,114,182,.3)">
+    <div class="card-header">
+      <div class="card-title">🎂 Birthdays This Month</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% for b in birthdays %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.15);border-radius:8px">
+        <div>
+          <div style="font-weight:600;font-size:.88rem">{{ b.name }}</div>
+          <div style="font-size:.72rem;color:var(--muted)">{{ b.email or b.phone or '' }}</div>
+        </div>
+        <div style="font-size:.82rem;color:var(--pink)">{{ b.birthday[5:] if b.birthday else '' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Add Special -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">🎁 Create a Special</div>
+    <form method="POST" action="/loyalty/specials/add">
+      <div class="form-group"><label class="form-label">Title *</label><input name="title" class="form-control" required placeholder="10% off all custom cakes"></div>
+      <div class="form-group"><label class="form-label">Description</label><input name="description" class="form-control" placeholder="Show this screen to redeem"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Discount / Offer</label><input name="discount" class="form-control" placeholder="10% OFF"></div>
+        <div class="form-group"><label class="form-label">Valid Until</label><input name="valid_until" type="date" class="form-control"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">✨ Add Special</button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Active Specials -->
+{% if specials %}
+<div class="card" style="margin-bottom:24px">
+  <div class="card-header"><div class="card-title">🎁 Specials</div></div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for s in specials %}
+    <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--card2);border-radius:8px;border:1px solid {% if s.active %}rgba(244,114,182,.2){% else %}var(--border){% endif %}">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:.88rem{% if not s.active %};opacity:.5{% endif %}">
+          {% if s.discount %}<span style="background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff;font-size:.7rem;padding:2px 8px;border-radius:20px;margin-right:8px">{{ s.discount }}</span>{% endif %}
+          {{ s.title }}
+        </div>
+        {% if s.description %}<div style="font-size:.75rem;color:var(--muted)">{{ s.description }}</div>{% endif %}
+        {% if s.valid_until %}<div style="font-size:.72rem;color:var(--muted)">Expires: {{ s.valid_until }}</div>{% endif %}
+      </div>
+      <form method="POST" action="/loyalty/specials/{{ s.id }}/toggle">
+        <button type="submit" class="btn btn-xs {% if s.active %}btn-success{% else %}btn-ghost{% endif %}">
+          {% if s.active %}✅ Active{% else %}⭕ Off{% endif %}
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Members List -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">👥 VIP Members ({{ total }})</div>
+    <a href="/qr" target="_blank" class="btn btn-ghost btn-sm">🖨️ QR Code</a>
+  </div>
+  {% if members %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Birthday</th><th>Orders</th><th>Points</th><th>Joined</th><th>Source</th></tr></thead>
+      <tbody>
+      {% for m in members %}
+      <tr>
+        <td style="font-weight:600">{{ m.name }}</td>
+        <td style="font-size:.82rem;color:var(--muted)">{{ m.email or '—' }}</td>
+        <td style="font-size:.82rem">{{ m.phone or '—' }}</td>
+        <td style="font-size:.82rem;color:var(--pink)">{{ m.birthday or '—' }}</td>
+        <td style="font-weight:700">{{ m.order_count }}</td>
+        <td style="font-size:.82rem">⭐ {{ m.points }}</td>
+        <td style="font-size:.75rem;color:var(--muted)">{{ m.joined_at[:10] }}</td>
+        <td><span style="font-size:.7rem;padding:2px 8px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);color:var(--accent3);border-radius:20px">{{ m.source }}</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px;color:var(--muted)">
+    <div style="font-size:3rem;margin-bottom:12px">⭐</div>
+    <div style="font-weight:600;margin-bottom:8px">No VIP members yet</div>
+    <div style="font-size:.85rem;margin-bottom:16px">Print your QR code and put it on the counter!</div>
+    <a href="/qr" class="btn btn-primary" target="_blank">🖨️ Get QR Code</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

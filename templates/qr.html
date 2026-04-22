@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code — {{ bakery }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:#0d0408;color:#fdf2f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .page{max-width:700px;width:100%}
+
+    /* Print card — this is what gets printed */
+    .print-card{background:#fff;border-radius:24px;padding:48px 40px;text-align:center;color:#1a0810;margin-bottom:24px}
+    .bakery-name{font-family:'Playfair Display',serif;font-size:2rem;font-weight:800;color:#c2185b;margin-bottom:4px}
+    .tagline{font-size:1rem;color:#6b0029;margin-bottom:28px}
+    .qr-wrap{display:inline-block;padding:16px;background:#fff;border-radius:16px;border:4px solid #f472b6;margin-bottom:20px}
+    .qr-wrap img{width:240px;height:240px;display:block}
+    .cta{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:#1a0810;margin-bottom:8px}
+    .perks{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:.85rem;color:#6b0029}
+    .perk{display:flex;align-items:center;gap:5px}
+    .url{font-size:.75rem;color:#9d8890;margin-top:8px}
+    .divider{border:none;border-top:2px dashed #fda4af;margin:20px 0}
+    .perks-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;font-size:.82rem;color:#3d1a28}
+    .perk-item{display:flex;align-items:center;gap:6px}
+
+    /* Dashboard controls */
+    .controls{background:#1f0d16;border:1px solid rgba(244,114,182,.2);border-radius:16px;padding:24px;margin-bottom:20px}
+    .controls h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:14px}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:all .2s}
+    .btn-primary{background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff}
+    .btn-ghost{background:transparent;border:1px solid rgba(244,114,182,.3);color:#fda4af}
+    .url-box{background:#2a1020;border:1px solid rgba(244,114,182,.2);border-radius:8px;padding:12px 14px;font-family:monospace;font-size:.85rem;color:#f472b6;word-break:break-all;margin-bottom:14px;user-select:all}
+
+    @media print {
+      body{background:#fff;padding:0}
+      .controls,.no-print{display:none!important}
+      .print-card{border-radius:0;margin:0;padding:32px;box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Controls (hidden on print) -->
+  <div class="controls no-print">
+    <h3>🖨️ QR Code — VIP Signup</h3>
+    <p style="font-size:.85rem;color:#9d8890;margin-bottom:16px">Print this page or save the card below. Customers scan to join your VIP club.</p>
+    <div class="url-box">{{ join_url }}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print QR Card</button>
+      <a href="/loyalty" class="btn btn-ghost">👥 View Members</a>
+      <a href="{{ join_url }}" target="_blank" class="btn btn-ghost">👁️ Preview Signup Page</a>
+    </div>
+  </div>
+
+  <!-- Print card -->
+  <div class="print-card">
+    <div class="bakery-name">🎂 {{ bakery }}</div>
+    <div class="tagline">Custom Cakes · Made with Love</div>
+
+    <div class="qr-wrap">
+      <img src="{{ qr_url }}" alt="QR Code">
+    </div>
+
+    <div class="cta">Scan to Join Our VIP Club!</div>
+    <div style="font-size:.9rem;color:#6b0029;margin-bottom:16px">Get exclusive deals, birthday surprises & more</div>
+
+    <hr class="divider">
+
+    <div class="perks-list">
+      <div class="perk-item">🎁 Members-only specials</div>
+      <div class="perk-item">🎂 Free birthday treat</div>
+      <div class="perk-item">📣 New flavor alerts</div>
+      <div class="perk-item">⭐ Earn reward points</div>
+    </div>
+
+    <div class="url" style="margin-top:16px">{{ join_url }}</div>
+  </div>
+
+</div>
+</body>
+</html>

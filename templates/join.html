@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join Sweet Spot VIP — {{ bakery }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0d0408 0%,#1f0d16 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#1f0d16;border:1px solid rgba(244,114,182,.3);border-radius:24px;padding:40px 36px;width:100%;max-width:440px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5)}
+    .icon{font-size:3.5rem;margin-bottom:12px;animation:bounce .8s ease infinite alternate}
+    @keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+    h1{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#f472b6,#fda4af);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+    .sub{color:#9d8890;font-size:.9rem;line-height:1.6;margin-bottom:28px}
+    .perks{display:flex;flex-direction:column;gap:8px;margin-bottom:28px;text-align:left}
+    .perk{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(244,114,182,.06);border:1px solid rgba(244,114,182,.15);border-radius:10px;font-size:.85rem;color:#fdf2f8}
+    .perk-icon{font-size:1.1rem;flex-shrink:0}
+    label{display:block;text-align:left;font-size:.78rem;font-weight:600;color:#9d8890;margin-bottom:5px;margin-top:14px}
+    input{width:100%;background:#2a1020;border:1px solid rgba(244,114,182,.2);border-radius:10px;padding:12px 14px;color:#fdf2f8;font-size:.9rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+    input:focus{border-color:#f472b6}
+    .btn{width:100%;background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff;border:none;border-radius:12px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:20px;transition:opacity .2s;font-family:'Inter',sans-serif}
+    .btn:hover{opacity:.88}
+    .success{text-align:center;padding:20px 0}
+    .success-icon{font-size:4rem;margin-bottom:16px}
+    .success h2{font-family:'Playfair Display',serif;font-size:1.5rem;background:linear-gradient(135deg,#f472b6,#fda4af);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+    .success p{color:#9d8890;font-size:.88rem;line-height:1.7}
+    .specials{margin-top:24px;text-align:left}
+    .specials-title{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:#f472b6;font-weight:700;margin-bottom:10px}
+    .special-card{background:rgba(244,114,182,.08);border:1px solid rgba(244,114,182,.2);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+    .special-title{font-weight:700;font-size:.88rem;margin-bottom:2px}
+    .special-desc{font-size:.78rem;color:#9d8890}
+    .special-badge{display:inline-block;background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff;font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:20px;margin-bottom:4px}
+    .fine{font-size:.72rem;color:#4b2535;margin-top:20px}
+  </style>
+</head>
+<body>
+<div class="card">
+
+  {% if success %}
+  <div class="success">
+    <div class="success-icon">🎉</div>
+    <h2>You're In!</h2>
+    <p>Welcome to the <strong>Sweet Spot VIP Club</strong>! 🎂<br><br>
+    You'll be the first to hear about specials, new flavors, and birthday surprises.<br><br>
+    Show this screen to our staff — your membership is active!</p>
+    {% if specials %}
+    <div class="specials" style="margin-top:20px">
+      <div class="specials-title">🎁 Active Specials Just for You</div>
+      {% for s in specials %}
+      <div class="special-card">
+        {% if s.discount %}<span class="special-badge">{{ s.discount }}</span>{% endif %}
+        <div class="special-title">{{ s.title }}</div>
+        {% if s.description %}<div class="special-desc">{{ s.description }}</div>{% endif %}
+        {% if s.valid_until %}<div class="special-desc" style="margin-top:4px">Valid until: {{ s.valid_until }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% else %}
+
+  <div class="icon">🎂</div>
+  <h1>Join Our VIP Club</h1>
+  <p class="sub">Sign up for exclusive deals, birthday surprises, and first access to new flavors from <strong>{{ bakery }}</strong>!</p>
+
+  <div class="perks">
+    <div class="perk"><span class="perk-icon">🎁</span> Members-only specials & discounts</div>
+    <div class="perk"><span class="perk-icon">🎂</span> Free birthday treat every year</div>
+    <div class="perk"><span class="perk-icon">📣</span> First to know about new flavors</div>
+    <div class="perk"><span class="perk-icon">⭐</span> Earn points with every order</div>
+  </div>
+
+  <form method="POST">
+    <label>Your Name *</label>
+    <input name="name" required placeholder="Jane Smith" autofocus>
+
+    <label>Email Address</label>
+    <input name="email" type="email" placeholder="jane@email.com">
+
+    <label>Phone Number</label>
+    <input name="phone" type="tel" placeholder="555-1234">
+
+    <label>Birthday 🎂 <span style="color:#4b2535;font-weight:400">(so we can spoil you!)</span></label>
+    <input name="birthday" type="date">
+
+    <button type="submit" class="btn">🎉 Join the VIP Club!</button>
+  </form>
+
+  {% if specials %}
+  <div class="specials" style="margin-top:24px">
+    <div class="specials-title">🎁 Current Specials</div>
+    {% for s in specials %}
+    <div class="special-card">
+      {% if s.discount %}<span class="special-badge">{{ s.discount }}</span>{% endif %}
+      <div class="special-title">{{ s.title }}</div>
+      {% if s.description %}<div class="special-desc">{{ s.description }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="fine">We'll never share your info. Unsubscribe anytime.</div>
+
+  {% endif %}
+
+</div>
+</body>
+</html>
