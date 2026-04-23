@@ -1066,6 +1066,20 @@ def inventory_add():
     flash('Ingredient added.', 'success')
     return redirect(url_for('inventory'))
 
+@app.route('/inventory/<int:item_id>/delete', methods=['POST'])
+@login_required
+def inventory_delete(item_id):
+    db = get_db()
+    item = db.execute('SELECT name FROM ingredients WHERE id=?', (item_id,)).fetchone()
+    if not item:
+        flash('Ingredient not found.', 'error')
+        return redirect(url_for('inventory'))
+    db.execute('DELETE FROM recipe_ingredients WHERE ingredient_id=?', (item_id,))
+    db.execute('DELETE FROM ingredients WHERE id=?', (item_id,))
+    db.commit()
+    flash(f'"{item["name"]}" deleted from inventory.', 'success')
+    return redirect(url_for('inventory'))
+
 @app.route('/inventory/<int:item_id>/set-supplier', methods=['POST'])
 @login_required
 def inventory_set_supplier(item_id):
