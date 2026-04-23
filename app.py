@@ -1390,6 +1390,20 @@ def supplier_add():
     flash('Supplier added.', 'success')
     return redirect(url_for('suppliers'))
 
+@app.route('/suppliers/<int:supplier_id>/delete', methods=['POST'])
+@login_required
+def supplier_delete(supplier_id):
+    db = get_db()
+    supplier = db.execute('SELECT name FROM suppliers WHERE id=?', (supplier_id,)).fetchone()
+    if not supplier:
+        flash('Supplier not found.', 'error')
+        return redirect(url_for('suppliers'))
+    # Soft delete — keeps referential integrity with ingredients
+    db.execute('UPDATE suppliers SET active=0 WHERE id=?', (supplier_id,))
+    db.commit()
+    flash(f'Supplier "{supplier["name"]}" deleted.', 'success')
+    return redirect(url_for('suppliers'))
+
 # ── Employees ─────────────────────────────────────────────────────────────────
 @app.route('/employees')
 @login_required

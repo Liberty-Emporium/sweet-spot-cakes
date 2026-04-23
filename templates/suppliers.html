@@ -17,6 +17,11 @@
     {% if s.phone %}<div style="font-size:.82rem;color:var(--muted)">📞 {{ s.phone }}</div>{% endif %}
     {% if s.address %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px">📍 {{ s.address }}</div>{% endif %}
     {% if s.notes %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic">{{ s.notes }}</div>{% endif %}
+    <div style="margin-top:12px;text-align:right">
+      <form method="POST" action="/suppliers/{{ s.id }}/delete" onsubmit="return confirm('Delete {{ s.name }}? This cannot be undone.')">
+        <button type="submit" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:4px 12px;font-size:.78rem;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑 Delete</button>
+      </form>
+    </div>
   </div>
   {% else %}
   <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
