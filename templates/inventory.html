@@ -2,6 +2,11 @@
 {% block title %}Inventory — {{ bakery }}{% endblock %}
 {% block page_title %}📦 Inventory{% endblock %}
 {% block content %}
+<style>
+  .no-arrows::-webkit-outer-spin-button,
+  .no-arrows::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .no-arrows { -moz-appearance: textfield; }
+</style>
 
 <!-- Add ingredient modal trigger -->
 <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
@@ -59,7 +64,7 @@
               <input type="hidden" name="delta" id="adj-delta-{{ item.id }}">
               <input type="number" step="0.5" min="0.5" placeholder="qty"
                      id="adj-qty-{{ item.id }}"
-                     class="form-control" style="width:65px;padding:4px 8px">
+                     class="form-control no-arrows" style="width:65px;padding:4px 8px">
               <button type="button"
                 style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:.9rem"
                 onclick="submitAdj({{ item.id }}, -1)">−</button>
