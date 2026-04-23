@@ -24,7 +24,16 @@
         <td style="color:var(--muted);font-size:.82rem">{{ item.unit }}</td>
         <td style="color:var(--muted);font-size:.82rem">{{ item.reorder_level }}</td>
         <td style="font-size:.82rem">${{ "%.2f"|format(item.cost_per_unit) }}</td>
-        <td style="font-size:.82rem;color:var(--muted)">{{ item.supplier_name or '—' }}</td>
+        <td style="font-size:.82rem">
+          <form method="POST" action="/inventory/{{ item.id }}/set-supplier" style="margin:0">
+            <select name="supplier_id" class="form-control" style="padding:3px 6px;font-size:.78rem;min-width:130px" onchange="this.form.submit()">
+              <option value="" {% if not item.supplier_id %}selected{% endif %}>— None —</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" {% if item.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
         <td>
           {% if item.quantity <= 0 %}<span class="badge badge-cancelled">OUT</span>
           {% elif item.quantity <= item.reorder_level %}<span class="badge badge-pending">LOW</span>

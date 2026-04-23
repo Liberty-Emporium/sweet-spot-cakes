@@ -1066,6 +1066,15 @@ def inventory_add():
     flash('Ingredient added.', 'success')
     return redirect(url_for('inventory'))
 
+@app.route('/inventory/<int:item_id>/set-supplier', methods=['POST'])
+@login_required
+def inventory_set_supplier(item_id):
+    db = get_db()
+    supplier_id = request.form.get('supplier_id') or None
+    db.execute('UPDATE ingredients SET supplier_id=? WHERE id=?', (supplier_id, item_id))
+    db.commit()
+    return redirect(url_for('inventory'))
+
 @app.route('/inventory/<int:item_id>/adjust', methods=['POST'])
 @login_required
 def inventory_adjust(item_id):
