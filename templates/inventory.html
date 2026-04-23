@@ -55,21 +55,18 @@
         </td>
         <td>
           <div style="display:flex;gap:6px;align-items:center">
-            <div style="display:flex;gap:4px;align-items:center">
-              <form method="POST" action="/inventory/{{ item.id }}/adjust" style="display:contents">
-                <input type="hidden" name="delta" class="delta-remove-{{ item.id }}">
-                <input type="number" step="0.5" min="0.5" placeholder="qty" class="form-control qty-input-{{ item.id }}" style="width:65px;padding:4px 8px" aria-label="Quantity">
-                <button type="submit" class="btn btn-xs"
-                  style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:.85rem"
-                  onclick="return prepDelta({{ item.id }}, -1)">−</button>
-              </form>
-              <form method="POST" action="/inventory/{{ item.id }}/adjust" style="display:contents">
-                <input type="hidden" name="delta" class="delta-add-{{ item.id }}">
-                <button type="submit" class="btn btn-xs"
-                  style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:.85rem"
-                  onclick="return prepDelta({{ item.id }}, 1)">+</button>
-              </form>
-            </div>
+            <form id="adj-form-{{ item.id }}" method="POST" action="/inventory/{{ item.id }}/adjust" style="display:flex;gap:4px;align-items:center">
+              <input type="hidden" name="delta" id="adj-delta-{{ item.id }}">
+              <input type="number" step="0.5" min="0.5" placeholder="qty"
+                     id="adj-qty-{{ item.id }}"
+                     class="form-control" style="width:65px;padding:4px 8px">
+              <button type="button"
+                style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:.9rem"
+                onclick="submitAdj({{ item.id }}, -1)">−</button>
+              <button type="button"
+                style="background:#22c55e;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-weight:700;font-size:.9rem"
+                onclick="submitAdj({{ item.id }}, 1)">+</button>
+            </form>
             <form method="POST" action="/inventory/{{ item.id }}/delete" onsubmit="return confirm('Delete {{ item.name }}?')" style="display:inline">
               <button type="submit" class="btn btn-xs" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:3px 8px;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑</button>
             </form>
@@ -83,16 +80,14 @@
 </div>
 
 <script>
-function prepDelta(id, sign) {
-  var input = document.querySelector('.qty-input-' + id);
-  var val = parseFloat(input.value);
-  if (!val || val <= 0) { input.focus(); return false; }
-  if (sign === -1) {
-    document.querySelector('.delta-remove-' + id).value = -val;
-  } else {
-    document.querySelector('.delta-add-' + id).value = val;
+function submitAdj(id, sign) {
+  var val = parseFloat(document.getElementById('adj-qty-' + id).value);
+  if (!val || val <= 0) {
+    document.getElementById('adj-qty-' + id).focus();
+    return;
   }
-  return true;
+  document.getElementById('adj-delta-' + id).value = sign * val;
+  document.getElementById('adj-form-' + id).submit();
 }
 
 function startEditCost(id, current) {
