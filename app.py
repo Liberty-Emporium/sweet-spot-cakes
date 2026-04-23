@@ -1218,6 +1218,23 @@ def _run_migrations(db):
             ('hourly_rate', 'REAL DEFAULT 15.0'),
             ('notes',       "TEXT DEFAULT ''"),
         ],
+        'suppliers': [
+            ('contact', "TEXT DEFAULT ''"),
+            ('email',   "TEXT DEFAULT ''"),
+            ('phone',   "TEXT DEFAULT ''"),
+            ('address', "TEXT DEFAULT ''"),
+            ('notes',   "TEXT DEFAULT ''"),
+            ('active',  'INTEGER DEFAULT 1'),
+            ('created', "TEXT DEFAULT (datetime('now'))"),
+        ],
+        'purchase_orders': [
+            ('status',      "TEXT DEFAULT 'pending'"),
+            ('total',       'REAL DEFAULT 0'),
+            ('notes',       "TEXT DEFAULT ''"),
+            ('ordered_at',  'TEXT'),
+            ('received_at', 'TEXT'),
+            ('created',     "TEXT DEFAULT (datetime('now'))"),
+        ],
     }
     for table, cols in migrations.items():
         for col, defn in cols:
@@ -1228,7 +1245,44 @@ def _run_migrations(db):
     db.commit()
 
 def _ensure_kitchen_tables(db):
-    """Ensure tools/recipe_tools tables exist and all columns are present."""
+    """Ensure tools/recipe_tools/purchase_orders/po_items/suppliers tables exist and all columns are present."""
+    # Suppliers table
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            name    TEXT NOT NULL,
+            contact TEXT DEFAULT '',
+            email   TEXT DEFAULT '',
+            phone   TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            notes   TEXT DEFAULT '',
+            active  INTEGER DEFAULT 1,
+            created TEXT DEFAULT (datetime('now'))
+        )''')
+    # Purchase orders
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS purchase_orders (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            supplier_id INTEGER NOT NULL,
+            status      TEXT DEFAULT 'pending',
+            total       REAL DEFAULT 0,
+            notes       TEXT DEFAULT '',
+            ordered_at  TEXT,
+            received_at TEXT,
+            created     TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY(supplier_id) REFERENCES suppliers(id)
+        )''')
+    # PO line items
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS po_items (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            po_id         INTEGER NOT NULL,
+            ingredient_id INTEGER NOT NULL,
+            quantity      REAL NOT NULL,
+            unit_cost     REAL NOT NULL,
+            FOREIGN KEY(po_id) REFERENCES purchase_orders(id),
+            FOREIGN KEY(ingredient_id) REFERENCES ingredients(id)
+        )''')
     db.execute('''
         CREATE TABLE IF NOT EXISTS tools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
