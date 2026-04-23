@@ -1821,6 +1821,136 @@ def reports():
                            revenue_by_day=revenue_by_day, employee_hours=employee_hours,
                            month=today.strftime('%B %Y'), bakery=BAKERY_NAME)
 
+# ── Expenses ─────────────────────────────────────────────────────────────────
+EXPENSE_CATEGORIES = ['Supplies', 'Ingredients', 'Equipment', 'Packaging', 'Marketing',
+                       'Utilities', 'Rent', 'Labor', 'Insurance', 'Other']
+
+@app.route('/expenses')
+@login_required
+def expenses():
+    db  = get_db()
+    now = datetime.date.today()
+    month = request.args.get('month', now.strftime('%Y-%m'))
+    month_start = month + '-01'
+    try:
+        month_end = (datetime.date.fromisoformat(month_start).replace(day=28)
+                     + datetime.timedelta(days=4)).replace(day=1).isoformat()
+    except Exception:
+        month_end = (now.replace(day=28) + datetime.timedelta(days=4)).replace(day=1).isoformat()
+
+    rows = db.execute('''
+        SELECT e.id, e.category, e.description, e.amount, e.date,
+               s.name as supplier_name
+        FROM expenses e
+        LEFT JOIN suppliers s ON s.id = e.supplier_id
+        WHERE e.date >= ? AND e.date < ?
+        ORDER BY e.date DESC, e.id DESC
+    ''', (month_start, month_end)).fetchall()
+
+    total = sum(r['amount'] for r in rows)
+    by_category = sorted(
+        {cat: sum(r['amount'] for r in rows if r['category'] == cat)
+         for cat in {r['category'] for r in rows}}.items(),
+        key=lambda x: x[1], reverse=True
+    )
+    suppliers = db.execute("SELECT id, name FROM suppliers WHERE active=1 ORDER BY name").fetchall()
+    return render_template('expenses.html', expenses=rows, total=total,
+                           by_category=by_category, month=month,
+                           suppliers=suppliers, categories=EXPENSE_CATEGORIES,
+                           now=now.isoformat(), bakery=BAKERY_NAME)
+
+@app.route('/expenses/add', methods=['POST'])
+@login_required
+def expenses_add():
+    db = get_db()
+    category    = request.form.get('category', 'Supplies')
+    description = request.form.get('description', '').strip()
+    amount      = float(request.form.get('amount', 0))
+    date        = request.form.get('date') or datetime.date.today().isoformat()
+    supplier_id = request.form.get('supplier_id') or None
+    if not description or amount <= 0:
+        flash('Description and a positive amount are required.', 'error')
+        return redirect('/expenses')
+    db.execute(
+        'INSERT INTO expenses(category,description,amount,date,supplier_id) VALUES(?,?,?,?,?)',
+        (category, description, amount, date, supplier_id)
+    )
+    db.commit()
+    flash('Expense logged.', 'success')
+    return redirect('/expenses')
+
+@app.route('/expenses/<int:expense_id>/delete', methods=['POST'])
+@login_required
+def expenses_delete(expense_id):
+    db = get_db()
+    db.execute('DELETE FROM expenses WHERE id=?', (expense_id,))
+    db.commit()
+    flash('Expense deleted.', 'success')
+    return redirect(request.referrer or '/expenses')
+
+# ── Prep Sheet ────────────────────────────────────────────────────────────────
+@app.route('/prep-sheet')
+@login_required
+def prep_sheet():
+    db    = get_db()
+    today = datetime.date.today()
+    tomorrow  = today + datetime.timedelta(days=1)
+    day_after = today + datetime.timedelta(days=2)
+    window_end = (today + datetime.timedelta(days=3)).isoformat()
+
+    orders = db.execute('''
+        SELECT o.id, o.order_number, o.customer_name, o.pickup_date, o.pickup_time,
+               o.special_notes, o.status,
+               COALESCE(SUM(r.amount),0)       AS total,
+               COALESCE(SUM(r.amount),0) - COALESCE(o.deposit,0) AS balance_due,
+               CASE WHEN COALESCE(o.deposit,0) >= COALESCE(SUM(r.amount),0) THEN 1 ELSE 0 END AS paid_in_full
+        FROM orders o
+        LEFT JOIN receipts r ON r.order_id = o.id
+        WHERE o.pickup_date >= ? AND o.pickup_date < ?
+          AND o.status NOT IN ("cancelled","delivered")
+        GROUP BY o.id
+        ORDER BY o.pickup_date, o.pickup_time
+    ''', (today.isoformat(), window_end)).fetchall()
+
+    # Build combined ingredient pull list from recipe-linked order items
+    ingredient_needs = {}
+    for o in orders:
+        items = db.execute('''
+            SELECT oi.quantity, oi.recipe_id
+            FROM order_items oi
+            WHERE oi.order_id=? AND oi.recipe_id IS NOT NULL
+        ''', (o['id'],)).fetchall()
+        for item in items:
+            qty     = item['quantity'] or 1
+            ingredients = db.execute('''
+                SELECT i.name, ri.quantity, ri.unit
+                FROM recipe_ingredients ri
+                JOIN inventory i ON i.id = ri.inventory_id
+                WHERE ri.recipe_id=?
+            ''', (item['recipe_id'],)).fetchall()
+            for ing in ingredients:
+                key = ing['name']
+                needed = (ing['quantity'] or 0) * qty
+                if key not in ingredient_needs:
+                    stock_row = db.execute(
+                        'SELECT quantity FROM inventory WHERE name=?', (key,)
+                    ).fetchone()
+                    ingredient_needs[key] = {
+                        'needed': 0,
+                        'unit': ing['unit'] or '',
+                        'stock': stock_row['quantity'] if stock_row else 0
+                    }
+                ingredient_needs[key]['needed'] += needed
+
+    ingredient_needs = sorted(ingredient_needs.items(), key=lambda x: x[0])
+    return render_template('prep_sheet.html',
+                           orders=orders,
+                           ingredient_needs=ingredient_needs,
+                           today=today.isoformat(),
+                           tomorrow=tomorrow.isoformat(),
+                           day_after=day_after.isoformat(),
+                           bakery=BAKERY_NAME)
+
 # ── Settings ──────────────────────────────────────────────────────────────────
 @app.route('/settings')
 @admin_required
