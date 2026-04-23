@@ -471,7 +471,7 @@ def init_db():
             'name': 'Classic French Vanilla Layer Cake',
             'category': 'Cake',
             'description': 'Four light genoise layers soaked in vanilla syrup, filled and frosted with silky French buttercream. Finished with vanilla bean flecks and a smooth ganache drip.',
-            'servings': 16, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 145.00,
+            'servings': 16, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 98.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 3.0, 'cups'), ('Granulated Sugar', 2.0, 'cups'),
                 ('Unsalted Butter (European)', 1.0, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
@@ -489,7 +489,7 @@ def init_db():
             'name': 'Dark Chocolate Espresso Entremet',
             'category': 'Entremet',
             'description': 'Modern mirror-glaze entremet: hazelnut dacquoise base, espresso cremeux insert, Valrhona 70% chocolate mousse, and a glossy dark mirror glaze.',
-            'servings': 12, 'prep_mins': 180, 'bake_mins': 20, 'base_price': 220.00,
+            'servings': 12, 'prep_mins': 180, 'bake_mins': 20, 'base_price': 145.00,
             'ingredients': [
                 ('Valrhona Dark Chocolate 70%', 1.5, 'lbs'), ('Hazelnut Flour', 1.0, 'cups'),
                 ('Powdered Sugar (10X)', 0.75, 'cups'), ('Egg Whites (Pasteurized)', 0.5, 'cups'),
@@ -507,7 +507,7 @@ def init_db():
             'name': 'Lemon Lavender Chiffon Cake',
             'category': 'Cake',
             'description': 'Ultra-light chiffon layers with fresh lemon curd filling, whipped mascarpone cream, and edible lavender petals. Elegant and floral.',
-            'servings': 14, 'prep_mins': 75, 'bake_mins': 35, 'base_price': 165.00,
+            'servings': 14, 'prep_mins': 75, 'bake_mins': 35, 'base_price': 105.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 2.5, 'cups'), ('Granulated Sugar', 1.75, 'cups'),
                 ('Eggs (Large AA)', 6.0, 'each'), ('Whole Milk', 0.75, 'cups'),
@@ -525,7 +525,7 @@ def init_db():
             'name': 'Salted Caramel Praline Cake',
             'category': 'Cake',
             'description': 'Brown butter vanilla cake with house-made salted caramel buttercream, crunchy hazelnut praline, and a dramatic caramel drip. Rich and indulgent.',
-            'servings': 16, 'prep_mins': 120, 'bake_mins': 32, 'base_price': 195.00,
+            'servings': 16, 'prep_mins': 120, 'bake_mins': 32, 'base_price': 125.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 3.0, 'cups'), ('Dark Brown Sugar', 2.0, 'cups'),
                 ('Unsalted Butter (European)', 1.25, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
@@ -544,7 +544,7 @@ def init_db():
             'name': 'Raspberry Rose Macaron Tower',
             'category': 'Pastry',
             'description': 'French-style macarons with almond shells, raspberry-rose ganache filling, and fresh raspberry jam. Hand-assembled into a towering display.',
-            'servings': 40, 'prep_mins': 240, 'bake_mins': 14, 'base_price': 280.00,
+            'servings': 40, 'prep_mins': 240, 'bake_mins': 14, 'base_price': 185.00,
             'ingredients': [
                 ('Almond Flour', 2.0, 'cups'), ('Powdered Sugar (10X)', 2.0, 'cups'),
                 ('Egg Whites (Pasteurized)', 0.75, 'cups'), ('Granulated Sugar', 0.75, 'cups'),
@@ -561,7 +561,7 @@ def init_db():
             'name': 'Gateau Opera',
             'category': 'Entremet',
             'description': 'Classic Parisian opera cake: almond joconde sponge soaked in espresso syrup, layered with coffee buttercream and dark chocolate ganache, finished with a perfect chocolate glaze.',
-            'servings': 14, 'prep_mins': 200, 'bake_mins': 12, 'base_price': 210.00,
+            'servings': 14, 'prep_mins': 200, 'bake_mins': 12, 'base_price': 135.00,
             'ingredients': [
                 ('Almond Flour', 1.5, 'cups'), ('Powdered Sugar (10X)', 1.5, 'cups'),
                 ('Eggs (Large AA)', 6.0, 'each'), ('Egg Whites (Pasteurized)', 0.5, 'cups'),
@@ -579,7 +579,7 @@ def init_db():
             'name': 'Strawberry Champagne Celebration Cake',
             'category': 'Celebration',
             'description': 'Light champagne chiffon layers with fresh strawberry compote, champagne Italian meringue buttercream, and a sugar-shard crown.',
-            'servings': 20, 'prep_mins': 150, 'bake_mins': 28, 'base_price': 295.00,
+            'servings': 20, 'prep_mins': 150, 'bake_mins': 28, 'base_price': 165.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 3.5, 'cups'), ('Granulated Sugar', 2.5, 'cups'),
                 ('Eggs (Large AA)', 5.0, 'each'), ('Egg Whites (Pasteurized)', 0.75, 'cups'),
@@ -600,7 +600,7 @@ def init_db():
             'name': 'Valrhona Chocolate Lava Cakes',
             'category': 'Dessert',
             'description': 'Individual molten chocolate cakes with a Valrhona 70% dark chocolate center that flows when cut. Served with crème anglaise and edible gold dust.',
-            'servings': 8, 'prep_mins': 30, 'bake_mins': 12, 'base_price': 85.00,
+            'servings': 8, 'prep_mins': 30, 'bake_mins': 12, 'base_price': 52.00,
             'ingredients': [
                 ('Valrhona Dark Chocolate 70%', 0.5, 'lbs'), ('Unsalted Butter (European)', 0.5, 'cups'),
                 ('Eggs (Large AA)', 4.0, 'each'), ('Granulated Sugar', 0.5, 'cups'),
@@ -617,7 +617,7 @@ def init_db():
             'name': 'Pistachio Raspberry Wedding Tiers',
             'category': 'Wedding',
             'description': 'Three-tier wedding cake: pistachio sponge with fresh raspberry jam, whipped white chocolate ganache, and fondant-finished tiers with handcrafted sugar roses. Serves 60.',
-            'servings': 60, 'prep_mins': 480, 'bake_mins': 40, 'base_price': 850.00,
+            'servings': 60, 'prep_mins': 480, 'bake_mins': 40, 'base_price': 495.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 6.0, 'cups'), ('Pistachios (Raw, Shelled)', 2.0, 'cups'),
                 ('Granulated Sugar', 5.0, 'cups'), ('Unsalted Butter (European)', 3.0, 'cups'),
@@ -641,7 +641,7 @@ def init_db():
             'name': 'Black Forest Gateau',
             'category': 'Cake',
             'description': 'Black cocoa sponge with Morello cherry compote, kirsch syrup, and clouds of freshly whipped cream. Chocolate shavings and glazed cherries on top.',
-            'servings': 14, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 155.00,
+            'servings': 14, 'prep_mins': 90, 'bake_mins': 30, 'base_price': 98.00,
             'ingredients': [
                 ('Black Cocoa Powder', 0.75, 'cups'), ('Cake Flour (High-Protein)', 2.0, 'cups'),
                 ('Granulated Sugar', 2.0, 'cups'), ('Eggs (Large AA)', 4.0, 'each'),
@@ -661,7 +661,7 @@ def init_db():
             'name': 'Earl Grey & Honey Chiffon Cake',
             'category': 'Cake',
             'description': 'Earl Grey-infused chiffon layers with whipped honey mascarpone, fresh orange curd, and a candied citrus crown.',
-            'servings': 12, 'prep_mins': 80, 'bake_mins': 35, 'base_price': 175.00,
+            'servings': 12, 'prep_mins': 80, 'bake_mins': 35, 'base_price': 110.00,
             'ingredients': [
                 ('Cake Flour (High-Protein)', 2.0, 'cups'), ('Granulated Sugar', 1.5, 'cups'),
                 ('Eggs (Large AA)', 5.0, 'each'), ('Cream of Tartar', 0.5, 'tsp'),
@@ -679,7 +679,7 @@ def init_db():
             'name': 'Classic Tarte Tatin',
             'category': 'Pastry',
             'description': 'Upside-down caramelized apple tart in buttery rough puff pastry. Amber Demerara caramel, salted butter, and perfectly softened apples. Served warm with crème fraiche.',
-            'servings': 8, 'prep_mins': 60, 'bake_mins': 40, 'base_price': 80.00,
+            'servings': 8, 'prep_mins': 60, 'bake_mins': 40, 'base_price': 48.00,
             'ingredients': [
                 ('All-Purpose Flour', 2.0, 'cups'), ('Unsalted Butter (European)', 1.0, 'cups'),
                 ('Granulated Sugar', 1.0, 'cups'), ('Demerara Sugar', 0.5, 'cups'),
@@ -696,7 +696,7 @@ def init_db():
             'name': 'Beurre Croissants (Laminated)',
             'category': 'Viennoiserie',
             'description': 'Classic laminated croissants with 27 buttery layers. 84% fat European butter locked into a yeasted dough through four double turns. Golden, shattering exterior with honeycomb crumb.',
-            'servings': 12, 'prep_mins': 720, 'bake_mins': 20, 'base_price': 48.00,
+            'servings': 12, 'prep_mins': 720, 'bake_mins': 20, 'base_price': 28.00,
             'ingredients': [
                 ('Bread Flour', 4.0, 'cups'), ('Granulated Sugar', 0.25, 'cups'),
                 ('Fine Sea Salt', 1.5, 'tsp'), ('Unsalted Butter (European)', 2.5, 'cups'),
@@ -711,7 +711,7 @@ def init_db():
             'name': 'Creme Brulee Tart',
             'category': 'Pastry',
             'description': 'Crisp pate sucree shell filled with silky vanilla creme brulee custard, torched Demerara sugar crust, finished with edible gold dust and seasonal berries.',
-            'servings': 10, 'prep_mins': 60, 'bake_mins': 45, 'base_price': 95.00,
+            'servings': 10, 'prep_mins': 60, 'bake_mins': 45, 'base_price': 58.00,
             'ingredients': [
                 ('All-Purpose Flour', 1.5, 'cups'), ('Powdered Sugar (10X)', 0.5, 'cups'),
                 ('Unsalted Butter (European)', 0.5, 'cups'), ('Eggs (Large AA)', 3.0, 'each'),
@@ -1883,13 +1883,13 @@ def special_toggle(special_id):
 
 # Cake size/flavor/tier pricing (can be overridden by env or DB later)
 CAKE_SIZES = [
-    {'label': '6" Round (serves 8-10)',    'price': 45,  'emoji': '🎂'},
-    {'label': '8" Round (serves 12-16)',   'price': 65,  'emoji': '🎂'},
-    {'label': '10" Round (serves 20-24)',  'price': 90,  'emoji': '🎂'},
-    {'label': '12" Round (serves 28-35)', 'price': 120, 'emoji': '🎂'},
-    {'label': '2-Tier (serves 30-40)',    'price': 175, 'emoji': '✨'},
-    {'label': '3-Tier (serves 60-80)',    'price': 275, 'emoji': '✨'},
-    {'label': 'Sheet Cake (serves 24-48)','price': 95,  'emoji': '🎂'},
+    {'label': '6" Round (serves 8-10)',    'price': 38,  'emoji': '🎂'},
+    {'label': '8" Round (serves 12-16)',   'price': 52,  'emoji': '🎂'},
+    {'label': '10" Round (serves 20-24)',  'price': 72,  'emoji': '🎂'},
+    {'label': '12" Round (serves 28-35)', 'price': 98,  'emoji': '🎂'},
+    {'label': '2-Tier (serves 30-40)',    'price': 145, 'emoji': '✨'},
+    {'label': '3-Tier (serves 60-80)',    'price': 235, 'emoji': '✨'},
+    {'label': 'Sheet Cake (serves 24-48)','price': 75,  'emoji': '🎂'},
 ]
 
 FLAVORS = [
@@ -1907,13 +1907,13 @@ FLAVORS = [
 
 ADD_ONS = [
     {'name': 'Custom Message',          'price': 0,  'desc': 'Personalized text piped on your cake'},
-    {'name': 'Fondant Decorations',     'price': 25, 'desc': 'Custom fondant figures, flowers, or toppers'},
-    {'name': 'Fresh Flowers',           'price': 20, 'desc': 'Real edible flowers or silk florals'},
-    {'name': 'Gold/Silver Leaf',        'price': 30, 'desc': 'Luxurious metallic leaf accent details'},
-    {'name': 'Photo Print Topper',      'price': 15, 'desc': 'Edible photo printed on frosting sheet'},
-    {'name': 'Extra Frosting Layer',    'price': 10, 'desc': 'Double the frosting — because why not?'},
-    {'name': 'Gluten-Free Option',      'price': 15, 'desc': 'Gluten-free flour blend at no compromise in taste'},
-    {'name': 'Vegan Option',            'price': 15, 'desc': '100% plant-based ingredients'},
+    {'name': 'Fondant Decorations',     'price': 20, 'desc': 'Custom fondant figures, flowers, or toppers'},
+    {'name': 'Fresh Flowers',           'price': 15, 'desc': 'Real edible flowers or silk florals'},
+    {'name': 'Gold/Silver Leaf',        'price': 20, 'desc': 'Luxurious metallic leaf accent details'},
+    {'name': 'Photo Print Topper',      'price': 12, 'desc': 'Edible photo printed on frosting sheet'},
+    {'name': 'Extra Frosting Layer',    'price': 8,  'desc': 'Double the frosting — because why not?'},
+    {'name': 'Gluten-Free Option',      'price': 10, 'desc': 'Gluten-free flour blend at no compromise in taste'},
+    {'name': 'Vegan Option',            'price': 10, 'desc': '100% plant-based ingredients'},
 ]
 
 

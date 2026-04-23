@@ -227,7 +227,7 @@ minDate.setDate(minDate.getDate() + 5);
 document.querySelector('input[name="pickup_date"]').min = minDate.toISOString().split('T')[0];
 
 let sizePrice = 0, addonTotal = 0;
-const addonPrices = { 'Fondant Decorations':25,'Fresh Flowers':20,'Gold/Silver Leaf':30,'Photo Print Topper':15,'Extra Frosting Layer':10,'Gluten-Free Option':15,'Vegan Option':15 };
+const addonPrices = { 'Fondant Decorations':20,'Fresh Flowers':15,'Gold/Silver Leaf':20,'Photo Print Topper':12,'Extra Frosting Layer':8,'Gluten-Free Option':10,'Vegan Option':10 };
 
 function selectSize(el, price, label) {
   document.querySelectorAll('#sizeGrid .opt-card').forEach(c => c.classList.remove('selected'));
