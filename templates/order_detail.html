@@ -16,6 +16,19 @@
   {% endif %}
 </div>
 
+{% if notify %}
+<div style="background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);border-radius:12px;padding:14px 18px;margin-bottom:20px">
+  <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--green);margin-bottom:8px">📱 Customer Notification Ready</div>
+  <div style="font-size:.88rem;line-height:1.6;color:var(--text);background:var(--card2);border-radius:8px;padding:12px;border:1px solid var(--border);margin-bottom:10px;font-family:monospace;white-space:pre-wrap;word-break:break-word" id="notifyText">{{ notify }}</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="navigator.clipboard.writeText(document.getElementById('notifyText').innerText);this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 Copy Text',2000)" class="btn btn-success btn-sm">📋 Copy Text</button>
+    {% if order.customer_phone %}
+    <a href="sms:{{ order.customer_phone }}?body={{ notify|urlencode }}" class="btn btn-primary btn-sm">💬 Open in Messages</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <div class="grid-2">
   <!-- Left: Order details -->
   <div style="display:flex;flex-direction:column;gap:16px">
@@ -42,6 +55,39 @@
           {{ s.replace('_',' ')|title }}
         </button>
         {% endfor %}
+      </form>
+    </div>
+
+    <!-- Reference Photos -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">🖼️ Reference Photos</div>
+      {% if photos %}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        {% for p in photos %}
+        <div style="position:relative;max-width:140px">
+          <a href="{{ p.filename }}" target="_blank">
+            <img src="{{ p.filename }}" alt="{{ p.caption }}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+          </a>
+          {% if p.caption %}<div style="font-size:.72rem;color:var(--muted);margin-top:3px;text-align:center">{{ p.caption[:30] }}</div>{% endif %}
+          <form method="POST" action="/orders/{{ order.id }}/delete-photo/{{ p.id }}" style="position:absolute;top:4px;right:4px">
+            <button type="submit" style="background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Remove">✕</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">No reference photos yet.</div>
+      {% endif %}
+      <form method="POST" action="/orders/{{ order.id }}/upload-photo" style="border-top:1px solid var(--border);padding-top:12px">
+        <div class="form-group">
+          <label class="form-label">Add Photo URL</label>
+          <input name="photo_url" class="form-control" placeholder="https://... (Instagram, Pinterest, etc.)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Caption (opt)</label>
+          <input name="caption" class="form-control" placeholder="Design reference, flavor inspiration...">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">+ Add Photo</button>
       </form>
     </div>
 

@@ -3,6 +3,26 @@
 {% block page_title %}👥 Customers{% endblock %}
 {% block content %}
 
+{% if upcoming_birthdays %}
+<div style="background:rgba(244,114,182,.08);border:1px solid rgba(244,114,182,.25);border-radius:12px;padding:14px 18px;margin-bottom:20px">
+  <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--pink);margin-bottom:10px">🎂 Upcoming Birthdays (next 14 days)</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px">
+    {% for b in upcoming_birthdays %}
+    <div style="background:var(--card);border:1px solid rgba(244,114,182,.2);border-radius:10px;padding:10px 14px;min-width:200px">
+      <div style="font-weight:700;font-size:.9rem">{{ b.customer.name }}</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">🎂 {{ b.bday }}
+        {% if b.days_away == 0 %}<span style="color:var(--pink);font-weight:700"> — TODAY!</span>
+        {% elif b.days_away == 1 %}<span style="color:var(--yellow);font-weight:700"> — Tomorrow</span>
+        {% else %}<span style="color:var(--muted)"> — in {{ b.days_away }} days</span>{% endif %}
+      </div>
+      {% if b.customer.phone %}<div style="font-size:.75rem;color:var(--muted)">📞 {{ b.customer.phone }}</div>{% endif %}
+      {% if b.customer.email %}<div style="font-size:.75rem;color:var(--muted)">📧 {{ b.customer.email }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <form method="GET" style="display:flex;gap:8px;margin-bottom:20px">
   <input name="q" value="{{ q }}" placeholder="Search by name, email, phone..." class="form-control" style="max-width:340px">
   <button type="submit" class="btn btn-ghost">Search</button>

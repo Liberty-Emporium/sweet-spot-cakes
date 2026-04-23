@@ -79,6 +79,7 @@
         <div class="stat-chip"><strong>{{ orders|length }}</strong> Orders</div>
         <div class="stat-chip"><strong>${{ "%.2f"|format(total_spent) }}</strong> Total Spent</div>
       </div>
+      <a href="/suppliers/{{ s.id }}/auto-po" class="btn btn-ghost btn-xs">📦 Auto-PO</a>
       <form method="POST" action="/suppliers/{{ s.id }}/delete" onsubmit="return confirm('Delete {{ s.name }}?')" style="display:inline">
         <button type="submit" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:4px 12px;font-size:.78rem;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑 Delete</button>
       </form>

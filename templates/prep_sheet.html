@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Daily Prep Sheet — {{ bakery }}{% endblock %}
+{% block page_title %}📋 Daily Prep Sheet{% endblock %}
+{% block topbar_right %}
+<button onclick="window.print()" class="btn btn-ghost btn-sm">🖨️ Print</button>
+{% endblock %}
+{% block extra_css %}
+<style>
+  @media print {
+    .sidebar,.topbar,.no-print{display:none!important}
+    .main{margin-left:0!important}
+    body{background:#fff!important;color:#000!important}
+    .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid}
+  }
+  .day-badge { font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:10px; }
+  .day-today { background:rgba(244,114,182,.15);color:var(--pink);border:1px solid rgba(244,114,182,.3); }
+  .day-tomorrow { background:rgba(96,165,250,.12);color:var(--blue);border:1px solid rgba(96,165,250,.25); }
+  .day-after { background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2); }
+  .need-ok  { color:var(--green);font-size:.75rem }
+  .need-low { color:var(--yellow);font-size:.75rem }
+  .need-out { color:var(--red);font-size:.75rem }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+  <div style="font-size:.88rem;color:var(--muted)">Orders due: <strong>{{ today }}</strong> · <strong>{{ tomorrow }}</strong> · <strong>{{ day_after }}</strong></div>
+  <div style="margin-left:auto;font-size:.82rem;color:var(--muted)">{{ orders|length }} order(s) in window</div>
+</div>
+
+{% if not orders %}
+<div style="text-align:center;padding:60px;color:var(--muted)">
+  <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+  <div style="font-weight:600;margin-bottom:6px">No orders due in the next 48 hours!</div>
+  <div style="font-size:.85rem">Enjoy the break.</div>
+</div>
+{% else %}
+
+<!-- Orders section -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="margin-bottom:14px">🎂 Orders to Produce</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for o in orders %}
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          {% if o.pickup_date == today %}
+            <span class="day-badge day-today">Today</span>
+          {% elif o.pickup_date == tomorrow %}
+            <span class="day-badge day-tomorrow">Tomorrow</span>
+          {% else %}
+            <span class="day-badge day-after">{{ o.pickup_date }}</span>
+          {% endif %}
+          {% if o.pickup_time %}<span style="font-size:.78rem;color:var(--muted)">@ {{ o.pickup_time }}</span>{% endif %}
+          <span class="badge badge-{{ o.status.replace('in_production','production') }}">{{ o.status }}</span>
+        </div>
+        <div style="font-weight:700;font-size:.95rem">{{ o.customer_name }}</div>
+        <div style="font-size:.75rem;color:var(--pink);font-family:monospace">{{ o.order_number }}</div>
+        {% if o.special_notes %}<div style="font-size:.8rem;color:var(--yellow);margin-top:4px;padding:5px 8px;background:rgba(251,191,36,.08);border-radius:6px;border-left:2px solid var(--yellow)">⚠️ {{ o.special_notes }}</div>{% endif %}
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800;color:var(--pink)">${{ "%.2f"|format(o.total or 0) }}</div>
+        {% if not o.paid_in_full %}<div style="font-size:.75rem;color:var(--yellow)">💰 Balance: ${{ "%.2f"|format(o.balance_due or 0) }}</div>{% else %}<div style="font-size:.75rem;color:var(--green)">✅ Paid</div>{% endif %}
+      </div>
+      <a href="/kitchen/order/{{ o.id }}" class="btn btn-ghost btn-xs no-print" style="align-self:center">Production Sheet →</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Ingredient pull list -->
+<div class="card">
+  <div class="card-title" style="margin-bottom:4px">🥄 Ingredient Pull List</div>
+  <div style="font-size:.78rem;color:var(--muted);margin-bottom:14px">Combined across all recipe-linked items in the 48hr window</div>
+  {% if ingredient_needs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Ingredient</th><th>Need</th><th>Unit</th><th>In Stock</th><th>Status</th><th>✓</th></tr></thead>
+      <tbody>
+      {% for name, info in ingredient_needs %}
+      <tr>
+        <td style="font-weight:600;font-size:.88rem">{{ name }}</td>
+        <td style="font-weight:700;color:var(--pink);font-family:monospace">{{ info.needed | round(2) }}</td>
+        <td style="font-size:.78rem;color:var(--muted)">{{ info.unit }}</td>
+        <td style="font-family:monospace;font-size:.85rem">{{ info.stock | round(2) }}</td>
+        <td>
+          {% if info.stock <= 0 %}
+            <span class="need-out">⛔ OUT OF STOCK</span>
+          {% elif info.stock < info.needed %}
+            <span class="need-low">⚠️ LOW — short by {{ (info.needed - info.stock) | round(2) }}</span>
+          {% else %}
+            <span class="need-ok">✅ OK</span>
+          {% endif %}
+        </td>
+        <td><input type="checkbox" style="cursor:pointer;width:16px;height:16px"></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="color:var(--muted);font-size:.85rem;padding:20px;text-align:center">
+    No recipe-linked items in these orders yet. <a href="/recipes" style="color:var(--pink)">Link recipes →</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

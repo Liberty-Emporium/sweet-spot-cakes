@@ -884,8 +884,34 @@ def order_detail(order_id):
     if not order: flash('Order not found.', 'error'); return redirect(url_for('orders'))
     items = db.execute("SELECT * FROM order_items WHERE order_id=?", (order_id,)).fetchall()
     receipts = db.execute("SELECT * FROM receipts WHERE order_id=? ORDER BY created", (order_id,)).fetchall()
+    notify   = request.args.get('notify', '')
+    photos   = db.execute('SELECT * FROM order_photos WHERE order_id=? ORDER BY created', (order_id,)).fetchall()
     return render_template('order_detail.html', order=order, items=items,
-                           receipts=receipts, stripe_pk=STRIPE_PK, bakery=BAKERY_NAME)
+                           receipts=receipts, notify=notify, photos=photos,
+                           stripe_pk=STRIPE_PK, bakery=BAKERY_NAME)
+
+@app.route('/orders/<int:order_id>/upload-photo', methods=['POST'])
+@login_required
+def order_upload_photo(order_id):
+    db = get_db()
+    url     = request.form.get('photo_url', '').strip()
+    caption = request.form.get('caption', '').strip()
+    if not url:
+        flash('Please provide a photo URL.', 'error')
+        return redirect(url_for('order_detail', order_id=order_id))
+    db.execute('INSERT INTO order_photos(order_id, filename, caption) VALUES(?,?,?)',
+               (order_id, url, caption))
+    db.commit()
+    flash('Reference photo added.', 'success')
+    return redirect(url_for('order_detail', order_id=order_id))
+
+@app.route('/orders/<int:order_id>/delete-photo/<int:photo_id>', methods=['POST'])
+@login_required
+def order_delete_photo(order_id, photo_id):
+    db = get_db()
+    db.execute('DELETE FROM order_photos WHERE id=? AND order_id=?', (photo_id, order_id))
+    db.commit()
+    return redirect(url_for('order_detail', order_id=order_id))
 
 @app.route('/orders/<int:order_id>/add-item', methods=['POST'])
 @login_required

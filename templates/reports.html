@@ -16,6 +16,18 @@
     <div class="stat-num yellow">${{ "%.2f"|format(revenue_month / orders_month if orders_month else 0) }}</div>
     <div class="stat-label">Avg Order Value</div>
   </div>
+  <div class="stat-tile">
+    <div class="stat-num red">${{ "%.2f"|format(expenses_month) }}</div>
+    <div class="stat-label">Expenses This Month</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num red">${{ "%.2f"|format(payroll_month) }}</div>
+    <div class="stat-label">Est. Payroll</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-num {% if profit_month >= 0 %}green{% else %}red{% endif %}">${{ "%.2f"|format(profit_month) }}</div>
+    <div class="stat-label">Est. Profit</div>
+  </div>
 </div>
 
 <div class="grid-2" style="margin-bottom:20px">
@@ -64,6 +76,28 @@
   </div>
 
 </div>
+
+<!-- Expenses by Category -->
+{% if expense_by_cat %}
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="margin-bottom:14px">💸 Expenses by Category</div>
+  {% set max_exp = expense_by_cat[0].total if expense_by_cat else 1 %}
+  {% for row in expense_by_cat %}
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:4px">
+      <span style="font-weight:600">{{ row.category }}</span>
+      <span style="color:var(--red);font-weight:700">${{ "%.2f"|format(row.total) }}</span>
+    </div>
+    <div style="height:5px;background:var(--card2);border-radius:3px;overflow:hidden">
+      <div style="height:100%;background:linear-gradient(90deg,#f87171,#ef4444);border-radius:3px;width:{{ [((row.total/max_exp)*100)|int,100]|min }}%"></div>
+    </div>
+  </div>
+  {% endfor %}
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:.82rem">
+    <a href="/expenses" style="color:var(--pink)">View all expenses →</a>
+  </div>
+</div>
+{% endif %}
 
 <!-- Employee Hours -->
 <div class="card">

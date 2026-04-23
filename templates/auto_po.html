@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Auto Purchase Order — {{ supplier.name }}{% endblock %}
+{% block page_title %}📦 Auto Purchase Order{% endblock %}
+{% block topbar_right %}
+<a href="/suppliers" class="btn btn-ghost btn-sm">← Suppliers</a>
+{% endblock %}
+{% block content %}
+
+<div class="card" style="margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:1.1rem;font-weight:800">🏭 {{ supplier.name }}</div>
+      {% if supplier.phone %}<div style="font-size:.82rem;color:var(--muted)">📞 {{ supplier.phone }}</div>{% endif %}
+      {% if supplier.email %}<div style="font-size:.82rem;color:var(--muted)">📧 {{ supplier.email }}</div>{% endif %}
+    </div>
+    <div style="margin-left:auto;padding:10px 16px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;font-size:.85rem;color:var(--yellow)">
+      ⚠️ <strong>{{ low_items|length }}</strong> item(s) at or below reorder level
+    </div>
+  </div>
+</div>
+
+{% if not low_items %}
+<div style="text-align:center;padding:60px;color:var(--muted)">
+  <div style="font-size:3rem;margin-bottom:12px">✅</div>
+  <div style="font-weight:600">No low-stock items for this supplier!</div>
+  <div style="font-size:.85rem;margin-top:8px">All items are above reorder levels.</div>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="card-title" style="margin-bottom:14px">🛒 Pre-filled Purchase Order</div>
+  <div style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Review quantities and prices below, then submit to log this purchase.</div>
+
+  <form method="POST" action="/suppliers/{{ supplier.id }}/purchase" id="autoPOForm">
+
+    <div id="line-items">
+      {% for item in low_items %}
+      <div class="line-item-row" style="display:grid;grid-template-columns:1fr 90px 100px 90px 32px;gap:8px;align-items:center;margin-bottom:10px;padding:10px;background:var(--card2);border-radius:8px;border:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600;font-size:.88rem">{{ item.name }}</div>
+          <div style="font-size:.72rem;color:var(--muted)">In stock: {{ item.quantity }} {{ item.unit }} · Reorder at: {{ item.reorder_level }}</div>
+        </div>
+        <div>
+          <label style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Qty</label>
+          <input type="number" name="qty" step="0.01" min="0.01"
+                 value="{{ [(item.reorder_level - item.quantity + item.reorder_level * 0.5)|round(1), 1]|max }}"
+                 class="form-control" style="padding:5px 8px;font-size:.85rem" required>
+        </div>
+        <div>
+          <label style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Unit ({{ item.unit }})</label>
+          <input type="text" value="{{ item.unit }}" class="form-control" style="padding:5px 8px;font-size:.85rem" readonly tabindex="-1">
+        </div>
+        <div>
+          <label style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">$/unit</label>
+          <input type="number" name="unit_cost" step="0.01" min="0"
+                 value="{{ '%.2f'|format(item.last_price or item.cost_per_unit or 0) }}"
+                 class="form-control" style="padding:5px 8px;font-size:.85rem" required>
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+          <input type="hidden" name="ingredient_id" value="{{ item.id }}">
+          <button type="button" onclick="this.closest('.line-item-row').remove()" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.8rem">✕</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="form-group" style="flex:1;min-width:200px">
+        <label class="form-label">Notes (optional)</label>
+        <input name="notes" class="form-control" placeholder="Delivery notes, reference #, etc.">
+      </div>
+      <div class="form-group" style="max-width:160px">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-control">
+          <option value="received">✅ Received (update stock)</option>
+          <option value="pending">⏳ Pending (ordered)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button type="submit" class="btn btn-primary">📦 Submit Purchase Order</button>
+      <a href="/suppliers" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

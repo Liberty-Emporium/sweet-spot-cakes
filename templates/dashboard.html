@@ -60,7 +60,10 @@
   <div class="card">
     <div class="card-header">
       <div class="card-title">⚠️ Low Stock Alert</div>
-      <a href="/inventory" class="btn btn-ghost btn-sm">View All</a>
+      <div style="display:flex;gap:6px">
+        <a href="/prep-sheet" class="btn btn-ghost btn-sm">📋 Prep Sheet</a>
+        <a href="/inventory" class="btn btn-ghost btn-sm">View All</a>
+      </div>
     </div>
     {% if low_stock %}
     <div style="display:flex;flex-direction:column;gap:6px">
