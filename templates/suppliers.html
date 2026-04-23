@@ -56,8 +56,8 @@
 
 {% for entry in supplier_data %}
 {% set s = entry.supplier %}
-{% set items = entry.items %}
-{% set orders = entry.orders %}
+{% set items = entry.inv_items %}
+{% set orders = entry.po_orders %}
 {% set total_spent = entry.total_spent %}
 
 <div class="sup-card">
@@ -171,8 +171,8 @@
 
       <!-- History List -->
       {% if orders %}
-        {% for entry in orders %}
-        {% set po = entry.po %}
+        {% for po_entry in orders %}
+        {% set po = po_entry.po %}
         <div class="po-row">
           <div class="po-row-head">
             <div>
@@ -186,9 +186,9 @@
               </span>
             </div>
           </div>
-          {% if entry.items %}
+          {% if po_entry['items'] %}
           <div class="po-items-list">
-            {% for item in entry.items %}
+            {% for item in po_entry['items'] %}
             <span class="po-item-chip">{{ item.name }} × {{ item.quantity }} {{ item.unit }} @ ${{ "%.2f"|format(item.unit_cost) }}</span>
             {% endfor %}
           </div>

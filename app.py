@@ -1494,8 +1494,8 @@ def suppliers():
 
         supplier_data.append({
             'supplier': s,
-            'items': items,
-            'orders': po_list,
+            'inv_items': list(items),
+            'po_orders': po_list,
             'total_spent': total_spent
         })
 
