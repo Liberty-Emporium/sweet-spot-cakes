@@ -1401,7 +1401,55 @@ def api_recipe_tools_remove(rt_id):
 def suppliers():
     db = get_db()
     all_suppliers = db.execute("SELECT * FROM suppliers WHERE active=1 ORDER BY name").fetchall()
-    return render_template('suppliers.html', suppliers=all_suppliers, bakery=BAKERY_NAME)
+
+    # For each supplier: linked inventory items + purchase order history
+    supplier_data = []
+    for s in all_suppliers:
+        # Inventory items linked to this supplier
+        items = db.execute(
+            '''SELECT name, unit, quantity, reorder_level, cost_per_unit
+               FROM ingredients WHERE supplier_id=? ORDER BY name''',
+            (s['id'],)
+        ).fetchall()
+
+        # Purchase order history with line items
+        pos = db.execute(
+            '''SELECT po.id, po.status, po.total, po.ordered_at, po.received_at, po.notes
+               FROM purchase_orders po
+               WHERE po.supplier_id=?
+               ORDER BY po.created DESC LIMIT 10''',
+            (s['id'],)
+        ).fetchall()
+
+        po_list = []
+        for po in pos:
+            po_items = db.execute(
+                '''SELECT i.name, pi.quantity, pi.unit_cost, i.unit
+                   FROM po_items pi JOIN ingredients i ON i.id=pi.ingredient_id
+                   WHERE pi.po_id=?''',
+                (po['id'],)
+            ).fetchall()
+            po_list.append({'po': po, 'items': po_items})
+
+        # Total spent with this supplier
+        total_spent = db.execute(
+            '''SELECT COALESCE(SUM(total),0) FROM purchase_orders
+               WHERE supplier_id=? AND status=\"received\"''',
+            (s['id'],)
+        ).fetchone()[0]
+
+        supplier_data.append({
+            'supplier': s,
+            'items': items,
+            'orders': po_list,
+            'total_spent': total_spent
+        })
+
+    # All ingredients for the "add PO" form
+    all_ingredients = db.execute('SELECT id, name, unit, cost_per_unit FROM ingredients ORDER BY name').fetchall()
+
+    return render_template('suppliers.html', supplier_data=supplier_data,
+                           all_ingredients=all_ingredients, bakery=BAKERY_NAME)
 
 @app.route('/suppliers/add', methods=['POST'])
 @login_required
@@ -1413,6 +1461,58 @@ def supplier_add():
     db.commit()
     flash('Supplier added.', 'success')
     return redirect(url_for('suppliers'))
+
+@app.route('/suppliers/<int:supplier_id>/purchase', methods=['POST'])
+@login_required
+def supplier_purchase(supplier_id):
+    """Log a purchase/delivery from a supplier."""
+    db = get_db()
+    notes      = request.form.get('notes', '')
+    status     = request.form.get('status', 'received')
+    ing_ids    = request.form.getlist('ingredient_id')
+    quantities = request.form.getlist('qty')
+    unit_costs = request.form.getlist('unit_cost')
+
+    if not ing_ids:
+        flash('Add at least one item.', 'error')
+        return redirect(url_for('suppliers'))
+
+    total = 0.0
+    line_items = []
+    for ing_id, qty, uc in zip(ing_ids, quantities, unit_costs):
+        try:
+            qty    = float(qty)
+            uc     = float(uc)
+            if qty <= 0: continue
+            total += qty * uc
+            line_items.append((int(ing_id), qty, uc))
+        except (ValueError, TypeError):
+            continue
+
+    if not line_items:
+        flash('No valid items.', 'error')
+        return redirect(url_for('suppliers'))
+
+    now = datetime.date.today().isoformat()
+    cur = db.execute(
+        '''INSERT INTO purchase_orders(supplier_id, status, total, notes, ordered_at, received_at)
+           VALUES (?,?,?,?,?,?)''',
+        (supplier_id, status, total, notes, now, now if status == 'received' else None)
+    )
+    po_id = cur.lastrowid
+
+    for ing_id, qty, uc in line_items:
+        db.execute('INSERT INTO po_items(po_id, ingredient_id, quantity, unit_cost) VALUES(?,?,?,?)',
+                   (po_id, ing_id, qty, uc))
+        if status == 'received':
+            # Update inventory quantity and cost_per_unit
+            db.execute('UPDATE ingredients SET quantity=quantity+?, cost_per_unit=? WHERE id=?',
+                       (qty, uc, ing_id))
+
+    db.commit()
+    flash(f'Purchase logged! Total: ${total:.2f}', 'success')
+    return redirect(url_for('suppliers'))
+
 
 @app.route('/suppliers/<int:supplier_id>/delete', methods=['POST'])
 @login_required

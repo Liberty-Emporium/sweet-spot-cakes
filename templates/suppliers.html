@@ -2,34 +2,207 @@
 {% block title %}Suppliers — {{ bakery }}{% endblock %}
 {% block page_title %}🚚 Suppliers{% endblock %}
 {% block content %}
+<style>
+  .sup-card { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:2rem; overflow:hidden; }
+  .sup-header { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:1rem; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); }
+  .sup-name { font-size:1.05rem; font-weight:800; margin-bottom:4px; }
+  .sup-meta { display:flex; flex-wrap:wrap; gap:12px; font-size:.8rem; color:var(--muted); }
+  .sup-body { padding:1.25rem 1.5rem; }
+  .sup-section { margin-bottom:1.25rem; }
+  .sup-section-title { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:.6rem; }
 
-<div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+  /* Inventory items table */
+  .inv-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .inv-table th { text-align:left; color:var(--muted); font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; padding:5px 10px; border-bottom:1px solid var(--border); }
+  .inv-table td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; }
+  .inv-table tr:last-child td { border-bottom:none; }
+  .low-badge { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); border-radius:20px; padding:1px 8px; font-size:.7rem; font-weight:700; }
+  .ok-badge  { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.25); border-radius:20px; padding:1px 8px; font-size:.7rem; font-weight:700; }
+  .out-badge { background:rgba(239,68,68,.12); color:#ef4444; border:1px solid rgba(239,68,68,.25); border-radius:20px; padding:1px 8px; font-size:.7rem; font-weight:700; }
+
+  /* PO history */
+  .po-row { background:rgba(255,255,255,.03); border-radius:8px; padding:10px 14px; margin-bottom:8px; }
+  .po-row-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .po-date { font-size:.78rem; color:var(--muted); }
+  .po-total { font-weight:700; color:var(--pink); }
+  .po-status { font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .po-received { background:rgba(34,197,94,.15); color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+  .po-pending  { background:rgba(251,191,36,.15); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+  .po-items-list { display:flex; flex-wrap:wrap; gap:6px; }
+  .po-item-chip { font-size:.73rem; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:6px; padding:2px 8px; color:var(--text); }
+
+  .no-data { color:var(--muted); font-size:.82rem; font-style:italic; }
+
+  /* Log purchase form */
+  .log-form { background:rgba(244,114,182,.04); border:1px solid rgba(244,114,182,.15); border-radius:10px; padding:1rem; margin-top:.5rem; display:none; }
+  .line-item-row { display:grid; grid-template-columns:1fr 90px 100px 32px; gap:8px; align-items:center; margin-bottom:8px; }
+  .line-item-row select, .line-item-row input { font-size:.82rem; }
+
+  .stats-row { display:flex; gap:1rem; flex-wrap:wrap; }
+  .stat-chip { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:.82rem; }
+  .stat-chip strong { display:block; font-size:1rem; font-weight:800; color:var(--pink); }
+</style>
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;gap:8px">
   <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Supplier</button>
 </div>
 
-<div class="grid-3">
-  {% for s in suppliers %}
-  <div class="card" style="transition:border-color .2s" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--border)'">
-    <div style="font-size:1.4rem;margin-bottom:8px">🏭</div>
-    <div style="font-weight:700;font-size:.95rem;margin-bottom:6px">{{ s.name }}</div>
-    {% if s.contact %}<div style="font-size:.82rem;color:var(--muted)">👤 {{ s.contact }}</div>{% endif %}
-    {% if s.email %}<div style="font-size:.82rem;color:var(--muted)">📧 {{ s.email }}</div>{% endif %}
-    {% if s.phone %}<div style="font-size:.82rem;color:var(--muted)">📞 {{ s.phone }}</div>{% endif %}
-    {% if s.address %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px">📍 {{ s.address }}</div>{% endif %}
-    {% if s.notes %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic">{{ s.notes }}</div>{% endif %}
-    <div style="margin-top:12px;text-align:right">
-      <form method="POST" action="/suppliers/{{ s.id }}/delete" onsubmit="return confirm('Delete {{ s.name }}? This cannot be undone.')">
+{% if not supplier_data %}
+<div style="text-align:center;padding:48px;color:var(--muted)">
+  <div style="font-size:3rem;margin-bottom:12px">🚚</div>
+  <div>No suppliers yet. Add your first one!</div>
+</div>
+{% endif %}
+
+{% for entry in supplier_data %}
+{% set s = entry.supplier %}
+{% set items = entry.items %}
+{% set orders = entry.orders %}
+{% set total_spent = entry.total_spent %}
+
+<div class="sup-card">
+  <!-- Header -->
+  <div class="sup-header">
+    <div>
+      <div class="sup-name">🏭 {{ s.name }}</div>
+      <div class="sup-meta">
+        {% if s.contact %}<span>👤 {{ s.contact }}</span>{% endif %}
+        {% if s.phone %}<span>📞 {{ s.phone }}</span>{% endif %}
+        {% if s.email %}<span>📧 {{ s.email }}</span>{% endif %}
+        {% if s.address %}<span>📍 {{ s.address }}</span>{% endif %}
+      </div>
+      {% if s.notes %}<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic">{{ s.notes }}</div>{% endif %}
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+      <div class="stats-row">
+        <div class="stat-chip"><strong>{{ items|length }}</strong> Items</div>
+        <div class="stat-chip"><strong>{{ orders|length }}</strong> Orders</div>
+        <div class="stat-chip"><strong>${{ "%.2f"|format(total_spent) }}</strong> Total Spent</div>
+      </div>
+      <form method="POST" action="/suppliers/{{ s.id }}/delete" onsubmit="return confirm('Delete {{ s.name }}?')" style="display:inline">
         <button type="submit" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:4px 12px;font-size:.78rem;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑 Delete</button>
       </form>
     </div>
   </div>
-  {% else %}
-  <div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
-    <div style="font-size:3rem;margin-bottom:12px">🚚</div>
-    <div>No suppliers yet. Add your first one!</div>
-  </div>
-  {% endfor %}
-</div>
+
+  <div class="sup-body">
+
+    <!-- ── Inventory Items ── -->
+    <div class="sup-section">
+      <div class="sup-section-title">📦 Inventory Items from This Supplier ({{ items|length }})</div>
+      {% if items %}
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>In Stock</th>
+            <th>Unit</th>
+            <th>Reorder At</th>
+            <th>Cost/Unit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td style="font-weight:600">{{ item.name }}</td>
+            <td style="font-weight:700">{{ item.quantity }}</td>
+            <td style="color:var(--muted)">{{ item.unit }}</td>
+            <td style="color:var(--muted)">{{ item.reorder_level }}</td>
+            <td>${{ "%.2f"|format(item.cost_per_unit) }}</td>
+            <td>
+              {% if item.quantity <= 0 %}<span class="out-badge">OUT</span>
+              {% elif item.quantity <= item.reorder_level %}<span class="low-badge">LOW</span>
+              {% else %}<span class="ok-badge">OK</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="no-data">No inventory items linked to this supplier yet. Go to <a href="/inventory" style="color:var(--pink)">Inventory</a> and set the supplier on each item.</div>
+      {% endif %}
+    </div>
+
+    <!-- ── Purchase History ── -->
+    <div class="sup-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+        <div class="sup-section-title" style="margin-bottom:0">🧾 Purchase History</div>
+        <button class="btn btn-ghost btn-xs" onclick="toggleForm('po-form-{{ s.id }}')">+ Log Purchase</button>
+      </div>
+
+      <!-- Log Purchase Form -->
+      <div id="po-form-{{ s.id }}" class="log-form">
+        <form method="POST" action="/suppliers/{{ s.id }}/purchase" id="po-form-inner-{{ s.id }}">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:10px">Log a Purchase from {{ s.name }}</div>
+
+          <div id="line-items-{{ s.id }}">
+            <div class="line-item-row" style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+              <span>Ingredient</span><span>Qty</span><span>Cost/Unit $</span><span></span>
+            </div>
+            <div id="lines-{{ s.id }}">
+              <div class="line-item-row">
+                <select name="ingredient_id" class="form-control" required>
+                  <option value="">— Select ingredient —</option>
+                  {% for ing in all_ingredients %}
+                  <option value="{{ ing.id }}" data-cost="{{ ing.cost_per_unit }}">{{ ing.name }} ({{ ing.unit }})</option>
+                  {% endfor %}
+                </select>
+                <input name="qty" type="number" step="0.1" min="0.1" class="form-control" placeholder="Qty" required>
+                <input name="unit_cost" type="number" step="0.01" min="0" class="form-control" placeholder="0.00" required>
+                <span></span>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" onclick="addLine('{{ s.id }}')" class="btn btn-ghost btn-xs" style="margin-top:6px;margin-bottom:10px">+ Add Item</button>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
+            <select name="status" class="form-control" style="width:auto;font-size:.82rem">
+              <option value="received">✅ Received (updates inventory)</option>
+              <option value="pending">⏳ Ordered (not yet received)</option>
+            </select>
+            <input name="notes" class="form-control" placeholder="Notes (optional)" style="flex:1;font-size:.82rem">
+            <button type="submit" class="btn btn-primary btn-sm">Save Purchase</button>
+            <button type="button" onclick="toggleForm('po-form-{{ s.id }}')" class="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- History List -->
+      {% if orders %}
+        {% for entry in orders %}
+        {% set po = entry.po %}
+        <div class="po-row">
+          <div class="po-row-head">
+            <div>
+              <span class="po-date">{{ po.ordered_at[:10] if po.ordered_at else 'Date unknown' }}</span>
+              {% if po.notes %} <span style="font-size:.75rem;color:var(--muted)"> · {{ po.notes }}</span>{% endif %}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="po-total">${{ "%.2f"|format(po.total) }}</span>
+              <span class="po-status {{ 'po-received' if po.status == 'received' else 'po-pending' }}">
+                {{ '✅ Received' if po.status == 'received' else '⏳ Pending' }}
+              </span>
+            </div>
+          </div>
+          {% if entry.items %}
+          <div class="po-items-list">
+            {% for item in entry.items %}
+            <span class="po-item-chip">{{ item.name }} × {{ item.quantity }} {{ item.unit }} @ ${{ "%.2f"|format(item.unit_cost) }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="no-data">No purchases logged yet. Click "+ Log Purchase" to record your first order.</div>
+      {% endif %}
+    </div>
+
+  </div><!-- /sup-body -->
+</div><!-- /sup-card -->
+{% endfor %}
 
 <!-- Add Supplier Modal -->
 <div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
@@ -44,9 +217,50 @@
       </div>
       <div class="form-group"><label class="form-label">Email</label><input name="email" type="email" class="form-control" placeholder="orders@supplier.com"></div>
       <div class="form-group"><label class="form-label">Address</label><input name="address" class="form-control" placeholder="123 Main St, City, NC"></div>
-      <div class="form-group"><label class="form-label">Notes</label><textarea name="notes" class="form-control" rows="2" placeholder="Payment terms, delivery schedule..."></textarea></div>
+      <div class="form-group"><label class="form-label">Notes</label><textarea name="notes" class="form-control" rows="2" placeholder="Payment terms, delivery schedule, what they supply..."></textarea></div>
       <button type="submit" class="btn btn-primary">Add Supplier</button>
     </form>
   </div>
 </div>
+
+<script>
+function toggleForm(id) {
+  var el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' || el.style.display === '' ? 'block' : 'none';
+}
+
+function addLine(supplierId) {
+  var container = document.getElementById('lines-' + supplierId);
+  var allIngredients = {{ all_ingredients | tojson }};
+  var options = allIngredients.map(function(ing) {
+    return '<option value="' + ing.id + '" data-cost="' + ing.cost_per_unit + '">' + ing.name + ' (' + ing.unit + ')</option>';
+  }).join('');
+
+  var div = document.createElement('div');
+  div.className = 'line-item-row';
+  div.innerHTML =
+    '<select name="ingredient_id" class="form-control"><option value="">— Select ingredient —</option>' + options + '</select>' +
+    '<input name="qty" type="number" step="0.1" min="0.1" class="form-control" placeholder="Qty">' +
+    '<input name="unit_cost" type="number" step="0.01" min="0" class="form-control" placeholder="0.00">' +
+    '<button type="button" onclick="this.closest(\'.line-item-row\').remove()" style="background:none;border:none;color:#e55;cursor:pointer;font-size:1rem">✕</button>';
+  container.appendChild(div);
+
+  // Auto-fill cost when ingredient selected
+  div.querySelector('select').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var cost = opt.getAttribute('data-cost');
+    if (cost) div.querySelector('[name=unit_cost]').value = parseFloat(cost).toFixed(2);
+  });
+}
+
+// Auto-fill cost on existing first row selects
+document.querySelectorAll('[id^="lines-"] select[name=ingredient_id]').forEach(function(sel) {
+  sel.addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var cost = opt.getAttribute('data-cost');
+    var row = this.closest('.line-item-row');
+    if (cost && row) row.querySelector('[name=unit_cost]').value = parseFloat(cost).toFixed(2);
+  });
+});
+</script>
 {% endblock %}
