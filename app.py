@@ -1486,11 +1486,18 @@ def suppliers():
             po_list.append({'po': po, 'items': po_items})
 
         # Total spent with this supplier
-        total_spent = db.execute(
+        # Use PO history if available, otherwise estimate from inventory value (qty * cost)
+        po_total = db.execute(
             '''SELECT COALESCE(SUM(total),0) FROM purchase_orders
                WHERE supplier_id=? AND status=\"received\"''',
             (s['id'],)
         ).fetchone()[0]
+        inv_total = db.execute(
+            '''SELECT COALESCE(SUM(quantity * cost_per_unit),0)
+               FROM ingredients WHERE supplier_id=? AND cost_per_unit > 0''',
+            (s['id'],)
+        ).fetchone()[0]
+        total_spent = po_total if po_total > 0 else inv_total
 
         supplier_data.append({
             'supplier': dict(s),
