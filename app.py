@@ -1538,6 +1538,37 @@ def suppliers():
     return render_template('suppliers.html', supplier_data=supplier_data,
                            all_ingredients=all_ingredients, bakery=BAKERY_NAME)
 
+@app.route('/suppliers/<int:supplier_id>/auto-po')
+@login_required
+def supplier_auto_po(supplier_id):
+    """Show a pre-filled purchase order for all low-stock items from this supplier."""
+    db = get_db()
+    supplier = db.execute('SELECT * FROM suppliers WHERE id=? AND active=1', (supplier_id,)).fetchone()
+    if not supplier:
+        flash('Supplier not found.', 'error')
+        return redirect(url_for('suppliers'))
+
+    # Items linked to this supplier that are at or below reorder level
+    rows = db.execute(
+        '''SELECT i.id, i.name, i.unit, i.quantity, i.reorder_level,
+                  i.cost_per_unit,
+                  (SELECT pi.unit_cost FROM po_items pi
+                   JOIN purchase_orders po ON po.id = pi.po_id
+                   WHERE pi.ingredient_id = i.id
+                   ORDER BY po.created DESC LIMIT 1) AS last_price
+           FROM ingredients i
+           WHERE i.supplier_id = ?
+             AND i.reorder_level > 0
+             AND i.quantity <= i.reorder_level
+           ORDER BY i.name''',
+        (supplier_id,)
+    ).fetchall()
+
+    low_items = [dict(r) for r in rows]
+    return render_template('auto_po.html', supplier=dict(supplier),
+                           low_items=low_items, bakery=BAKERY_NAME)
+
+
 @app.route('/suppliers/add', methods=['POST'])
 @login_required
 def supplier_add():
