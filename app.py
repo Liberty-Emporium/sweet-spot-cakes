@@ -1049,7 +1049,8 @@ def inventory():
         FROM ingredients i LEFT JOIN suppliers s ON i.supplier_id=s.id
         ORDER BY i.name
     ''').fetchall()
-    return render_template('inventory.html', ingredients=ingredients, bakery=BAKERY_NAME)
+    suppliers = db.execute('SELECT id, name FROM suppliers WHERE active=1 ORDER BY name').fetchall()
+    return render_template('inventory.html', ingredients=ingredients, suppliers=suppliers, bakery=BAKERY_NAME)
 
 @app.route('/inventory/add', methods=['POST'])
 @login_required
