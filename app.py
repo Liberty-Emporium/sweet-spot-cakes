@@ -1901,14 +1901,10 @@ def prep_sheet():
     orders = db.execute('''
         SELECT o.id, o.order_number, o.customer_name, o.pickup_date, o.pickup_time,
                o.special_notes, o.status,
-               COALESCE(SUM(r.amount),0)       AS total,
-               COALESCE(SUM(r.amount),0) - COALESCE(o.deposit,0) AS balance_due,
-               CASE WHEN COALESCE(o.deposit,0) >= COALESCE(SUM(r.amount),0) THEN 1 ELSE 0 END AS paid_in_full
+               o.total, o.balance_due, o.paid_in_full
         FROM orders o
-        LEFT JOIN receipts r ON r.order_id = o.id
         WHERE o.pickup_date >= ? AND o.pickup_date < ?
-          AND o.status NOT IN ("cancelled","delivered")
-        GROUP BY o.id
+          AND o.status NOT IN ('cancelled','delivered')
         ORDER BY o.pickup_date, o.pickup_time
     ''', (today.isoformat(), window_end)).fetchall()
 
