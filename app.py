@@ -1493,14 +1493,14 @@ def suppliers():
         ).fetchone()[0]
 
         supplier_data.append({
-            'supplier': s,
-            'inv_items': list(items),
-            'po_orders': po_list,
+            'supplier': dict(s),
+            'inv_items': [dict(r) for r in items],
+            'po_orders': [{'po': dict(p['po']), 'items': [dict(i) for i in p['items']]} for p in po_list],
             'total_spent': total_spent
         })
 
     # All ingredients for the "add PO" form
-    all_ingredients = db.execute('SELECT id, name, unit, cost_per_unit FROM ingredients ORDER BY name').fetchall()
+    all_ingredients = [dict(r) for r in db.execute('SELECT id, name, unit, cost_per_unit FROM ingredients ORDER BY name').fetchall()]
 
     return render_template('suppliers.html', supplier_data=supplier_data,
                            all_ingredients=all_ingredients, bakery=BAKERY_NAME)
