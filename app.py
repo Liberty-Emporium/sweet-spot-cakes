@@ -1847,9 +1847,29 @@ def reports():
         WHERE e.active=1
         GROUP BY e.id ORDER BY hours DESC
     ''', (month_start,)).fetchall()
+
+    expenses_month = db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date >= ?",
+        (month_start,)).fetchone()[0]
+
+    payroll_month = sum(
+        (row['hours'] or 0) * (row['hourly_rate'] or 0)
+        for row in employee_hours
+    )
+
+    profit_month = revenue_month - expenses_month - payroll_month
+
+    expense_by_cat = db.execute('''
+        SELECT category, SUM(amount) as total
+        FROM expenses WHERE date >= ?
+        GROUP BY category ORDER BY total DESC
+    ''', (month_start,)).fetchall()
+
     return render_template('reports.html', revenue_month=revenue_month,
                            orders_month=orders_month, top_items=top_items,
                            revenue_by_day=revenue_by_day, employee_hours=employee_hours,
+                           expenses_month=expenses_month, payroll_month=payroll_month,
+                           profit_month=profit_month, expense_by_cat=expense_by_cat,
                            month=today.strftime('%B %Y'), bakery=BAKERY_NAME)
 
 # ── Expenses ─────────────────────────────────────────────────────────────────
