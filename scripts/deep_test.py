@@ -19,22 +19,54 @@ os.makedirs(OUT_DIR, exist_ok=True)
 results  = []  # {section, label, path, status, img, note}
 sections = {}  # section -> list of result indexes
 
+ERROR_MARKERS = [
+    "internal server error",
+    "500",
+    "werkzeug",
+    "traceback",
+    "syntaxerror",
+    "attributeerror",
+    "keyerror",
+    "typeerror",
+    "nameerror",
+    "operationalerror",
+    "programmingerror",
+    "not found",
+    "404",
+    "403 forbidden",
+    "bad gateway",
+    "service unavailable",
+]
+
 def shot(page, slug, label, path, section, note=""):
     img_path = f"{OUT_DIR}/{slug}.png"
     try:
         page.wait_for_timeout(500)
+        # Check page content for errors BEFORE marking pass
+        page_text = page.inner_text('body').lower()
+        page_title = page.title().lower()
+        error_found = None
+        for marker in ERROR_MARKERS:
+            if marker in page_title or (marker in page_text and len(page_text) < 500):
+                error_found = marker
+                break
         page.screenshot(path=img_path, full_page=True)
         with open(img_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
-        r = {"section": section, "label": label, "path": path,
-             "status": "ok", "img": b64, "note": note}
+        if error_found:
+            r = {"section": section, "label": label, "path": path,
+                 "status": "error", "img": b64,
+                 "note": f"Page contains error: '{error_found}'"}
+        else:
+            r = {"section": section, "label": label, "path": path,
+                 "status": "ok", "img": b64, "note": note}
     except Exception as e:
         r = {"section": section, "label": label, "path": path,
              "status": "error", "img": None, "note": str(e)}
     results.append(r)
     sections.setdefault(section, []).append(len(results) - 1)
     status = "✅" if r["status"] == "ok" else "❌"
-    print(f"  {status} [{section}] {label}")
+    print(f"  {status} [{section}] {label}{' — ' + r['note'] if r['status'] == 'error' else ''}")
     return r["status"] == "ok"
 
 def goto(page, path, wait="networkidle"):
@@ -460,8 +492,11 @@ for sec, idxs in sections.items():
     for i in idxs:
         r = results[i]
         if r["status"] == "error":
-            badge    = '<span style="background:#ef4444;color:#fff;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700">❌ ERROR</span>'
-            img_html = f'<div style="background:#1e1e1e;border-radius:10px;padding:40px;text-align:center;color:#ef4444">{r.get("note","")}</div>'
+            badge    = f'<span style="background:#ef4444;color:#fff;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700">❌ FAIL</span>'
+            if r.get("img"):
+                img_html = f'<div style="border:2px solid #ef4444;border-radius:8px;overflow:hidden"><img src="data:image/png;base64,{r["img"]}" style="width:100%;display:block;cursor:pointer" onclick="openLB(this.src)"></div>'
+            else:
+                img_html = f'<div style="background:#1e1e1e;border:2px solid #ef4444;border-radius:8px;padding:40px;text-align:center;color:#ef4444">{r.get("note","")}</div>'
         else:
             badge    = '<span style="background:#22c55e;color:#fff;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700">✅ PASS</span>'
             img_html = f'<img src="data:image/png;base64,{r["img"]}" style="width:100%;border-radius:8px;display:block;cursor:pointer" onclick="openLB(this.src)">'
