@@ -196,6 +196,14 @@ def init_db():
         FOREIGN KEY(order_id) REFERENCES orders(id),
         FOREIGN KEY(recipe_id) REFERENCES recipes(id)
     );
+    CREATE TABLE IF NOT EXISTS order_photos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id    INTEGER NOT NULL,
+        filename    TEXT NOT NULL,
+        caption     TEXT DEFAULT '',
+        created     TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(order_id) REFERENCES orders(id)
+    );
     CREATE TABLE IF NOT EXISTS receipts (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         order_id    INTEGER NOT NULL,
