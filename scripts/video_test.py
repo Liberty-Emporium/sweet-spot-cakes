@@ -20,6 +20,8 @@ results = []  # {title, desc, webm_path, status, note}
 
 ERROR_MARKERS = [
     "internal server error",
+    "not found",
+    "404 not found",
     "werkzeug", "traceback", "syntaxerror",
     "attributeerror", "keyerror", "typeerror",
     "nameerror", "operationalerror",
@@ -322,16 +324,36 @@ def sec_settings(page):
     slow_scroll(page, steps=5)
 
 def sec_public(page):
-    # Public-facing pages (no login needed but we're in the same context)
+    from datetime import datetime, timedelta
+    # Public order form — fill it properly and submit
     nav(page, "/order")
     page.wait_for_timeout(700)
-    slow_scroll(page, steps=4)
+    slow_scroll(page, steps=2)
     try:
-        page.fill('input[name="customer_name"], input[placeholder*="name"]', "Demo Customer", timeout=3000)
-        page.fill('input[type="email"]', "demo@example.com", timeout=3000)
+        page.fill('input[name="name"]', "Sarah Johnson", timeout=3000)
+        page.fill('input[type="email"]', "sarah@sweetspotdemo.com", timeout=3000)
+        page.fill('input[name="phone"]', "555-123-4567", timeout=3000)
+        pickup = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        page.fill('input[name="pickup_date"]', pickup, timeout=3000)
+        page.wait_for_timeout(300)
+        # Click size label
+        size_lbl = page.query_selector('#sizeGrid .opt-card')
+        if size_lbl:
+            size_lbl.click()
+            page.wait_for_timeout(300)
+        # Click flavor label
+        flavor_lbl = page.query_selector('#flavorGrid .opt-card')
+        if flavor_lbl:
+            flavor_lbl.click()
+            page.wait_for_timeout(300)
+        slow_scroll(page, steps=3)
         page.wait_for_timeout(400)
-    except Exception:
-        pass
+        # Click Place My Order
+        page.click('#submitBtn', timeout=5000)
+        page.wait_for_load_state("networkidle", timeout=15000)
+        page.wait_for_timeout(800)
+    except Exception as e:
+        print(f"  ⚠️  public order form: {e}")
     nav(page, "/loyalty/join")
     page.wait_for_timeout(700)
     slow_scroll(page, steps=3)
