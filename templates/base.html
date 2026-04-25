@@ -3,7 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}{{ bakery }}{% endblock %}</title>
+  <title>{% block title %}{{ bakery }}{% endblock %} — Sweet Spot Custom Cakes</title>
+  <meta name="description" content="{% block meta_desc %}Custom cakes, cupcakes & bakery management — Sweet Spot Custom Cakes{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}Sweet Spot Custom Cakes{% endblock %}">
+  <meta property="og:description" content="{% block og_desc %}Custom cakes for every occasion. Order yours today!{% endblock %}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sweet-spot-cakes.up.railway.app">
+  <meta property="og:image" content="https://sweet-spot-cakes.up.railway.app/static/preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sweet Spot Custom Cakes">
+  <meta name="twitter:description" content="Custom cakes for every occasion. Order yours today!">
+  <meta name="twitter:image" content="https://sweet-spot-cakes.up.railway.app/static/preview.png">
+  <link rel="canonical" href="https://sweet-spot-cakes.up.railway.app{% block canonical_path %}/{% endblock %}">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {

@@ -35,8 +35,26 @@ def get_db():
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute('PRAGMA journal_mode=WAL')
+        g.db.execute('PRAGMA synchronous=NORMAL')
         g.db.execute('PRAGMA foreign_keys=ON')
+        g.db.execute('PRAGMA busy_timeout=5000')
     return g.db
+
+# ── Rate limiting (simple in-memory) ─────────────────────────────────────────
+import time as _time
+_rl_store: dict = {}
+_rl_lock = threading.Lock()
+
+def _rate_limit(key: str, max_req: int = 10, window: int = 60) -> bool:
+    """Return True if request should be blocked."""
+    now = _time.time()
+    with _rl_lock:
+        hits = [t for t in _rl_store.get(key, []) if now - t < window]
+        if len(hits) >= max_req:
+            return True
+        hits.append(now)
+        _rl_store[key] = hits
+    return False
 
 @app.teardown_appcontext
 def close_db(e=None):
@@ -47,7 +65,9 @@ def init_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     db.execute('PRAGMA journal_mode=WAL')
+    db.execute('PRAGMA synchronous=NORMAL')
     db.execute('PRAGMA foreign_keys=ON')
+    db.execute('PRAGMA busy_timeout=5000')
     db.executescript('''
     CREATE TABLE IF NOT EXISTS users (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -778,8 +798,35 @@ def health():
     return jsonify({'status': 'ok', 'app': BAKERY_NAME})
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
+@app.after_request
+def security_headers(resp):
+    resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-XSS-Protection'] = '1; mode=block'
+    resp.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=()'
+    return resp
+
+@app.route('/robots.txt')
+def robots_txt():
+    return app.response_class(
+        "User-agent: *\nAllow: /\nDisallow: /dashboard\nDisallow: /admin\nSitemap: https://sweet-spot-cakes.up.railway.app/sitemap.xml\n",
+        mimetype='text/plain'
+    )
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    pages = ['/', '/order', '/join', '/menu']
+    urls = ''.join(f'<url><loc>https://sweet-spot-cakes.up.railway.app{p}</loc></url>' for p in pages)
+    xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>'
+    return app.response_class(xml, mimetype='application/xml')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    ip = request.remote_addr or 'unknown'
+    if request.method == 'POST' and _rate_limit(f'login:{ip}', max_req=10, window=60):
+        flash('Too many login attempts. Please wait a minute.', 'error')
+        return render_template('login.html'), 429
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         pw    = request.form.get('password', '')
