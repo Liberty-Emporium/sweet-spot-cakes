@@ -53,6 +53,14 @@
             </form>
             {% endif %}
             <a href="/employees/{{ emp.id }}/timesheets" class="btn btn-ghost btn-xs">Timesheets</a>
+            <button class="btn btn-ghost btn-xs" style="color:var(--blue)"
+              onclick="openEdit({{ emp.id }}, '{{ emp.name|replace("'","\\'")|e }}', '{{ emp.email|replace("'","\\'")|e }}', '{{ emp.phone|replace("'","\\'")|e }}', '{{ emp.role }}', {{ emp.hourly_rate }}, '{{ emp.pin or "" }}', '{{ emp.notes|replace("'","\\'")|e }}')">
+              ✏️ Edit
+            </button>
+            <form method="POST" action="/employees/{{ emp.id }}/deactivate" style="display:inline"
+                  onsubmit="return confirm('Remove {{ emp.name }} from staff? They will no longer appear in the list.')">
+              <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red)">🗑️</button>
+            </form>
           </div>
         </td>
       </tr>
@@ -62,16 +70,19 @@
   </div>
 </div>
 
-<!-- Add Employee Modal -->
+<!-- ── Add Employee Modal ── -->
 <div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
-  <div class="card" style="width:100%;max-width:480px;position:relative">
+  <div class="card" style="width:100%;max-width:480px;position:relative;max-height:90vh;overflow-y:auto">
     <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">Add Employee</div>
     <form method="POST" action="/employees/add">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Full Name *</label><input name="name" class="form-control" required placeholder="Jane Baker"></div>
         <div class="form-group"><label class="form-label">Role</label>
-          <select name="role" class="form-control"><option>Baker</option><option>Decorator</option><option>Cashier</option><option>Manager</option><option>Driver</option><option>Part-Time</option></select>
+          <select name="role" class="form-control">
+            <option>Baker</option><option>Decorator</option><option>Cashier</option>
+            <option>Manager</option><option>Driver</option><option>Part-Time</option>
+          </select>
         </div>
       </div>
       <div class="form-row">
@@ -83,8 +94,78 @@
         <div class="form-group"><label class="form-label">Clock-In PIN</label><input name="pin" class="form-control" maxlength="6" placeholder="1234"></div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><input name="notes" class="form-control" placeholder="Skills, availability..."></div>
-      <button type="submit" class="btn btn-primary">Add Employee</button>
+      <button type="submit" class="btn btn-primary" style="width:100%">Add Employee</button>
     </form>
   </div>
 </div>
+
+<!-- ── Edit Employee Modal ── -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div class="card" style="width:100%;max-width:480px;position:relative;max-height:90vh;overflow-y:auto">
+    <button onclick="document.getElementById('editModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:16px">✏️ Edit Employee</div>
+    <form method="POST" id="editForm" action="">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input name="name" id="edit-name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select name="role" id="edit-role" class="form-control">
+            <option>Baker</option><option>Decorator</option><option>Cashier</option>
+            <option>Manager</option><option>Driver</option><option>Part-Time</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input name="email" id="edit-email" type="email" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input name="phone" id="edit-phone" class="form-control">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Hourly Rate $</label>
+          <input name="hourly_rate" id="edit-rate" type="number" step="0.25" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Clock-In PIN</label>
+          <input name="pin" id="edit-pin" class="form-control" maxlength="6" placeholder="1234">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input name="notes" id="edit-notes" class="form-control">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button type="submit" class="btn btn-primary" style="flex:1">💾 Save Changes</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editModal').style.display='none'" style="flex:1">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEdit(id, name, email, phone, role, rate, pin, notes) {
+  document.getElementById('editForm').action = '/employees/' + id + '/edit';
+  document.getElementById('edit-name').value  = name;
+  document.getElementById('edit-email').value = email;
+  document.getElementById('edit-phone').value = phone;
+  document.getElementById('edit-rate').value  = rate;
+  document.getElementById('edit-pin').value   = pin;
+  document.getElementById('edit-notes').value = notes;
+  // Set role dropdown
+  const sel = document.getElementById('edit-role');
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === role) { sel.selectedIndex = i; break; }
+  }
+  document.getElementById('editModal').style.display = 'flex';
+  document.getElementById('edit-name').focus();
+}
+</script>
 {% endblock %}

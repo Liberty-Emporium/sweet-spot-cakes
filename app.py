@@ -2127,6 +2127,36 @@ def employee_add():
     flash('Employee added.', 'success')
     return redirect(url_for('employees'))
 
+@app.route('/employees/<int:emp_id>/edit', methods=['POST'])
+@login_required
+def employee_edit(emp_id):
+    db = get_db()
+    db.execute(
+        "UPDATE employees SET name=?,email=?,phone=?,role=?,hourly_rate=?,pin=?,notes=? WHERE id=?",
+        (request.form['name'],
+         request.form.get('email', ''),
+         request.form.get('phone', ''),
+         request.form.get('role', 'Baker'),
+         float(request.form.get('hourly_rate', 15)),
+         request.form.get('pin', ''),
+         request.form.get('notes', ''),
+         emp_id)
+    )
+    db.commit()
+    flash('Employee updated.', 'success')
+    return redirect(url_for('employees'))
+
+
+@app.route('/employees/<int:emp_id>/deactivate', methods=['POST'])
+@login_required
+def employee_deactivate(emp_id):
+    db = get_db()
+    db.execute("UPDATE employees SET active=0 WHERE id=?", (emp_id,))
+    db.commit()
+    flash('Employee removed.', 'success')
+    return redirect(url_for('employees'))
+
+
 @app.route('/employees/<int:emp_id>/timesheets')
 @login_required
 def employee_timesheets(emp_id):
