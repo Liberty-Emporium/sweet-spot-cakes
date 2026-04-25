@@ -158,7 +158,10 @@
 
     <!-- Payment -->
     <div class="card">
-      <div class="card-title" style="margin-bottom:12px">💳 Payment</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin:0">💳 Payment</div>
+        <a href="/orders/{{ order.id }}/register" class="btn btn-primary btn-sm" style="font-size:.8rem">🛒 Open Register</a>
+      </div>
       <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:12px">
         <div>
           <div>Deposit Paid: <strong style="color:var(--green)">${{ "%.2f"|format(order.deposit_paid or 0) }}</strong></div>

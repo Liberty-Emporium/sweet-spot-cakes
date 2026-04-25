@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Register — {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<style>
+  .reg-wrap{max-width:520px;margin:32px auto;padding:0 16px}
+  .reg-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:20px}
+  .reg-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--pink);margin-bottom:4px}
+  .reg-sub{color:var(--muted);font-size:.85rem;margin-bottom:20px}
+  .amount-row{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+  .amt-btn{flex:1;min-width:120px;padding:14px 8px;border-radius:10px;border:2px solid var(--border);
+           background:var(--card2);color:var(--text);font-size:1rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s}
+  .amt-btn:hover,.amt-btn.active{border-color:var(--pink);background:rgba(244,114,182,.1);color:var(--pink)}
+  .amt-btn .label{font-size:.72rem;color:var(--muted);font-weight:400;display:block;margin-top:2px}
+  .pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .pay-btn{padding:18px 8px;border-radius:12px;border:2px solid var(--border);background:var(--card2);
+           color:var(--text);font-size:1.05rem;font-weight:700;cursor:pointer;text-align:center;
+           display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .15s}
+  .pay-btn:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .pay-btn.stripe{border-color:#6772e5} .pay-btn.stripe:hover{background:rgba(103,114,229,.15)}
+  .pay-btn.square{border-color:#3e4348} .pay-btn.square:hover{background:rgba(62,67,72,.3)}
+  .pay-btn.cash{border-color:var(--green)} .pay-btn.cash:hover{background:rgba(52,211,153,.1)}
+  .pay-btn.card{border-color:var(--blue)} .pay-btn.card:hover{background:rgba(96,165,250,.1)}
+  .pay-btn.zelle{border-color:#6600cc} .pay-btn.zelle:hover{background:rgba(102,0,204,.1)}
+  .pay-btn.check{border-color:var(--yellow)} .pay-btn.check:hover{background:rgba(251,191,36,.1)}
+  .pay-btn .icon{font-size:1.6rem}
+  .pay-btn .disabled-label{font-size:.68rem;color:var(--muted)}
+  .totals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .total-box{background:var(--card2);border-radius:10px;padding:14px;text-align:center}
+  .total-box .val{font-size:1.5rem;font-weight:700}
+  .total-box .lbl{font-size:.72rem;color:var(--muted);margin-top:2px}
+  /* Cash panel */
+  #cash-panel{display:none;background:var(--card2);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:18px}
+  .cash-input-wrap{position:relative;margin-bottom:14px}
+  .cash-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:1.1rem}
+  .cash-input{width:100%;padding:14px 14px 14px 30px;background:var(--bg);border:1px solid var(--border);
+              border-radius:8px;color:var(--text);font-size:1.4rem;font-weight:700}
+  .change-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;
+              border-top:1px solid var(--border);margin-top:4px}
+  .change-val{font-size:1.6rem;font-weight:800;color:var(--green)}
+  .quick-cash{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .qc-btn{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);
+          color:var(--text);font-size:.88rem;cursor:pointer}
+  .qc-btn:hover{border-color:var(--green);color:var(--green)}
+  /* Custom amount panel */
+  #custom-panel{display:none;background:var(--card2);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:18px}
+  .back-link{color:var(--muted);font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:18px}
+  .back-link:hover{color:var(--pink)}
+  .paid-badge{text-align:center;padding:20px;background:rgba(52,211,153,.1);border:1px solid var(--green);
+              border-radius:12px;color:var(--green);font-size:1.1rem;font-weight:700}
+</style>
+
+<div class="reg-wrap">
+  <a href="/orders/{{ order.id }}" class="back-link">← Back to Order {{ order.order_number }}</a>
+
+  <div class="reg-card">
+    <div class="reg-title">🛒 Register</div>
+    <div class="reg-sub">{{ order.customer_name }} · Order {{ order.order_number }}</div>
+
+    {% if order.paid_in_full %}
+    <div class="paid-badge">✅ This order is fully paid!</div>
+    {% else %}
+
+    <!-- Totals -->
+    <div class="totals">
+      <div class="total-box">
+        <div class="val">${{ "%.2f"|format(order.total or 0) }}</div>
+        <div class="lbl">ORDER TOTAL</div>
+      </div>
+      <div class="total-box">
+        <div class="val" style="color:{% if order.balance_due > 0 %}var(--red){% else %}var(--green){% endif %}">
+          ${{ "%.2f"|format(order.balance_due or 0) }}
+        </div>
+        <div class="lbl">BALANCE DUE</div>
+      </div>
+      {% if order.deposit_paid and order.deposit_paid > 0 %}
+      <div class="total-box" style="grid-column:span 2">
+        <div class="val" style="color:var(--green);font-size:1.1rem">${{ "%.2f"|format(order.deposit_paid) }} already paid</div>
+        <div class="lbl">DEPOSIT PAID</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Amount selector -->
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.05em">CHARGE AMOUNT</div>
+    <div class="amount-row">
+      <button class="amt-btn active" onclick="setAmount({{ order.balance_due or 0 }}, this)">
+        ${{ "%.2f"|format(order.balance_due or 0) }}
+        <span class="label">Balance Due</span>
+      </button>
+      {% if order.total and (order.deposit_paid or 0) == 0 %}
+      <button class="amt-btn" onclick="setAmount({{ (order.total or 0) * 0.5 }}, this)">
+        ${{ "%.2f"|format((order.total or 0) * 0.5) }}
+        <span class="label">50% Deposit</span>
+      </button>
+      {% endif %}
+      <button class="amt-btn" onclick="showCustom()" id="custom-amt-btn">
+        Custom
+        <span class="label">Enter amount</span>
+      </button>
+    </div>
+
+    <!-- Custom amount panel -->
+    <div id="custom-panel">
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:8px">Enter custom amount:</div>
+      <div class="cash-input-wrap">
+        <span class="cash-prefix">$</span>
+        <input class="cash-input" id="custom-input" type="number" step="0.01" min="0.01"
+               placeholder="0.00" oninput="applyCustom(this.value)">
+      </div>
+    </div>
+
+    <!-- Payment method buttons -->
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:.05em">PAYMENT METHOD</div>
+    <div class="pay-grid">
+
+      {% if stripe_configured %}
+      <form method="POST" action="/orders/{{ order.id }}/checkout" id="stripe-form">
+        <input type="hidden" name="amount_type" value="custom">
+        <input type="hidden" name="custom_amount" id="stripe-amount" value="{{ order.balance_due or 0 }}">
+        <button type="submit" class="pay-btn stripe" style="width:100%">
+          <span class="icon">💳</span>
+          Stripe
+        </button>
+      </form>
+      {% else %}
+      <div class="pay-btn stripe" style="opacity:.4;cursor:not-allowed">
+        <span class="icon">💳</span>
+        Stripe
+        <span class="disabled-label">Set STRIPE_SECRET_KEY</span>
+      </div>
+      {% endif %}
+
+      {% if square_configured %}
+      <form method="POST" action="/orders/{{ order.id }}/square-checkout" id="square-form">
+        <input type="hidden" name="custom_amount" id="square-amount" value="{{ order.balance_due or 0 }}">
+        <button type="submit" class="pay-btn square" style="width:100%">
+          <span class="icon">⬛</span>
+          Square
+        </button>
+      </form>
+      {% else %}
+      <div class="pay-btn square" style="opacity:.4;cursor:not-allowed">
+        <span class="icon">⬛</span>
+        Square
+        <span class="disabled-label">Set SQUARE_ACCESS_TOKEN</span>
+      </div>
+      {% endif %}
+
+      <button class="pay-btn cash" onclick="showCash('cash')">
+        <span class="icon">💵</span> Cash
+      </button>
+
+      <button class="pay-btn card" onclick="showCash('card')">
+        <span class="icon">💳</span> Card (Manual)
+      </button>
+
+      <button class="pay-btn zelle" onclick="showCash('zelle')">
+        <span class="icon">💜</span> Zelle
+      </button>
+
+      <button class="pay-btn check" onclick="showCash('check')">
+        <span class="icon">📝</span> Check
+      </button>
+
+    </div>
+
+    <!-- Cash / manual payment panel -->
+    <div id="cash-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-weight:700" id="cash-method-label">💵 Cash Payment</div>
+        <button onclick="hideCash()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem">✕</button>
+      </div>
+
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Amount charged: <strong id="charge-display">${{ "%.2f"|format(order.balance_due or 0) }}</strong></div>
+
+      <div id="cash-only-section">
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:6px">Amount tendered:</div>
+        <div class="quick-cash" id="quick-cash-btns"></div>
+        <div class="cash-input-wrap">
+          <span class="cash-prefix">$</span>
+          <input class="cash-input" id="tendered-input" type="number" step="0.01" min="0"
+                 placeholder="0.00" oninput="calcChange()">
+        </div>
+        <div class="change-row">
+          <span style="color:var(--muted);font-size:.9rem">Change due:</span>
+          <span class="change-val" id="change-display">$0.00</span>
+        </div>
+      </div>
+
+      <form method="POST" action="/orders/{{ order.id }}/cash-payment" id="cash-form">
+        <input type="hidden" name="amount" id="cash-amount-input" value="{{ order.balance_due or 0 }}">
+        <input type="hidden" name="method" id="cash-method-input" value="cash">
+        <input type="hidden" name="notes" id="cash-notes-input" value="">
+        <button type="submit" class="btn btn-success" style="width:100%;padding:14px;font-size:1rem;margin-top:14px"
+                id="cash-submit-btn">Record Payment</button>
+      </form>
+    </div>
+
+    {% endif %}{# end not paid_in_full #}
+  </div>
+
+  <!-- Receipt history -->
+  {% if receipts %}
+  <div class="reg-card">
+    <div style="font-size:.82rem;color:var(--muted);font-weight:600;margin-bottom:12px;letter-spacing:.05em">PAYMENT HISTORY</div>
+    {% for r in receipts %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem">
+      <div>
+        <span style="color:var(--muted)">{{ r.created[:16] }}</span>
+        <span style="background:var(--card2);border-radius:4px;padding:2px 8px;margin-left:8px;font-size:.75rem;text-transform:uppercase">{{ r.method }}</span>
+      </div>
+      <span style="font-weight:700;color:var(--green)">${{ "%.2f"|format(r.amount) }}</span>
+    </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;margin-top:10px;font-weight:700">
+      <span>Total Collected</span>
+      <span style="color:var(--green)">${{ "%.2f"|format(receipts|sum(attribute='amount')) }}</span>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+let chargeAmount = {{ order.balance_due or 0 }};
+
+function setAmount(val, btn) {
+  chargeAmount = val;
+  document.querySelectorAll('.amt-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('custom-panel').style.display = 'none';
+  syncAmounts();
+}
+
+function showCustom() {
+  document.getElementById('custom-panel').style.display = 'block';
+  document.querySelectorAll('.amt-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('custom-amt-btn').classList.add('active');
+  document.getElementById('custom-input').focus();
+}
+
+function applyCustom(val) {
+  const v = parseFloat(val);
+  if (v > 0) { chargeAmount = v; syncAmounts(); }
+}
+
+function syncAmounts() {
+  const fmt = chargeAmount.toFixed(2);
+  const stripeEl = document.getElementById('stripe-amount');
+  const squareEl = document.getElementById('square-amount');
+  const chargeDisp = document.getElementById('charge-display');
+  if (stripeEl) stripeEl.value = chargeAmount;
+  if (squareEl) squareEl.value = chargeAmount;
+  if (chargeDisp) chargeDisp.textContent = '$' + fmt;
+  document.getElementById('cash-amount-input').value = chargeAmount;
+  buildQuickCash();
+  calcChange();
+}
+
+function showCash(method) {
+  const panel = document.getElementById('cash-panel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  document.getElementById('cash-method-input').value = method;
+  document.getElementById('cash-amount-input').value = chargeAmount;
+  document.getElementById('charge-display').textContent = '$' + chargeAmount.toFixed(2);
+
+  const isCash = method === 'cash';
+  document.getElementById('cash-only-section').style.display = isCash ? 'block' : 'none';
+  document.getElementById('tendered-input').value = '';
+  document.getElementById('change-display').textContent = '$0.00';
+
+  const icons = {cash:'💵 Cash', card:'💳 Card (Manual)', zelle:'💜 Zelle', check:'📝 Check'};
+  document.getElementById('cash-method-label').textContent = (icons[method] || method) + ' Payment';
+  document.getElementById('cash-submit-btn').textContent = 'Record ' + (icons[method] || method) + ' Payment';
+  document.getElementById('cash-notes-input').value = '';
+  buildQuickCash();
+}
+
+function hideCash() {
+  document.getElementById('cash-panel').style.display = 'none';
+}
+
+function buildQuickCash() {
+  const btns = document.getElementById('quick-cash-btns');
+  if (!btns) return;
+  const amounts = [chargeAmount, Math.ceil(chargeAmount), 20, 50, 100]
+    .map(v => parseFloat(v.toFixed(2)))
+    .filter((v, i, a) => v >= chargeAmount && a.indexOf(v) === i)
+    .slice(0, 5);
+  btns.innerHTML = amounts.map(a =>
+    `<button type="button" class="qc-btn" onclick="setTendered(${a})">$${a.toFixed(2)}</button>`
+  ).join('');
+}
+
+function setTendered(val) {
+  document.getElementById('tendered-input').value = val.toFixed(2);
+  calcChange();
+}
+
+function calcChange() {
+  const tendered = parseFloat(document.getElementById('tendered-input').value) || 0;
+  const change = Math.max(0, tendered - chargeAmount);
+  document.getElementById('change-display').textContent = '$' + change.toFixed(2);
+  document.getElementById('change-display').style.color = change > 0 ? 'var(--yellow)' : 'var(--green)';
+  const note = tendered > 0 ? `Tendered: $${tendered.toFixed(2)}, Change: $${change.toFixed(2)}` : '';
+  document.getElementById('cash-notes-input').value = note;
+}
+
+buildQuickCash();
+</script>
+{% endblock %}

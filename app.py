@@ -26,6 +26,12 @@ stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
 STRIPE_PK      = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WH      = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
+# ── Square config ────────────────────────────────────────────────────
+SQUARE_ACCESS_TOKEN  = os.environ.get('SQUARE_ACCESS_TOKEN', '')
+SQUARE_LOCATION_ID   = os.environ.get('SQUARE_LOCATION_ID', '')
+SQUARE_ENV           = os.environ.get('SQUARE_ENV', 'sandbox')  # 'sandbox' or 'production'
+SQUARE_BASE_URL      = 'https://connect.squareup.com' if SQUARE_ENV == 'production' else 'https://connect.squareupsandbox.com'
+
 BAKERY_NAME    = os.environ.get('BAKERY_NAME', 'Sweet Spot Custom Cakes')
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'info@sweetspotcustomcakes.com')
 
@@ -1021,8 +1027,15 @@ def order_checkout(order_id):
     if not stripe.api_key:
         flash('Stripe not configured. Add STRIPE_SECRET_KEY to Railway env vars.', 'error')
         return redirect(url_for('order_detail', order_id=order_id))
-    amount_type = request.form.get('amount_type', 'balance')  # balance or deposit
-    if amount_type == 'deposit':
+    amount_type = request.form.get('amount_type', 'balance')  # balance, deposit, or custom
+    if amount_type == 'custom':
+        try:
+            custom_amount = float(request.form.get('custom_amount', 0))
+        except (ValueError, TypeError):
+            custom_amount = order['balance_due'] or 0
+        amount_cents = int(custom_amount * 100)
+        label = f'Custom Amount (${custom_amount:.2f})'
+    elif amount_type == 'deposit':
         amount_cents = int((order['total'] * 0.5) * 100)
         label = '50% Deposit'
     else:
@@ -1099,9 +1112,111 @@ def cash_payment(order_id):
         flash(f'${amount:.2f} {method} payment recorded.', 'success')
     return redirect(url_for('order_detail', order_id=order_id))
 
-# ── Inventory ─────────────────────────────────────────────────────────────────
+# ── Register (POS screen) ────────────────────────────────────────────────
+from flask import Response as _Response
 
-# ── Order Delete (admin only) ─────────────────────────────────────────────────
+@app.route('/orders/<int:order_id>/register')
+@login_required
+def order_register(order_id):
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    receipts = db.execute('SELECT * FROM receipts WHERE order_id=? ORDER BY created', (order_id,)).fetchall()
+    return render_template('register.html',
+                           order=order,
+                           receipts=receipts,
+                           bakery=BAKERY_NAME,
+                           stripe_configured=bool(stripe.api_key),
+                           square_configured=bool(SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID))
+
+# ── Square Checkout ──────────────────────────────────────────────────
+@app.route('/orders/<int:order_id>/square-checkout', methods=['POST'])
+@login_required
+def square_checkout(order_id):
+    import urllib.request as _ureq
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        return jsonify({'error': 'not found'}), 404
+    if not SQUARE_ACCESS_TOKEN or not SQUARE_LOCATION_ID:
+        flash('Square not configured. Add SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID to Railway env vars.', 'error')
+        return redirect(url_for('order_register', order_id=order_id))
+    try:
+        custom_amount = float(request.form.get('custom_amount') or order['balance_due'] or 0)
+        if custom_amount <= 0:
+            flash('Nothing to charge!', 'info')
+            return redirect(url_for('order_register', order_id=order_id))
+        amount_cents = int(custom_amount * 100)
+        base = request.host_url.rstrip('/')
+        idempotency_key = secrets.token_hex(16)
+        payload = json.dumps({
+            'idempotency_key': idempotency_key,
+            'order': {
+                'location_id': SQUARE_LOCATION_ID,
+                'reference_id': order['order_number'],
+                'customer_id': None,
+                'line_items': [{
+                    'name': f'{BAKERY_NAME} — Order {order["order_number"]}',
+                    'quantity': '1',
+                    'base_price_money': {'amount': amount_cents, 'currency': 'USD'}
+                }]
+            },
+            'checkout_options': {
+                'redirect_url': f'{base}/orders/{order_id}/square-success',
+                'merchant_support_email': ADMIN_EMAIL,
+                'allow_tipping': False,
+            },
+            'pre_populated_data': {
+                'buyer_email': order['customer_email'] or ''
+            }
+        }).encode()
+        req = _ureq.Request(
+            f'{SQUARE_BASE_URL}/v2/online-checkout/payment-links',
+            data=payload,
+            headers={
+                'Authorization': f'Bearer {SQUARE_ACCESS_TOKEN}',
+                'Content-Type': 'application/json',
+                'Square-Version': '2024-01-18'
+            }
+        )
+        with _ureq.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        url = data.get('payment_link', {}).get('url')
+        if not url:
+            raise ValueError(f'No URL in Square response: {data}')
+        # Store pending amount in session for success handler
+        session['sq_pending'] = {'order_id': order_id, 'amount': custom_amount, 'idempotency_key': idempotency_key}
+        return redirect(url)
+    except Exception as e:
+        flash(f'Square error: {e}', 'error')
+        return redirect(url_for('order_register', order_id=order_id))
+
+@app.route('/orders/<int:order_id>/square-success')
+@login_required
+def square_success(order_id):
+    db = get_db()
+    pending = session.pop('sq_pending', {})
+    amount = pending.get('amount', 0)
+    if amount > 0 and pending.get('order_id') == order_id:
+        order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+        db.execute('INSERT INTO receipts(order_id,amount,method,notes) VALUES(?,?,?,?)',
+                   (order_id, amount, 'square', f'Square checkout'))
+        new_deposit = (order['deposit_paid'] or 0) + amount
+        new_balance = max(0, (order['total'] or 0) - new_deposit)
+        paid_full = 1 if new_balance <= 0.01 else 0
+        db.execute('UPDATE orders SET deposit_paid=?,balance_due=?,paid_in_full=? WHERE id=?',
+                   (new_deposit, new_balance, paid_full, order_id))
+        db.commit()
+        flash(f'Square payment of ${amount:.2f} received! ✅', 'success')
+    else:
+        flash('Square payment received — please verify amount manually.', 'warning')
+    return redirect(url_for('order_register', order_id=order_id))
+
+# ── Inventory ──────────────────────────────────────────────────────────────
+
+# ── Order Delete (admin only) ──────────────────────────────────────────────
 @app.route('/orders/<int:order_id>/delete', methods=['POST'])
 @login_required
 def order_delete(order_id):
