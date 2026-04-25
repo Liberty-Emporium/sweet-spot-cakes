@@ -140,11 +140,12 @@
         </button>
       </form>
       {% else %}
-      <div class="pay-btn square" style="opacity:.4;cursor:not-allowed">
+      <a href="/orders/{{ order.id }}/square-demo?amount={{ order.balance_due or 0 }}" id="square-demo-link"
+         class="pay-btn square" style="text-decoration:none">
         <span class="icon">⬛</span>
         Square
-        <span class="disabled-label">Set SQUARE_ACCESS_TOKEN</span>
-      </div>
+        <span class="disabled-label" style="color:var(--yellow)">⚠️ DEMO MODE</span>
+      </a>
       {% endif %}
 
       <button class="pay-btn cash" onclick="showCash('cash')">
@@ -253,6 +254,12 @@ function syncAmounts() {
   if (squareEl) squareEl.value = chargeAmount;
   if (chargeDisp) chargeDisp.textContent = '$' + fmt;
   document.getElementById('cash-amount-input').value = chargeAmount;
+  // Keep Square demo link in sync
+  const demoLink = document.getElementById('square-demo-link');
+  if (demoLink) {
+    const base = demoLink.href.split('?')[0];
+    demoLink.href = base + '?amount=' + chargeAmount.toFixed(2);
+  }
   buildQuickCash();
   calcChange();
 }

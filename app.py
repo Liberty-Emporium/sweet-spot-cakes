@@ -1132,6 +1132,40 @@ def order_register(order_id):
                            square_configured=bool(SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID))
 
 # ── Square Checkout ──────────────────────────────────────────────────
+@app.route('/orders/<int:order_id>/square-demo')
+@login_required
+def square_demo(order_id):
+    """Simulated Square checkout page for demo/testing."""
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    amount = float(request.args.get('amount', order['balance_due'] or 0))
+    return render_template('square_demo.html',
+                           order=order,
+                           amount=amount,
+                           bakery=BAKERY_NAME)
+
+@app.route('/orders/<int:order_id>/square-demo-confirm', methods=['POST'])
+@login_required
+def square_demo_confirm(order_id):
+    """Records demo Square payment as if it went through."""
+    db = get_db()
+    amount = float(request.form.get('amount', 0))
+    if amount > 0:
+        order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+        db.execute('INSERT INTO receipts(order_id,amount,method,notes) VALUES(?,?,?,?)',
+                   (order_id, amount, 'square', 'Square DEMO payment'))
+        new_deposit = (order['deposit_paid'] or 0) + amount
+        new_balance = max(0, (order['total'] or 0) - new_deposit)
+        paid_full = 1 if new_balance <= 0.01 else 0
+        db.execute('UPDATE orders SET deposit_paid=?,balance_due=?,paid_in_full=? WHERE id=?',
+                   (new_deposit, new_balance, paid_full, order_id))
+        db.commit()
+        flash(f'⬛ Square DEMO payment of ${amount:.2f} recorded! ✅', 'success')
+    return redirect(url_for('order_register', order_id=order_id))
+
 @app.route('/orders/<int:order_id>/square-checkout', methods=['POST'])
 @login_required
 def square_checkout(order_id):
