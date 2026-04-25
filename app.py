@@ -2199,16 +2199,22 @@ def employee_deactivate(emp_id):
 def employee_timesheets(emp_id):
     db = get_db()
     emp = db.execute("SELECT * FROM employees WHERE id=?", (emp_id,)).fetchone()
-    ts  = db.execute("SELECT * FROM timesheets WHERE employee_id=? ORDER BY clock_in DESC LIMIT 50", (emp_id,)).fetchall()
+    ts_raw = db.execute("SELECT * FROM timesheets WHERE employee_id=? ORDER BY clock_in DESC LIMIT 50", (emp_id,)).fetchall()
     total_hours = 0
-    for t in ts:
+    timesheets = []
+    for t in ts_raw:
+        hrs = None
         if t['clock_out']:
-            ci = datetime.datetime.fromisoformat(t['clock_in'])
-            co = datetime.datetime.fromisoformat(t['clock_out'])
-            hrs = (co - ci).total_seconds() / 3600 - (t['break_mins'] or 0)/60
-            total_hours += max(0, hrs)
-    return render_template('timesheets.html', emp=emp, timesheets=ts,
-                           total_hours=round(total_hours,2), bakery=BAKERY_NAME)
+            try:
+                ci = datetime.datetime.fromisoformat(t['clock_in'][:19])
+                co = datetime.datetime.fromisoformat(t['clock_out'][:19])
+                hrs = max(0, (co - ci).total_seconds() / 3600 - (t['break_mins'] or 0) / 60)
+                total_hours += hrs
+            except Exception:
+                hrs = None
+        timesheets.append({'row': t, 'hrs': round(hrs, 2) if hrs is not None else None})
+    return render_template('timesheets.html', emp=emp, timesheets=timesheets,
+                           total_hours=round(total_hours, 2), bakery=BAKERY_NAME)
 
 @app.route('/timesheets/clockin', methods=['POST'])
 @login_required
