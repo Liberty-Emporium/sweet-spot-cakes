@@ -27,7 +27,7 @@
         </span>
       </div>
       {% if campaign.sent_at %}
-      <div style="font-size:.82rem;color:var(--green)">✅ Sent {{ campaign.sent_at[:16] }} to {{ campaign.sent_count }} members</div>
+      <div style="font-size:.82rem;color:var(--green)">✅ Sent {{ campaign.sent_at|ny_time }} to {{ campaign.sent_count }} members</div>
       {% endif %}
     </div>
 

@@ -34,7 +34,7 @@
         <td>
           {% if emp.clocked_in_at %}
             <span class="badge badge-ready">🟢 In</span>
-            <div style="font-size:.68rem;color:var(--muted)">since {{ emp.clocked_in_at[11:16] }}</div>
+            <div style="font-size:.68rem;color:var(--muted)">since {{ emp.clocked_in_at|ny_short }}</div>
           {% else %}
             <span class="badge badge-cancelled">⭕ Out</span>
           {% endif %}

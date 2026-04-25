@@ -102,7 +102,7 @@
       </div>
       <div class="meta-box">
         <div class="label">Date</div>
-        <div class="value">{{ order.created[:10] if order.created else 'N/A' }}</div>
+        <div class="value">{{ order.created|ny_date if order.created else 'N/A' }}</div>
       </div>
       <div class="meta-box">
         <div class="label">Customer</div>
@@ -168,12 +168,12 @@
     {% for r in receipts %}
       {% if r.amount > 0 %}
       <div class="payment-row">
-        <span>{{ r.created[:10] }} <span class="payment-method">{{ r.method }}</span></span>
+        <span>{{ r.created|ny_date }} <span class="payment-method">{{ r.method }}</span></span>
         <span style="color:#1a7a4a;font-weight:600">+${{ "%.2f"|format(r.amount) }}</span>
       </div>
       {% else %}
       <div class="payment-row refund-row">
-        <span>{{ r.created[:10] }} <span class="payment-method" style="background:#fde8e8;color:#c0392b">REFUND</span>
+        <span>{{ r.created|ny_date }} <span class="payment-method" style="background:#fde8e8;color:#c0392b">REFUND</span>
         {% if r.notes %}<span style="font-size:.75rem;color:#9d4e6b"> · {{ r.notes[:50] }}</span>{% endif %}</span>
         <span style="font-weight:600">-${{ "%.2f"|format(r.amount|abs) }}</span>
       </div>

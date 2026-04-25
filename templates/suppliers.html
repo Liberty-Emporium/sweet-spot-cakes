@@ -177,7 +177,7 @@
         <div class="po-row">
           <div class="po-row-head">
             <div>
-              <span class="po-date">{{ po.ordered_at[:10] if po.ordered_at else 'Date unknown' }}</span>
+              <span class="po-date">{{ po.ordered_at|ny_date if po.ordered_at else 'Date unknown' }}</span>
               {% if po.notes %} <span style="font-size:.75rem;color:var(--muted)"> · {{ po.notes }}</span>{% endif %}
             </div>
             <div style="display:flex;align-items:center;gap:8px">

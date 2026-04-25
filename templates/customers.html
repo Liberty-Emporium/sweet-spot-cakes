@@ -41,7 +41,7 @@
         <td style="font-size:.82rem">{{ c.phone or '—' }}</td>
         <td style="font-size:.82rem;color:var(--pink)">{{ c.birthday or '—' }}</td>
         <td style="font-size:.78rem;color:var(--muted)">{{ c.notes[:40] + '…' if c.notes and c.notes|length > 40 else (c.notes or '') }}</td>
-        <td style="font-size:.75rem;color:var(--muted)">{{ c.created[:10] }}</td>
+        <td style="font-size:.75rem;color:var(--muted)">{{ c.created|ny_date }}</td>
       </tr>
       {% else %}
       <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">No customers yet. They're created automatically when you add orders.</td></tr>

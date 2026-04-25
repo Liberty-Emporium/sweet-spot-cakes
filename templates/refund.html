@@ -77,7 +77,7 @@
         {% for r in receipts %}
         <div class="receipt-row" id="row-{{ r.id }}" onclick="selectReceipt('{{ r.id }}', {{ r.amount }}, '{{ r.method }}', '{{ r.stripe_pi or '' }}')">
           <div>
-            <span style="color:var(--muted);font-size:.8rem">{{ r.created[:16] }}</span>
+            <span style="color:var(--muted);font-size:.8rem">{{ r.created|ny_time }}</span>
             <span class="method-badge">{{ r.method }}</span>
             {% if r.notes %}<span style="color:var(--muted);font-size:.75rem;margin-left:6px">{{ r.notes[:40] }}</span>{% endif %}
           </div>
@@ -152,7 +152,7 @@
     {% for r in refunds %}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem">
       <div>
-        <span style="color:var(--muted)">{{ r.created[:16] }}</span>
+        <span style="color:var(--muted)">{{ r.created|ny_time }}</span>
         <span class="refund-badge">REFUND</span>
         {% if r.notes %}<div style="color:var(--muted);font-size:.75rem;margin-top:2px">{{ r.notes }}</div>{% endif %}
       </div>

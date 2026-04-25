@@ -51,8 +51,8 @@
       <div style="flex:1">
         <div style="font-weight:700;font-size:.92rem;color:var(--text)">{{ c.name }}</div>
         <div style="font-size:.75rem;color:var(--muted);margin-top:2px">
-          Audience: {{ c.audience.replace('_',' ')|title }} &nbsp;·&nbsp; Created: {{ c.created[:10] }}
-          {% if c.sent_at %} &nbsp;·&nbsp; Sent: {{ c.sent_at[:10] }} to {{ c.sent_count }} members{% endif %}
+          Audience: {{ c.audience.replace('_',' ')|title }} &nbsp;·&nbsp; Created: {{ c.created|ny_date }}
+          {% if c.sent_at %} &nbsp;·&nbsp; Sent: {{ c.sent_at|ny_date }} to {{ c.sent_count }} members{% endif %}
         </div>
         {% if c.subject %}<div style="font-size:.8rem;color:var(--accent3);margin-top:3px">✉️ {{ c.subject }}</div>{% endif %}
       </div>

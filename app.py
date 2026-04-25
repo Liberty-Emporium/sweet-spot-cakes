@@ -1,6 +1,29 @@
 import os, json, sqlite3, secrets, hashlib, datetime, threading, time, smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from zoneinfo import ZoneInfo
+
+NY_TZ = ZoneInfo('America/New_York')
+
+def utc_to_ny(dt_str: str, fmt: str = '%m/%d/%Y %I:%M %p') -> str:
+    """Convert a UTC datetime string (from SQLite) to New York local time."""
+    if not dt_str:
+        return ''
+    try:
+        # SQLite stores as 'YYYY-MM-DD HH:MM:SS' — treat as UTC
+        dt_str = dt_str[:19]  # strip microseconds if present
+        dt = datetime.datetime.fromisoformat(dt_str).replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(NY_TZ).strftime(fmt)
+    except Exception:
+        return dt_str[:16]
+
+def ny_now() -> datetime.datetime:
+    """Current time in New York."""
+    return datetime.datetime.now(NY_TZ)
+
+def ny_today() -> str:
+    """Today's date in New York as YYYY-MM-DD."""
+    return ny_now().strftime('%Y-%m-%d')
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    flash, session, jsonify, g)
@@ -8,6 +31,20 @@ import bcrypt
 import stripe
 
 app = Flask(__name__)
+
+# ── Jinja2 filters ───────────────────────────────────────────────────────────
+@app.template_filter('ny_time')
+def ny_time_filter(dt_str, fmt='%m/%d/%Y %I:%M %p'):
+    return utc_to_ny(dt_str, fmt)
+
+@app.template_filter('ny_date')
+def ny_date_filter(dt_str):
+    return utc_to_ny(dt_str, '%m/%d/%Y')
+
+@app.template_filter('ny_short')
+def ny_short_filter(dt_str):
+    """e.g. Apr 25, 2:34 PM"""
+    return utc_to_ny(dt_str, '%b %-d, %I:%M %p')
 
 # ── Config ────────────────────────────────────────────────────────────────────
 _DATA_DIR = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', os.path.dirname(__file__))
@@ -75,7 +112,7 @@ def _receipt_html(order, items, receipts) -> str:
         for i in items
     )
     pay_rows = ''.join(
-        f'<tr><td style="padding:4px 8px">{r["created"][:10]} — {r["method"]}</td>'
+        f'<tr><td style="padding:4px 8px">{utc_to_ny(r["created"], "%m/%d/%Y")} — {r["method"]}</td>'
         f'<td style="padding:4px 8px;text-align:right;color:{"#1a7a4a" if r["amount"]>0 else "#c0392b"}">{("+" if r["amount"]>0 else "-")}${abs(r["amount"]):.2f}</td></tr>'
         for r in receipts
     )
@@ -885,7 +922,7 @@ def admin_required(f):
     return dec
 
 def gen_order_number():
-    now = datetime.datetime.now()
+    now = ny_now()
     return f"SS-{now.strftime('%y%m%d')}-{secrets.token_hex(2).upper()}"
 
 def tax_rate():
@@ -956,8 +993,8 @@ def index():
 @login_required
 def dashboard():
     db = get_db()
-    today = datetime.date.today().isoformat()
-    week_ago = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    today = ny_today()
+    week_ago = (ny_now().date() - datetime.timedelta(days=7)).isoformat()
 
     stats = {
         'orders_today':   db.execute("SELECT COUNT(*) FROM orders WHERE date(created)=?", (today,)).fetchone()[0],
@@ -2068,7 +2105,7 @@ def supplier_purchase(supplier_id):
         flash('No valid items.', 'error')
         return redirect(url_for('suppliers'))
 
-    now = datetime.date.today().isoformat()
+    now = ny_today()
     cur = db.execute(
         '''INSERT INTO purchase_orders(supplier_id, status, total, notes, ordered_at, received_at)
            VALUES (?,?,?,?,?,?)''',
@@ -2311,7 +2348,7 @@ def customers():
 @login_required
 def reports():
     db = get_db()
-    today = datetime.date.today()
+    today = ny_now().date()
     month_start = today.replace(day=1).isoformat()
 
     revenue_month = db.execute("SELECT COALESCE(SUM(amount),0) FROM receipts WHERE date(created)>=?", (month_start,)).fetchone()[0]
@@ -2367,7 +2404,7 @@ EXPENSE_CATEGORIES = ['Supplies', 'Ingredients', 'Equipment', 'Packaging', 'Mark
 @login_required
 def expenses():
     db  = get_db()
-    now = datetime.date.today()
+    now = ny_now().date()
     month = request.args.get('month', now.strftime('%Y-%m'))
     month_start = month + '-01'
     try:
@@ -2404,7 +2441,7 @@ def expenses_add():
     category    = request.form.get('category', 'Supplies')
     description = request.form.get('description', '').strip()
     amount      = float(request.form.get('amount', 0))
-    date        = request.form.get('date') or datetime.date.today().isoformat()
+    date        = request.form.get('date') or ny_today()
     supplier_id = request.form.get('supplier_id') or None
     if not description or amount <= 0:
         flash('Description and a positive amount are required.', 'error')
@@ -2431,7 +2468,7 @@ def expenses_delete(expense_id):
 @login_required
 def prep_sheet():
     db    = get_db()
-    today = datetime.date.today()
+    today = ny_now().date()
     tomorrow  = today + datetime.timedelta(days=1)
     day_after = today + datetime.timedelta(days=2)
     window_end = (today + datetime.timedelta(days=3)).isoformat()
@@ -2693,7 +2730,7 @@ def loyalty():
         ORDER BY lm.joined_at DESC
     ''').fetchall()
     specials = db.execute("SELECT * FROM specials ORDER BY created DESC").fetchall()
-    today = datetime.date.today()
+    today = ny_now().date()
     # Find birthdays this month
     month = str(today.month).zfill(2)
     birthdays = db.execute(
@@ -2712,7 +2749,7 @@ def special_add():
     db = get_db()
     db.execute('INSERT INTO specials(title,description,discount,valid_from,valid_until) VALUES(?,?,?,?,?)',
                (request.form['title'], request.form.get('description',''),
-                request.form.get('discount',''), request.form.get('valid_from', datetime.date.today().isoformat()),
+                request.form.get('discount',''), request.form.get('valid_from', ny_today()),
                 request.form.get('valid_until','')))
     db.commit()
     flash('Special added! ✨', 'success')
@@ -2789,7 +2826,7 @@ def marketing():
 
     # Audience counts
     total_members = db.execute('SELECT COUNT(*) FROM loyalty_members').fetchone()[0]
-    month = str(datetime.date.today().month).zfill(2)
+    month = str(ny_now().date().month).zfill(2)
     birthday_count = db.execute(
         "SELECT COUNT(*) FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE c.birthday LIKE ?",
         (f'%-{month}-%',)).fetchone()[0]
@@ -2839,7 +2876,7 @@ def campaign_detail(campaign_id):
     # Build audience list
     audience = campaign['audience']
     if audience == 'birthday':
-        month = str(datetime.date.today().month).zfill(2)
+        month = str(ny_now().date().month).zfill(2)
         members = db.execute(
             "SELECT c.* FROM customers c JOIN loyalty_members lm ON lm.customer_id=c.id WHERE c.birthday LIKE ? AND c.email != ''",
             (f'%-{month}-%',)).fetchall()
@@ -2953,7 +2990,7 @@ def cakely_orders():
     db = get_db()
     status = request.args.get('status', '')
     q = request.args.get('q', '')
-    today = datetime.date.today().isoformat()
+    today = ny_today()
     sql = 'SELECT * FROM orders WHERE 1=1'
     params = []
     if status: sql += ' AND status=?'; params.append(status)
@@ -2966,7 +3003,7 @@ def cakely_orders():
 def cakely_orders_today():
     if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
     db = get_db()
-    today = datetime.date.today().isoformat()
+    today = ny_today()
     orders = [dict(r) for r in db.execute(
         "SELECT * FROM orders WHERE date(created)=? OR pickup_date=? ORDER BY pickup_time",
         (today, today)).fetchall()]
@@ -3028,8 +3065,8 @@ def cakely_employee_status():
 def cakely_dashboard():
     if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
     db = get_db()
-    today = datetime.date.today().isoformat()
-    week_ago = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+    today = ny_today()
+    week_ago = (ny_now().date() - datetime.timedelta(days=7)).isoformat()
     data = {
         'orders_today':   db.execute("SELECT COUNT(*) FROM orders WHERE date(created)=?", (today,)).fetchone()[0],
         'orders_pending': db.execute("SELECT COUNT(*) FROM orders WHERE status='pending'").fetchone()[0],
