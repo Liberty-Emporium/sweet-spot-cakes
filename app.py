@@ -1,4 +1,6 @@
-import os, json, sqlite3, secrets, hashlib, datetime, threading, time
+import os, json, sqlite3, secrets, hashlib, datetime, threading, time, smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    flash, session, jsonify, g)
@@ -34,6 +36,97 @@ SQUARE_BASE_URL      = 'https://connect.squareup.com' if SQUARE_ENV == 'producti
 
 BAKERY_NAME    = os.environ.get('BAKERY_NAME', 'Sweet Spot Custom Cakes')
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'info@sweetspotcustomcakes.com')
+
+# ── SMTP (optional — set in Railway env vars to enable email receipts) ──────────────
+SMTP_HOST  = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT  = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER  = os.environ.get('SMTP_USER', '')   # Gmail address
+SMTP_PASS  = os.environ.get('SMTP_PASS', '')   # Gmail app password
+SMTP_FROM  = os.environ.get('SMTP_FROM', ADMIN_EMAIL)
+SMTP_ENABLED = bool(SMTP_USER and SMTP_PASS)
+
+def send_email(to_addr: str, subject: str, html_body: str) -> bool:
+    """Send HTML email. Returns True on success."""
+    if not SMTP_ENABLED:
+        return False
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From']    = f'{BAKERY_NAME} <{SMTP_FROM}>'
+        msg['To']      = to_addr
+        msg.attach(MIMEText(html_body, 'html'))
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.sendmail(SMTP_FROM, to_addr, msg.as_string())
+        return True
+    except Exception as e:
+        app.logger.error(f'Email send error: {e}')
+        return False
+
+def _receipt_html(order, items, receipts) -> str:
+    """Build a plain-HTML email receipt string."""
+    total_paid     = sum(r['amount'] for r in receipts if r['amount'] > 0)
+    total_refunded = abs(sum(r['amount'] for r in receipts if r['amount'] < 0))
+    rows = ''.join(
+        f'<tr><td style="padding:6px 8px">{i["name"]} x{i["quantity"]}</td>'
+        f'<td style="padding:6px 8px;text-align:right">${i["total"]:.2f}</td></tr>'
+        for i in items
+    )
+    pay_rows = ''.join(
+        f'<tr><td style="padding:4px 8px">{r["created"][:10]} — {r["method"]}</td>'
+        f'<td style="padding:4px 8px;text-align:right;color:{"#1a7a4a" if r["amount"]>0 else "#c0392b"}">{("+" if r["amount"]>0 else "-")}${abs(r["amount"]):.2f}</td></tr>'
+        for r in receipts
+    )
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto">
+      <div style="background:linear-gradient(135deg,#f472b6,#db2777);color:#fff;padding:24px;text-align:center;border-radius:12px 12px 0 0">
+        <div style="font-size:2rem">🎂</div>
+        <div style="font-size:1.3rem;font-weight:800">{BAKERY_NAME}</div>
+        <div style="font-size:.85rem;opacity:.85">Your Receipt</div>
+      </div>
+      <div style="background:#fff;padding:24px;border:1px solid #f0d4e0;border-radius:0 0 12px 12px">
+        <p><strong>Order #:</strong> {order['order_number']}</p>
+        <p><strong>Customer:</strong> {order['customer_name']}</p>
+        {f"<p><strong>Pickup:</strong> {order['pickup_date']}{' @ '+order['pickup_time'] if order['pickup_time'] else ''}</p>" if order['pickup_date'] else ''}
+        <table width="100%" cellspacing="0" style="border-collapse:collapse;margin:16px 0">
+          <thead><tr style="background:#fdf2f8">
+            <th style="padding:8px;text-align:left">Item</th>
+            <th style="padding:8px;text-align:right">Price</th>
+          </tr></thead>
+          <tbody>{rows}</tbody>
+          <tfoot>
+            <tr><td colspan="2"><hr style="border:none;border-top:1px dashed #e8c4d0"></td></tr>
+            {f"<tr><td style='padding:4px 8px'>Tax</td><td style='padding:4px 8px;text-align:right'>${order['tax']:.2f}</td></tr>" if order['tax'] else ''}
+            <tr style="font-weight:800;font-size:1.05rem">
+              <td style="padding:8px">Total</td>
+              <td style="padding:8px;text-align:right">${order['total']:.2f}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <table width="100%" cellspacing="0" style="border-collapse:collapse;margin-top:12px">
+          <thead><tr style="background:#fdf2f8">
+            <th style="padding:8px;text-align:left">Payments</th>
+            <th style="padding:8px;text-align:right">Amount</th>
+          </tr></thead>
+          <tbody>{pay_rows}</tbody>
+        </table>
+        <div style="margin-top:16px;padding:12px;background:#fdf2f8;border-radius:8px">
+          <div style="display:flex;justify-content:space-between"><span>Total Paid:</span><span style="color:#1a7a4a;font-weight:700">${total_paid:.2f}</span></div>
+          {f"<div style='display:flex;justify-content:space-between'><span>Refunded:</span><span style='color:#c0392b;font-weight:700'>-${total_refunded:.2f}</span></div>" if total_refunded > 0 else ''}
+          <div style="display:flex;justify-content:space-between;font-weight:800;font-size:1.05rem;margin-top:6px">
+            <span>Balance Due:</span><span style="color:{'#1a7a4a' if order['balance_due']<=0 else '#c0392b'}">${order['balance_due']:.2f}</span>
+          </div>
+        </div>
+        {f"<p style='color:#888;font-style:italic;font-size:.85rem;margin-top:16px'>Notes: {order['special_notes']}</p>" if order['special_notes'] else ''}
+        <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px dashed #e8c4d0;color:#9d4e6b;font-size:.82rem">
+          Thank you for choosing {BAKERY_NAME}! 🎂<br>
+          {ADMIN_EMAIL}
+        </div>
+      </div>
+    </div>
+    """
 
 # ── DB ─────────────────────────────────────────────────────────────────────────
 def get_db():
@@ -1086,6 +1179,7 @@ def payment_success(order_id):
                        (new_deposit, new_balance, paid_full, order_id))
             db.commit()
             flash(f'Payment of ${amount:.2f} received! ✅', 'success')
+            threading.Thread(target=_auto_email_receipt, args=(order_id,), daemon=True).start()
         except Exception as e:
             flash(f'Payment recorded but verification failed: {e}', 'warning')
     return redirect(url_for('order_detail', order_id=order_id))
@@ -1110,6 +1204,8 @@ def cash_payment(order_id):
                    (new_deposit, new_balance, paid_full, order_id))
         db.commit()
         flash(f'${amount:.2f} {method} payment recorded.', 'success')
+        # Auto-email receipt if SMTP configured and customer has email
+        threading.Thread(target=_auto_email_receipt, args=(order_id,), daemon=True).start()
     return redirect(url_for('order_detail', order_id=order_id))
 
 # ── Register (POS screen) ────────────────────────────────────────────────
@@ -1247,6 +1343,77 @@ def square_success(order_id):
     else:
         flash('Square payment received — please verify amount manually.', 'warning')
     return redirect(url_for('order_register', order_id=order_id))
+
+# ── Receipt ──────────────────────────────────────────────────────────────
+
+@app.route('/orders/<int:order_id>/receipt')
+@login_required
+def order_receipt(order_id):
+    db = get_db()
+    order    = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    items    = db.execute('SELECT * FROM order_items WHERE order_id=? ORDER BY id', (order_id,)).fetchall()
+    receipts = db.execute('SELECT * FROM receipts WHERE order_id=? ORDER BY created', (order_id,)).fetchall()
+    total_paid     = sum(r['amount'] for r in receipts if r['amount'] > 0)
+    total_refunded = abs(sum(r['amount'] for r in receipts if r['amount'] < 0))
+    return render_template('receipt.html',
+                           order=order,
+                           items=items,
+                           receipts=receipts,
+                           total_paid=total_paid,
+                           total_refunded=total_refunded,
+                           bakery=BAKERY_NAME,
+                           admin_email=ADMIN_EMAIL,
+                           smtp_enabled=SMTP_ENABLED)
+
+
+@app.route('/orders/<int:order_id>/receipt/email', methods=['POST'])
+@login_required
+def order_receipt_email(order_id):
+    db = get_db()
+    order    = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        return jsonify({'error': 'not found'}), 404
+    to_email = request.form.get('to_email', '').strip()
+    if not to_email:
+        flash('Please enter an email address.', 'error')
+        return redirect(url_for('order_receipt', order_id=order_id))
+    if not SMTP_ENABLED:
+        flash('⚠️ Email not configured. Add SMTP_USER and SMTP_PASS to Railway env vars.', 'error')
+        return redirect(url_for('order_receipt', order_id=order_id))
+    items    = db.execute('SELECT * FROM order_items WHERE order_id=? ORDER BY id', (order_id,)).fetchall()
+    receipts = db.execute('SELECT * FROM receipts WHERE order_id=? ORDER BY created', (order_id,)).fetchall()
+    html     = _receipt_html(order, items, receipts)
+    ok = send_email(to_email, f'Your Receipt — {BAKERY_NAME} Order {order["order_number"]}', html)
+    if ok:
+        flash(f'✅ Receipt emailed to {to_email}!', 'success')
+    else:
+        flash('❌ Email failed. Check SMTP settings in Railway.', 'error')
+    return redirect(url_for('order_receipt', order_id=order_id))
+
+
+def _auto_email_receipt(order_id: int):
+    """Fire-and-forget receipt email after payment if SMTP is configured."""
+    if not SMTP_ENABLED:
+        return
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+        order    = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+        if not order or not order['customer_email']:
+            return
+        items    = db.execute('SELECT * FROM order_items WHERE order_id=? ORDER BY id', (order_id,)).fetchall()
+        receipts = db.execute('SELECT * FROM receipts WHERE order_id=? ORDER BY created', (order_id,)).fetchall()
+        html = _receipt_html(order, items, receipts)
+        send_email(order['customer_email'],
+                   f'Payment Received — {BAKERY_NAME} Order {order["order_number"]}',
+                   html)
+        db.close()
+    except Exception as e:
+        app.logger.error(f'Auto-email receipt error: {e}')
+
 
 # ── Refunds ────────────────────────────────────────────────────────────────
 

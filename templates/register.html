@@ -53,7 +53,10 @@
 <div class="reg-wrap">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
     <a href="/orders/{{ order.id }}" class="back-link" style="margin:0">← Back to Order {{ order.order_number }}</a>
-    <a href="/orders/{{ order.id }}/refund" style="color:#f87171;font-size:.85rem;text-decoration:none">↩️ Issue Refund</a>
+<div style="display:flex;gap:12px">
+      <a href="/orders/{{ order.id }}/receipt" style="color:#60a5fa;font-size:.85rem;text-decoration:none">🧾 Receipt</a>
+      <a href="/orders/{{ order.id }}/refund" style="color:#f87171;font-size:.85rem;text-decoration:none">↩️ Refund</a>
+    </div>
   </div>
 
   <div class="reg-card">

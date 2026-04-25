@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt — {{ order.order_number }}</title>
+  <style>
+    /* ── Screen styles ── */
+    body { font-family: 'Inter', Arial, sans-serif; background: #0d0408; color: #fdf2f8; margin: 0; padding: 20px; }
+    .screen-actions { max-width: 600px; margin: 0 auto 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: .9rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg,#f472b6,#ec4899); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid #3d1a28; color: #fdf2f8; }
+    .btn-green { background: rgba(52,211,153,.15); border: 1px solid #34d399; color: #34d399; }
+    .email-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .email-form input { background: #160b10; border: 1px solid #3d1a28; border-radius: 8px; padding: 9px 12px; color: #fdf2f8; font-size: .88rem; flex: 1; min-width: 180px; }
+    .flash-msg { max-width: 600px; margin: 0 auto 12px; padding: 10px 16px; border-radius: 8px; font-size: .88rem; }
+    .flash-success { background: rgba(52,211,153,.15); border: 1px solid #34d399; color: #34d399; }
+    .flash-error { background: rgba(248,113,113,.15); border: 1px solid #f87171; color: #f87171; }
+
+    /* ── Receipt card ── */
+    .receipt { max-width: 600px; margin: 0 auto; background: #fff; color: #1a0a12; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.4); }
+    .receipt-header { background: linear-gradient(135deg,#f472b6,#ec4899,#db2777); color: #fff; padding: 32px 28px 24px; text-align: center; }
+    .receipt-header .logo { font-size: 2.2rem; margin-bottom: 4px; }
+    .receipt-header .bakery { font-size: 1.35rem; font-weight: 800; letter-spacing: .02em; margin-bottom: 2px; }
+    .receipt-header .tagline { font-size: .82rem; opacity: .85; }
+    .receipt-body { padding: 24px 28px; }
+    .receipt-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .meta-box { background: #fdf2f8; border-radius: 8px; padding: 10px 14px; }
+    .meta-box .label { font-size: .68rem; color: #9d4e6b; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
+    .meta-box .value { font-size: .92rem; font-weight: 600; color: #1a0a12; }
+    .divider { border: none; border-top: 1px dashed #e8c4d0; margin: 18px 0; }
+    .section-title { font-size: .72rem; color: #9d4e6b; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+    .item-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: .9rem; }
+    .item-name { font-weight: 600; color: #1a0a12; }
+    .item-qty { color: #9d4e6b; font-size: .8rem; }
+    .item-custom { color: #9d4e6b; font-size: .78rem; margin-top: 2px; font-style: italic; }
+    .item-price { font-weight: 700; white-space: nowrap; padding-left: 12px; }
+    .totals-section { background: #fdf2f8; border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+    .total-row { display: flex; justify-content: space-between; font-size: .88rem; margin-bottom: 6px; color: #4a2035; }
+    .total-row.grand { font-size: 1.05rem; font-weight: 800; color: #1a0a12; border-top: 1px solid #e8c4d0; padding-top: 8px; margin-top: 4px; }
+    .total-row.paid { color: #1a7a4a; }
+    .total-row.balance { color: {% if order.balance_due > 0 %}#c0392b{% else %}#1a7a4a{% endif %}; font-weight: 700; }
+    .payment-row { display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 5px; color: #4a2035; }
+    .payment-method { background: #f0d4e0; border-radius: 4px; padding: 1px 7px; font-size: .7rem; text-transform: uppercase; font-weight: 700; color: #9d4e6b; margin-left: 6px; }
+    .refund-row { color: #c0392b; }
+    .notes-box { background: #fdf2f8; border-radius: 8px; padding: 12px 14px; margin-top: 16px; font-size: .85rem; color: #4a2035; font-style: italic; }
+    .receipt-footer { text-align: center; padding: 20px 28px 28px; border-top: 1px dashed #e8c4d0; }
+    .footer-ty { font-size: 1rem; font-weight: 700; color: #db2777; margin-bottom: 6px; }
+    .footer-info { font-size: .78rem; color: #9d4e6b; line-height: 1.7; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .status-paid { background: #d4f7e7; color: #1a7a4a; }
+    .status-partial { background: #fef3cd; color: #856404; }
+    .status-unpaid { background: #fde8e8; color: #c0392b; }
+
+    /* ── Print styles ── */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .screen-actions, .flash-msg { display: none !important; }
+      .receipt { box-shadow: none; border-radius: 0; max-width: 100%; }
+    }
+    @page { margin: 0.5in; size: letter; }
+  </style>
+</head>
+<body>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<!-- Screen action bar (hidden on print) -->
+<div class="screen-actions">
+  <a href="/orders/{{ order.id }}" class="btn btn-outline">← Back to Order</a>
+  <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+
+  <!-- Email form -->
+  <form method="POST" action="/orders/{{ order.id }}/receipt/email" class="email-form">
+    <input type="email" name="to_email" placeholder="customer@email.com"
+           value="{{ order.customer_email or '' }}" required>
+    <button type="submit" class="btn btn-green">📧 Email Receipt</button>
+  </form>
+
+  <a href="/orders/{{ order.id }}/register" class="btn btn-outline">🛒 Register</a>
+</div>
+
+<!-- ── Receipt ── -->
+<div class="receipt">
+  <div class="receipt-header">
+    <div class="logo">🎂</div>
+    <div class="bakery">{{ bakery }}</div>
+    <div class="tagline">Custom Cakes & Bakery Creations</div>
+  </div>
+
+  <div class="receipt-body">
+    <!-- Meta info -->
+    <div class="receipt-meta">
+      <div class="meta-box">
+        <div class="label">Order #</div>
+        <div class="value">{{ order.order_number }}</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Date</div>
+        <div class="value">{{ order.created[:10] if order.created else 'N/A' }}</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Customer</div>
+        <div class="value">{{ order.customer_name }}</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Phone</div>
+        <div class="value">{{ order.customer_phone or '—' }}</div>
+      </div>
+      {% if order.pickup_date %}
+      <div class="meta-box">
+        <div class="label">Pickup Date</div>
+        <div class="value">{{ order.pickup_date }}{% if order.pickup_time %} @ {{ order.pickup_time }}{% endif %}</div>
+      </div>
+      {% endif %}
+      <div class="meta-box">
+        <div class="label">Status</div>
+        <div class="value">
+          <span class="status-badge {% if order.paid_in_full %}status-paid{% elif order.deposit_paid and order.deposit_paid > 0 %}status-partial{% else %}status-unpaid{% endif %}">
+            {% if order.paid_in_full %}Paid in Full{% elif order.deposit_paid and order.deposit_paid > 0 %}Partial Payment{% else %}Balance Due{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Order items -->
+    {% if items %}
+    <div class="section-title">Items Ordered</div>
+    {% for item in items %}
+    <div class="item-row">
+      <div>
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-qty">Qty: {{ item.quantity }}{% if item.unit_price %} × ${{ "%.2f"|format(item.unit_price) }}{% endif %}</div>
+        {% if item.customizations %}
+        <div class="item-custom">{{ item.customizations }}</div>
+        {% endif %}
+      </div>
+      <div class="item-price">${{ "%.2f"|format(item.total) }}</div>
+    </div>
+    {% endfor %}
+    <hr class="divider">
+    {% endif %}
+
+    <!-- Totals -->
+    <div class="totals-section">
+      {% if order.subtotal and order.subtotal != order.total %}
+      <div class="total-row"><span>Subtotal</span><span>${{ "%.2f"|format(order.subtotal or 0) }}</span></div>
+      {% endif %}
+      {% if order.discount and order.discount > 0 %}
+      <div class="total-row" style="color:#1a7a4a"><span>Discount</span><span>-${{ "%.2f"|format(order.discount) }}</span></div>
+      {% endif %}
+      {% if order.tax and order.tax > 0 %}
+      <div class="total-row"><span>Tax</span><span>${{ "%.2f"|format(order.tax) }}</span></div>
+      {% endif %}
+      <div class="total-row grand"><span>Total</span><span>${{ "%.2f"|format(order.total or 0) }}</span></div>
+    </div>
+
+    <!-- Payment history -->
+    {% if receipts %}
+    <div class="section-title">Payments</div>
+    {% for r in receipts %}
+      {% if r.amount > 0 %}
+      <div class="payment-row">
+        <span>{{ r.created[:10] }} <span class="payment-method">{{ r.method }}</span></span>
+        <span style="color:#1a7a4a;font-weight:600">+${{ "%.2f"|format(r.amount) }}</span>
+      </div>
+      {% else %}
+      <div class="payment-row refund-row">
+        <span>{{ r.created[:10] }} <span class="payment-method" style="background:#fde8e8;color:#c0392b">REFUND</span>
+        {% if r.notes %}<span style="font-size:.75rem;color:#9d4e6b"> · {{ r.notes[:50] }}</span>{% endif %}</span>
+        <span style="font-weight:600">-${{ "%.2f"|format(r.amount|abs) }}</span>
+      </div>
+      {% endif %}
+    {% endfor %}
+    <hr class="divider">
+    <div class="total-row paid"><span>Total Paid</span><span>${{ "%.2f"|format(total_paid) }}</span></div>
+    {% if total_refunded > 0 %}
+    <div class="total-row" style="color:#c0392b"><span>Total Refunded</span><span>-${{ "%.2f"|format(total_refunded) }}</span></div>
+    {% endif %}
+    <div class="total-row balance"><span>Balance Due</span><span>${{ "%.2f"|format(order.balance_due or 0) }}</span></div>
+    {% endif %}
+
+    <!-- Special notes -->
+    {% if order.special_notes %}
+    <div class="notes-box">📝 {{ order.special_notes }}</div>
+    {% endif %}
+  </div>
+
+  <div class="receipt-footer">
+    <div class="footer-ty">Thank you for choosing {{ bakery }}! 🎂</div>
+    <div class="footer-info">
+      {{ admin_email }}<br>
+      sweetspotcustomcakes.com<br><br>
+      All sales final on custom orders.<br>
+      Contact us within 24 hrs of pickup for any concerns.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
