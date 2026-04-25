@@ -2152,22 +2152,49 @@ def employees():
     ''').fetchall()
     return render_template('employees.html', employees=emps, bakery=BAKERY_NAME)
 
+def _hash_pin(raw_pin: str) -> str:
+    """Bcrypt-hash a PIN. Returns the hash string."""
+    return bcrypt.hashpw(raw_pin.encode(), bcrypt.gensalt()).decode()
+
+def _check_pin(raw_pin: str, hashed: str) -> bool:
+    """Verify a PIN against its bcrypt hash. Also accepts legacy plain-text pins."""
+    if not raw_pin or not hashed:
+        return False
+    try:
+        return bcrypt.checkpw(raw_pin.encode(), hashed.encode())
+    except Exception:
+        # Legacy plain-text comparison (will be re-hashed on next save)
+        return raw_pin == hashed
+
 @app.route('/employees/add', methods=['POST'])
 @login_required
 def employee_add():
     db = get_db()
+    raw_pin = request.form.get('pin', '').strip()
+    if not raw_pin:
+        import random
+        raw_pin = str(random.randint(1000, 9999))
+    hashed_pin = _hash_pin(raw_pin)
     db.execute("INSERT INTO employees(name,email,phone,role,hourly_rate,pin,notes) VALUES(?,?,?,?,?,?,?)",
                (request.form['name'], request.form.get('email',''), request.form.get('phone',''),
                 request.form.get('role','Baker'), float(request.form.get('hourly_rate',15)),
-                request.form.get('pin','0000'), request.form.get('notes','')))
+                hashed_pin, request.form.get('notes','')))
     db.commit()
-    flash('Employee added.', 'success')
+    flash(f'Employee added. PIN set successfully.', 'success')
     return redirect(url_for('employees'))
 
 @app.route('/employees/<int:emp_id>/edit', methods=['POST'])
 @login_required
 def employee_edit(emp_id):
     db = get_db()
+    raw_pin = request.form.get('pin', '').strip()
+    current = db.execute('SELECT pin FROM employees WHERE id=?', (emp_id,)).fetchone()
+    if raw_pin:
+        # New PIN entered — hash it
+        new_pin = _hash_pin(raw_pin)
+    else:
+        # No change — keep existing hash
+        new_pin = current['pin'] if current else ''
     db.execute(
         "UPDATE employees SET name=?,email=?,phone=?,role=?,hourly_rate=?,pin=?,notes=? WHERE id=?",
         (request.form['name'],
@@ -2175,12 +2202,13 @@ def employee_edit(emp_id):
          request.form.get('phone', ''),
          request.form.get('role', 'Baker'),
          float(request.form.get('hourly_rate', 15)),
-         request.form.get('pin', ''),
+         new_pin,
          request.form.get('notes', ''),
          emp_id)
     )
     db.commit()
-    flash('Employee updated.', 'success')
+    pin_msg = ' PIN updated.' if raw_pin else ''
+    flash(f'Employee updated.{pin_msg}', 'success')
     return redirect(url_for('employees'))
 
 
@@ -2221,13 +2249,21 @@ def employee_timesheets(emp_id):
 def clock_in():
     db = get_db()
     emp_id = int(request.form.get('employee_id'))
+    raw_pin = request.form.get('pin', '').strip()
+    emp = db.execute("SELECT * FROM employees WHERE id=?", (emp_id,)).fetchone()
+    if not emp:
+        flash('Employee not found.', 'error')
+        return redirect(url_for('employees'))
+    # PIN verification
+    if not _check_pin(raw_pin, emp['pin']):
+        flash(f'❌ Wrong PIN for {emp["name"]}. Try again.', 'error')
+        return redirect(url_for('employees'))
     existing = db.execute("SELECT id FROM timesheets WHERE employee_id=? AND clock_out IS NULL", (emp_id,)).fetchone()
     if existing:
         flash('Already clocked in!', 'warning')
     else:
         db.execute("INSERT INTO timesheets(employee_id,clock_in) VALUES(?,datetime('now'))", (emp_id,))
         db.commit()
-        emp = db.execute("SELECT name FROM employees WHERE id=?", (emp_id,)).fetchone()
         flash(f'{emp["name"]} clocked in ✅', 'success')
     return redirect(url_for('employees'))
 
@@ -3341,10 +3377,24 @@ def api_customers_search():
 
 # Run migrations on startup to patch any live DBs missing columns
 # (defined after _run_migrations so the function exists at this point)
+def _migrate_pins(db):
+    """Hash any plain-text PINs still in the DB (one-time migration)."""
+    rows = db.execute("SELECT id, pin FROM employees WHERE pin != '' AND pin NOT LIKE '$2b$%'").fetchall()
+    for row in rows:
+        try:
+            hashed = _hash_pin(row['pin'])
+            db.execute("UPDATE employees SET pin=? WHERE id=?", (hashed, row['id']))
+        except Exception as e:
+            app.logger.error(f'PIN migration error for emp {row["id"]}: {e}')
+    if rows:
+        db.commit()
+        app.logger.info(f'Migrated {len(rows)} plain-text PINs to bcrypt hashes')
+
 with app.app_context():
     _mig_db = sqlite3.connect(DB_PATH)
     _mig_db.row_factory = sqlite3.Row
     _run_migrations(_mig_db)
+    _migrate_pins(_mig_db)
     _mig_db.close()
 
 if __name__ == '__main__':

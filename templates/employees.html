@@ -7,7 +7,6 @@
   <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'">+ Add Employee</button>
 </div>
 
-<!-- Staff currently clocked in -->
 {% set clocked_in = employees | selectattr('clocked_in_at') | list %}
 {% if clocked_in %}
 <div class="alert alert-info" style="margin-bottom:16px">
@@ -30,7 +29,7 @@
         <td style="font-size:.82rem">{{ emp.role }}</td>
         <td style="font-size:.82rem;color:var(--muted)">{{ emp.phone or '—' }}</td>
         <td style="font-size:.82rem">${{ "%.2f"|format(emp.hourly_rate) }}/hr</td>
-        <td style="font-family:monospace;color:var(--muted);font-size:.82rem">{{ emp.pin or '—' }}</td>
+        <td style="font-family:monospace;color:var(--muted);font-size:.82rem">——</td>
         <td>
           {% if emp.clocked_in_at %}
             <span class="badge badge-ready">🟢 In</span>
@@ -40,10 +39,13 @@
           {% endif %}
         </td>
         <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+
             {% if not emp.clocked_in_at %}
-            <form method="POST" action="/timesheets/clockin" style="display:inline">
+            <form method="POST" action="/timesheets/clockin" style="display:flex;gap:4px;align-items:center">
               <input type="hidden" name="employee_id" value="{{ emp.id }}">
+              <input type="password" name="pin" maxlength="6" placeholder="PIN"
+                     style="width:62px;padding:4px 7px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.8rem" required>
               <button type="submit" class="btn btn-success btn-xs">Clock In</button>
             </form>
             {% else %}
@@ -52,13 +54,22 @@
               <button type="submit" class="btn btn-ghost btn-xs">Clock Out</button>
             </form>
             {% endif %}
+
             <a href="/employees/{{ emp.id }}/timesheets" class="btn btn-ghost btn-xs">Timesheets</a>
+
             <button class="btn btn-ghost btn-xs" style="color:var(--blue)"
-              onclick="openEdit({{ emp.id }}, '{{ emp.name|replace("'","\\'")|e }}', '{{ emp.email|replace("'","\\'")|e }}', '{{ emp.phone|replace("'","\\'")|e }}', '{{ emp.role }}', {{ emp.hourly_rate }}, '{{ emp.pin or "" }}', '{{ emp.notes|replace("'","\\'")|e }}')">
-              ✏️ Edit
-            </button>
+              onclick="openEdit(
+                {{ emp.id }},
+                {{ emp.name | tojson }},
+                {{ emp.email | tojson }},
+                {{ emp.phone | tojson }},
+                {{ emp.role | tojson }},
+                {{ emp.hourly_rate }},
+                {{ emp.notes | tojson }}
+              )">✏️ Edit</button>
+
             <form method="POST" action="/employees/{{ emp.id }}/deactivate" style="display:inline"
-                  onsubmit="return confirm('Remove {{ emp.name }} from staff? They will no longer appear in the list.')">
+                  onsubmit="return confirm('Remove {{ emp.name }} from staff?')">
               <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red)">🗑️</button>
             </form>
           </div>
@@ -70,7 +81,7 @@
   </div>
 </div>
 
-<!-- ── Add Employee Modal ── -->
+<!-- Add Employee Modal -->
 <div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
   <div class="card" style="width:100%;max-width:480px;position:relative;max-height:90vh;overflow-y:auto">
     <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
@@ -91,7 +102,11 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Hourly Rate $</label><input name="hourly_rate" type="number" step="0.25" class="form-control" value="15.00"></div>
-        <div class="form-group"><label class="form-label">Clock-In PIN</label><input name="pin" class="form-control" maxlength="6" placeholder="1234"></div>
+        <div class="form-group">
+          <label class="form-label">Clock-In PIN</label>
+          <input name="pin" type="password" class="form-control" maxlength="6" placeholder="e.g. 4728" autocomplete="new-password">
+          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">4–6 digits. Never shown again.</div>
+        </div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><input name="notes" class="form-control" placeholder="Skills, availability..."></div>
       <button type="submit" class="btn btn-primary" style="width:100%">Add Employee</button>
@@ -99,19 +114,15 @@
   </div>
 </div>
 
-<!-- ── Edit Employee Modal ── -->
+<!-- Edit Employee Modal -->
 <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
   <div class="card" style="width:100%;max-width:480px;position:relative;max-height:90vh;overflow-y:auto">
     <button onclick="document.getElementById('editModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">✏️ Edit Employee</div>
     <form method="POST" id="editForm" action="">
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Full Name *</label>
-          <input name="name" id="edit-name" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Role</label>
+        <div class="form-group"><label class="form-label">Full Name *</label><input name="name" id="edit-name" class="form-control" required></div>
+        <div class="form-group"><label class="form-label">Role</label>
           <select name="role" id="edit-role" class="form-control">
             <option>Baker</option><option>Decorator</option><option>Cashier</option>
             <option>Manager</option><option>Driver</option><option>Part-Time</option>
@@ -119,29 +130,17 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input name="email" id="edit-email" type="email" class="form-control">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input name="phone" id="edit-phone" class="form-control">
-        </div>
+        <div class="form-group"><label class="form-label">Email</label><input name="email" id="edit-email" type="email" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input name="phone" id="edit-phone" class="form-control"></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label class="form-label">Hourly Rate $</label><input name="hourly_rate" id="edit-rate" type="number" step="0.25" class="form-control"></div>
         <div class="form-group">
-          <label class="form-label">Hourly Rate $</label>
-          <input name="hourly_rate" id="edit-rate" type="number" step="0.25" class="form-control">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Clock-In PIN</label>
-          <input name="pin" id="edit-pin" class="form-control" maxlength="6" placeholder="1234">
+          <label class="form-label">New PIN <span style="color:var(--muted);font-weight:400">(leave blank = no change)</span></label>
+          <input name="pin" id="edit-pin" type="password" class="form-control" maxlength="6" placeholder="Enter new PIN to change" autocomplete="new-password">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <input name="notes" id="edit-notes" class="form-control">
-      </div>
+      <div class="form-group"><label class="form-label">Notes</label><input name="notes" id="edit-notes" class="form-control"></div>
       <div style="display:flex;gap:10px;margin-top:4px">
         <button type="submit" class="btn btn-primary" style="flex:1">💾 Save Changes</button>
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('editModal').style.display='none'" style="flex:1">Cancel</button>
@@ -151,15 +150,14 @@
 </div>
 
 <script>
-function openEdit(id, name, email, phone, role, rate, pin, notes) {
+function openEdit(id, name, email, phone, role, rate, notes) {
   document.getElementById('editForm').action = '/employees/' + id + '/edit';
   document.getElementById('edit-name').value  = name;
-  document.getElementById('edit-email').value = email;
-  document.getElementById('edit-phone').value = phone;
+  document.getElementById('edit-email').value = email || '';
+  document.getElementById('edit-phone').value = phone || '';
   document.getElementById('edit-rate').value  = rate;
-  document.getElementById('edit-pin').value   = pin;
-  document.getElementById('edit-notes').value = notes;
-  // Set role dropdown
+  document.getElementById('edit-pin').value   = '';  // never pre-fill PIN
+  document.getElementById('edit-notes').value = notes || '';
   const sel = document.getElementById('edit-role');
   for (let i = 0; i < sel.options.length; i++) {
     if (sel.options[i].value === role) { sel.selectedIndex = i; break; }
