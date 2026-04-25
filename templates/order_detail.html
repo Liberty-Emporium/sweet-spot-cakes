@@ -160,7 +160,10 @@
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div class="card-title" style="margin:0">💳 Payment</div>
-        <a href="/orders/{{ order.id }}/register" class="btn btn-primary btn-sm" style="font-size:.8rem">🛒 Open Register</a>
+        <div style="display:flex;gap:8px">
+          <a href="/orders/{{ order.id }}/register" class="btn btn-primary btn-sm" style="font-size:.8rem">🛒 Register</a>
+          <a href="/orders/{{ order.id }}/refund" class="btn btn-sm" style="font-size:.8rem;background:rgba(248,113,113,.15);color:#f87171;border:1px solid #f87171">↩️ Refund</a>
+        </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:12px">
         <div>

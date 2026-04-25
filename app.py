@@ -1248,6 +1248,92 @@ def square_success(order_id):
         flash('Square payment received — please verify amount manually.', 'warning')
     return redirect(url_for('order_register', order_id=order_id))
 
+# ── Refunds ────────────────────────────────────────────────────────────────
+
+@app.route('/orders/<int:order_id>/refund', methods=['GET'])
+@login_required
+def order_refund_page(order_id):
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    receipts = db.execute(
+        'SELECT * FROM receipts WHERE order_id=? AND amount > 0 ORDER BY created DESC',
+        (order_id,)
+    ).fetchall()
+    refunds = db.execute(
+        'SELECT * FROM receipts WHERE order_id=? AND amount < 0 ORDER BY created DESC',
+        (order_id,)
+    ).fetchall()
+    total_paid     = sum(r['amount'] for r in receipts)
+    total_refunded = abs(sum(r['amount'] for r in refunds))
+    net_paid       = total_paid - total_refunded
+    return render_template('refund.html',
+                           order=order,
+                           receipts=receipts,
+                           refunds=refunds,
+                           total_paid=total_paid,
+                           total_refunded=total_refunded,
+                           net_paid=net_paid,
+                           bakery=BAKERY_NAME,
+                           stripe_configured=bool(stripe.api_key))
+
+
+@app.route('/orders/<int:order_id>/refund', methods=['POST'])
+@login_required
+def order_refund_submit(order_id):
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        return jsonify({'error': 'not found'}), 404
+    try:
+        amount = float(request.form.get('amount', 0))
+    except (ValueError, TypeError):
+        amount = 0
+    if amount <= 0:
+        flash('Refund amount must be greater than zero.', 'error')
+        return redirect(url_for('order_refund_page', order_id=order_id))
+    reason     = request.form.get('reason', '').strip() or 'No reason given'
+    method     = request.form.get('method', 'cash')
+    receipt_id = request.form.get('receipt_id', '')
+    stripe_refund_id = ''
+    # Attempt Stripe API refund if applicable
+    if method == 'stripe' and stripe.api_key and receipt_id:
+        receipt = db.execute('SELECT * FROM receipts WHERE id=?', (receipt_id,)).fetchone()
+        if receipt and receipt['stripe_pi']:
+            try:
+                refund_obj = stripe.Refund.create(
+                    payment_intent=receipt['stripe_pi'],
+                    amount=int(amount * 100),
+                    reason='requested_by_customer'
+                )
+                stripe_refund_id = refund_obj.id
+            except stripe.error.StripeError as e:
+                flash(f'Stripe refund failed: {e.user_message}', 'error')
+                return redirect(url_for('order_refund_page', order_id=order_id))
+    notes = f'REFUND — {reason}'
+    if stripe_refund_id:
+        notes += f' | Stripe: {stripe_refund_id}'
+    # Record as negative amount — auto-adjusts all revenue queries
+    db.execute(
+        'INSERT INTO receipts(order_id,amount,method,notes) VALUES(?,?,?,?)',
+        (order_id, -abs(amount), 'refund', notes)
+    )
+    # Recalculate order balance from all receipts (payments + refunds)
+    net = db.execute(
+        'SELECT COALESCE(SUM(amount),0) FROM receipts WHERE order_id=?', (order_id,)
+    ).fetchone()[0]
+    new_balance = max(0, (order['total'] or 0) - net)
+    paid_full   = 1 if new_balance <= 0.01 and net > 0 else 0
+    db.execute(
+        'UPDATE orders SET deposit_paid=?,balance_due=?,paid_in_full=? WHERE id=?',
+        (net, new_balance, paid_full, order_id)
+    )
+    db.commit()
+    flash(f'Refund of ${amount:.2f} issued via {method}. ✅', 'success')
+    return redirect(url_for('order_refund_page', order_id=order_id))
+
 # ── Inventory ──────────────────────────────────────────────────────────────
 
 # ── Order Delete (admin only) ──────────────────────────────────────────────
