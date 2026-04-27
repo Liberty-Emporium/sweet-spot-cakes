@@ -197,6 +197,15 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db: db.close()
 
+def _run_migrations(db):
+    """Run schema migrations for existing databases."""
+    # Add password_plain column to users table if it doesn't exist
+    try:
+        db.execute("ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT ''")
+        db.commit()
+    except Exception:
+        pass  # Column already exists
+
 def init_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
