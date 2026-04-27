@@ -36,11 +36,11 @@
             <button type="button" onclick="toggleEmpPin({{ emp.id }}, {{ emp.pin_plain | tojson }})" title="Show/hide PIN"
               style="background:none;border:none;cursor:pointer;font-size:.9rem;color:var(--muted);padding:0 3px"
               id="pin-btn-{{ emp.id }}">👁️</button>
-            <button type="button" onclick="openSetPin({{ emp.id }}, {{ emp.name | tojson }})" title="Change PIN"
+            <button type="button" onclick="openSetPin({{ emp.id }})" title="Change PIN"
               style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--muted);padding:0 3px">✏️</button>
           </div>
           {% else %}
-          <button type="button" onclick="openSetPin({{ emp.id }}, {{ emp.name | tojson }})"
+          <button type="button" onclick="openSetPin({{ emp.id }})"
             style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);color:#a78bfa;border-radius:6px;padding:3px 9px;font-size:.75rem;cursor:pointer;font-weight:600">
             🔑 Set PIN
           </button>
@@ -211,12 +211,12 @@ function toggleEmpPin(id, plain) {
   btn.textContent  = isHidden ? '🙈️' : '👁️';
 }
 
-function openSetPin(id, name) {
+function openSetPin(id) {
   const d = _empData[id] || {};
   document.getElementById('setPinForm').action = '/employees/' + id + '/edit';
-  document.getElementById('setPinName').textContent = name;
+  document.getElementById('setPinName').textContent = d.name || 'Employee';
   document.getElementById('setPinInput').value = '';
-  document.getElementById('setPinHiddenName').value  = d.name  || name;
+  document.getElementById('setPinHiddenName').value  = d.name  || '';
   document.getElementById('setPinHiddenEmail').value = d.email || '';
   document.getElementById('setPinHiddenRole').value  = d.role  || 'Baker';
   document.getElementById('setPinHiddenRate').value  = d.rate  || 15;
