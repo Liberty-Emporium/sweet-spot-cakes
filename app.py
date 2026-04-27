@@ -2639,7 +2639,7 @@ def prep_sheet():
             ingredients = db.execute('''
                 SELECT i.name, ri.quantity, ri.unit
                 FROM recipe_ingredients ri
-                JOIN inventory i ON i.id = ri.inventory_id
+                JOIN inventory i ON i.id = ri.ingredient_id
                 WHERE ri.recipe_id=?
             ''', (item['recipe_id'],)).fetchall()
             for ing in ingredients:
