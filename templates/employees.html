@@ -74,15 +74,7 @@
             <a href="/employees/{{ emp.id }}/timesheets" class="btn btn-ghost btn-xs">Timesheets</a>
 
             <button class="btn btn-ghost btn-xs" style="color:var(--blue)"
-              onclick="openEdit(
-                {{ emp.id }},
-                {{ emp.name | tojson }},
-                {{ emp.email | tojson }},
-                {{ emp.phone | tojson }},
-                {{ emp.role | tojson }},
-                {{ emp.hourly_rate }},
-                {{ emp.notes | tojson }}
-              )">✏️ Edit</button>
+              onclick="openEdit({{ emp.id }})">✏️ Edit</button>
 
             <form method="POST" action="/employees/{{ emp.id }}/deactivate" style="display:inline"
                   onsubmit="return confirm('Remove {{ emp.name }} from staff?')">
@@ -194,10 +186,11 @@
 const _empData = {};
 {% for emp in employees %}
 _empData[{{ emp.id }}] = {
-  name: {{ emp.name | tojson }},
+  name:  {{ emp.name  | tojson }},
   email: {{ emp.email | tojson }},
-  role: {{ emp.role | tojson }},
-  rate: {{ emp.hourly_rate }},
+  phone: {{ emp.phone | tojson }},
+  role:  {{ emp.role  | tojson }},
+  rate:  {{ emp.hourly_rate }},
   notes: {{ emp.notes | tojson }}
 };
 {% endfor %}
@@ -225,17 +218,18 @@ function openSetPin(id) {
   setTimeout(() => document.getElementById('setPinInput').focus(), 50);
 }
 
-function openEdit(id, name, email, phone, role, rate, notes) {
+function openEdit(id) {
+  const d = _empData[id] || {};
   document.getElementById('editForm').action = '/employees/' + id + '/edit';
-  document.getElementById('edit-name').value  = name;
-  document.getElementById('edit-email').value = email || '';
-  document.getElementById('edit-phone').value = phone || '';
-  document.getElementById('edit-rate').value  = rate;
-  document.getElementById('edit-pin').value   = '';  // never pre-fill PIN
-  document.getElementById('edit-notes').value = notes || '';
+  document.getElementById('edit-name').value  = d.name  || '';
+  document.getElementById('edit-email').value = d.email || '';
+  document.getElementById('edit-phone').value = d.phone || '';
+  document.getElementById('edit-rate').value  = d.rate  || 15;
+  document.getElementById('edit-pin').value   = '';
+  document.getElementById('edit-notes').value = d.notes || '';
   const sel = document.getElementById('edit-role');
   for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].value === role) { sel.selectedIndex = i; break; }
+    if (sel.options[i].value === d.role) { sel.selectedIndex = i; break; }
   }
   document.getElementById('editModal').style.display = 'flex';
   document.getElementById('edit-name').focus();
