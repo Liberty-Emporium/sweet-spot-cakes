@@ -29,7 +29,14 @@
         <td style="font-size:.82rem">{{ emp.role }}</td>
         <td style="font-size:.82rem;color:var(--muted)">{{ emp.phone or '—' }}</td>
         <td style="font-size:.82rem">${{ "%.2f"|format(emp.hourly_rate) }}/hr</td>
-        <td style="font-family:monospace;color:var(--muted);font-size:.82rem">——</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span id="pin-val-{{ emp.id }}" style="font-family:monospace;font-size:.82rem;letter-spacing:.05em">{{ '•' * (emp.pin_plain|length if emp.pin_plain else 4) }}</span>
+            <button type="button" onclick="toggleEmpPin({{ emp.id }}, {{ emp.pin_plain | tojson }})" title="Show/hide PIN"
+              style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:0 3px"
+              id="pin-btn-{{ emp.id }}">👁</button>
+          </div>
+        </td>
         <td>
           {% if emp.clocked_in_at %}
             <span class="badge badge-ready">🟢 In</span>
@@ -150,6 +157,15 @@
 </div>
 
 <script>
+function toggleEmpPin(id, plain) {
+  const span = document.getElementById('pin-val-' + id);
+  const btn  = document.getElementById('pin-btn-' + id);
+  if (!plain) { span.textContent = 'N/A'; return; }
+  const isHidden = span.textContent.includes('•');
+  span.textContent = isHidden ? plain : '•'.repeat(plain.length);
+  btn.textContent  = isHidden ? '🙈' : '👁';
+}
+
 function openEdit(id, name, email, phone, role, rate, notes) {
   document.getElementById('editForm').action = '/employees/' + id + '/edit';
   document.getElementById('edit-name').value  = name;

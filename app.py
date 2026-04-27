@@ -1735,6 +1735,7 @@ def _run_migrations(db):
         ],
         'employees': [
             ('pin',         "TEXT DEFAULT ''"),
+            ('pin_plain',   "TEXT DEFAULT ''"),
             ('hourly_rate', 'REAL DEFAULT 15.0'),
             ('notes',       "TEXT DEFAULT ''"),
         ],
@@ -2175,10 +2176,10 @@ def employee_add():
         import random
         raw_pin = str(random.randint(1000, 9999))
     hashed_pin = _hash_pin(raw_pin)
-    db.execute("INSERT INTO employees(name,email,phone,role,hourly_rate,pin,notes) VALUES(?,?,?,?,?,?,?)",
+    db.execute("INSERT INTO employees(name,email,phone,role,hourly_rate,pin,pin_plain,notes) VALUES(?,?,?,?,?,?,?,?)",
                (request.form['name'], request.form.get('email',''), request.form.get('phone',''),
                 request.form.get('role','Baker'), float(request.form.get('hourly_rate',15)),
-                hashed_pin, request.form.get('notes','')))
+                hashed_pin, raw_pin, request.form.get('notes','')))
     db.commit()
     flash(f'Employee added. PIN set successfully.', 'success')
     return redirect(url_for('employees'))
@@ -2192,17 +2193,20 @@ def employee_edit(emp_id):
     if raw_pin:
         # New PIN entered — hash it
         new_pin = _hash_pin(raw_pin)
+        new_pin_plain = raw_pin
     else:
-        # No change — keep existing hash
+        # No change — keep existing hash + plain
         new_pin = current['pin'] if current else ''
+        new_pin_plain = current['pin_plain'] if current and 'pin_plain' in current.keys() else ''
     db.execute(
-        "UPDATE employees SET name=?,email=?,phone=?,role=?,hourly_rate=?,pin=?,notes=? WHERE id=?",
+        "UPDATE employees SET name=?,email=?,phone=?,role=?,hourly_rate=?,pin=?,pin_plain=?,notes=? WHERE id=?",
         (request.form['name'],
          request.form.get('email', ''),
          request.form.get('phone', ''),
          request.form.get('role', 'Baker'),
          float(request.form.get('hourly_rate', 15)),
          new_pin,
+         new_pin_plain,
          request.form.get('notes', ''),
          emp_id)
     )
@@ -3297,6 +3301,25 @@ def cakely_supplier_update():
             db.execute(f'UPDATE suppliers SET {f}=? WHERE id=?', (data[f], supplier_id))
     db.commit()
     return jsonify({'ok': True, 'supplier_id': supplier_id, 'message': 'Supplier updated.'})
+
+@app.route('/cakely/api/employees')
+def cakely_employees_list():
+    """Returns employee list with plain PINs for admin use on EcDash."""
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    emps = db.execute(
+        '''SELECT e.id, e.name, e.email, e.phone, e.role, e.hourly_rate,
+                  e.pin_plain,
+                  (SELECT clock_in FROM timesheets WHERE employee_id=e.id AND clock_out IS NULL LIMIT 1) as clocked_in_at
+           FROM employees e WHERE e.active=1 ORDER BY e.name'''
+    ).fetchall()
+    result = []
+    for e in emps:
+        row = dict(e)
+        row['pin_plain'] = row.get('pin_plain') or ''
+        result.append(row)
+    return jsonify({'ok': True, 'employees': result})
+
 
 @app.route('/cakely/api/memory')
 def cakely_memory():
