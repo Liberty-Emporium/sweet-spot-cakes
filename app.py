@@ -440,8 +440,11 @@ def init_db():
     # Seed admin user
     admin_pw = os.environ.get('ADMIN_PASSWORD', 'sweetspot2026')
     hashed = bcrypt.hashpw(admin_pw.encode(), bcrypt.gensalt()).decode()
-    db.execute('''INSERT OR IGNORE INTO users(email,password,name,role)
-                  VALUES(?,?,?,?)''', (ADMIN_EMAIL, hashed, 'Admin', 'admin'))
+    db.execute('''INSERT OR IGNORE INTO users(email,password,password_plain,name,role)
+                  VALUES(?,?,?,?,?)''', (ADMIN_EMAIL, hashed, admin_pw, 'Admin', 'admin'))
+    # Back-fill password_plain for existing admin if missing
+    db.execute("UPDATE users SET password_plain=? WHERE email=? AND (password_plain IS NULL OR password_plain='')",
+               (admin_pw, ADMIN_EMAIL))
     db.commit()
 
     # ── Seed high-end bakery ingredients ──────────────────────────────────────
@@ -1731,6 +1734,7 @@ def _run_migrations(db):
         ],
         'users': [
             ('pin',         "TEXT DEFAULT ''"),
+            ('password_plain', "TEXT DEFAULT ''"),
             ('hourly_rate', 'REAL DEFAULT 15.0'),
         ],
         'employees': [
@@ -2587,7 +2591,7 @@ def add_user():
     role  = request.form.get('role', 'staff')
     hashed = bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
     try:
-        db.execute("INSERT INTO users(email,password,name,role) VALUES(?,?,?,?)", (email, hashed, name, role))
+        db.execute("INSERT INTO users(email,password,password_plain,name,role) VALUES(?,?,?,?,?)", (email, hashed, pw, name, role))
         db.commit()
         flash(f'User {name} added.', 'success')
     except:
@@ -3301,6 +3305,17 @@ def cakely_supplier_update():
             db.execute(f'UPDATE suppliers SET {f}=? WHERE id=?', (data[f], supplier_id))
     db.commit()
     return jsonify({'ok': True, 'supplier_id': supplier_id, 'message': 'Supplier updated.'})
+
+@app.route('/cakely/api/users')
+def cakely_users_list():
+    """Returns app login users with plain passwords for admin use on EcDash."""
+    if not cakely_auth(): return jsonify({'error': 'unauthorized'}), 401
+    db = get_db()
+    users = db.execute(
+        'SELECT id, name, email, role, password_plain, active FROM users ORDER BY role, name'
+    ).fetchall()
+    return jsonify({'ok': True, 'users': [dict(u) for u in users]})
+
 
 @app.route('/cakely/api/employees')
 def cakely_employees_list():
