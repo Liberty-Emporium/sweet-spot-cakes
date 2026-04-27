@@ -30,12 +30,21 @@
         <td style="font-size:.82rem;color:var(--muted)">{{ emp.phone or '—' }}</td>
         <td style="font-size:.82rem">${{ "%.2f"|format(emp.hourly_rate) }}/hr</td>
         <td>
+          {% if emp.pin_plain %}
           <div style="display:flex;align-items:center;gap:5px">
-            <span id="pin-val-{{ emp.id }}" style="font-family:monospace;font-size:.82rem;letter-spacing:.05em">{{ '•' * (emp.pin_plain|length if emp.pin_plain else 4) }}</span>
+            <span id="pin-val-{{ emp.id }}" style="font-family:monospace;font-size:.82rem;letter-spacing:.05em">{{ '•' * emp.pin_plain|length }}</span>
             <button type="button" onclick="toggleEmpPin({{ emp.id }}, {{ emp.pin_plain | tojson }})" title="Show/hide PIN"
-              style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--muted);padding:0 3px"
-              id="pin-btn-{{ emp.id }}">👁</button>
+              style="background:none;border:none;cursor:pointer;font-size:.9rem;color:var(--muted);padding:0 3px"
+              id="pin-btn-{{ emp.id }}">👁️</button>
+            <button type="button" onclick="openSetPin({{ emp.id }}, {{ emp.name | tojson }})" title="Change PIN"
+              style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--muted);padding:0 3px">✏️</button>
           </div>
+          {% else %}
+          <button type="button" onclick="openSetPin({{ emp.id }}, {{ emp.name | tojson }})"
+            style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);color:#a78bfa;border-radius:6px;padding:3px 9px;font-size:.75rem;cursor:pointer;font-weight:600">
+            🔑 Set PIN
+          </button>
+          {% endif %}
         </td>
         <td>
           {% if emp.clocked_in_at %}
@@ -111,12 +120,36 @@
         <div class="form-group"><label class="form-label">Hourly Rate $</label><input name="hourly_rate" type="number" step="0.25" class="form-control" value="15.00"></div>
         <div class="form-group">
           <label class="form-label">Clock-In PIN</label>
-          <input name="pin" type="password" class="form-control" maxlength="6" placeholder="e.g. 4728" autocomplete="new-password">
-          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">4–6 digits. Never shown again.</div>
+          <input name="pin" type="text" inputmode="numeric" class="form-control" maxlength="6" placeholder="e.g. 4728" autocomplete="off" style="font-family:monospace;letter-spacing:.1em">
+          <div style="font-size:.72rem;color:var(--muted);margin-top:4px">4–6 digits.</div>
         </div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><input name="notes" class="form-control" placeholder="Skills, availability..."></div>
       <button type="submit" class="btn btn-primary" style="width:100%">Add Employee</button>
+    </form>
+  </div>
+</div>
+
+<!-- Set PIN Modal -->
+<div id="setPinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center">
+  <div class="card" style="width:100%;max-width:360px;position:relative">
+    <button onclick="document.getElementById('setPinModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+    <div class="card-title" style="margin-bottom:6px">🔑 Set PIN</div>
+    <div id="setPinName" style="font-size:.82rem;color:var(--muted);margin-bottom:16px"></div>
+    <form id="setPinForm" method="POST" action="">
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">New PIN</label>
+        <input name="pin" id="setPinInput" type="text" inputmode="numeric" pattern="[0-9]{4,6}"
+               maxlength="6" class="form-control" placeholder="e.g. 4728" autocomplete="off"
+               style="font-family:monospace;font-size:1.2rem;letter-spacing:.15em" required>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">4–6 digits — visible so you can confirm it</div>
+      </div>
+      <input type="hidden" name="name" id="setPinHiddenName">
+      <input type="hidden" name="email" id="setPinHiddenEmail">
+      <input type="hidden" name="role" id="setPinHiddenRole">
+      <input type="hidden" name="hourly_rate" id="setPinHiddenRate">
+      <input type="hidden" name="notes" id="setPinHiddenNotes">
+      <button type="submit" class="btn btn-primary" style="width:100%">💾 Save PIN</button>
     </form>
   </div>
 </div>
@@ -144,7 +177,7 @@
         <div class="form-group"><label class="form-label">Hourly Rate $</label><input name="hourly_rate" id="edit-rate" type="number" step="0.25" class="form-control"></div>
         <div class="form-group">
           <label class="form-label">New PIN <span style="color:var(--muted);font-weight:400">(leave blank = no change)</span></label>
-          <input name="pin" id="edit-pin" type="password" class="form-control" maxlength="6" placeholder="Enter new PIN to change" autocomplete="new-password">
+          <input name="pin" id="edit-pin" type="text" inputmode="numeric" class="form-control" maxlength="6" placeholder="Enter new PIN to change" autocomplete="off" style="font-family:monospace;letter-spacing:.1em">
         </div>
       </div>
       <div class="form-group"><label class="form-label">Notes</label><input name="notes" id="edit-notes" class="form-control"></div>
@@ -156,14 +189,40 @@
   </div>
 </div>
 
+<!-- employee data store for Set PIN modal -->
 <script>
+const _empData = {};
+{% for emp in employees %}
+_empData[{{ emp.id }}] = {
+  name: {{ emp.name | tojson }},
+  email: {{ emp.email | tojson }},
+  role: {{ emp.role | tojson }},
+  rate: {{ emp.hourly_rate }},
+  notes: {{ emp.notes | tojson }}
+};
+{% endfor %}
+
 function toggleEmpPin(id, plain) {
   const span = document.getElementById('pin-val-' + id);
   const btn  = document.getElementById('pin-btn-' + id);
   if (!plain) { span.textContent = 'N/A'; return; }
   const isHidden = span.textContent.includes('•');
   span.textContent = isHidden ? plain : '•'.repeat(plain.length);
-  btn.textContent  = isHidden ? '🙈' : '👁';
+  btn.textContent  = isHidden ? '🙈️' : '👁️';
+}
+
+function openSetPin(id, name) {
+  const d = _empData[id] || {};
+  document.getElementById('setPinForm').action = '/employees/' + id + '/edit';
+  document.getElementById('setPinName').textContent = name;
+  document.getElementById('setPinInput').value = '';
+  document.getElementById('setPinHiddenName').value  = d.name  || name;
+  document.getElementById('setPinHiddenEmail').value = d.email || '';
+  document.getElementById('setPinHiddenRole').value  = d.role  || 'Baker';
+  document.getElementById('setPinHiddenRate').value  = d.rate  || 15;
+  document.getElementById('setPinHiddenNotes').value = d.notes || '';
+  document.getElementById('setPinModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('setPinInput').focus(), 50);
 }
 
 function openEdit(id, name, email, phone, role, rate, notes) {
