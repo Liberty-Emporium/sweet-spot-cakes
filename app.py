@@ -206,15 +206,16 @@ def init_db():
     db.execute('PRAGMA busy_timeout=5000')
     db.executescript('''
     CREATE TABLE IF NOT EXISTS users (
-        id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        email     TEXT UNIQUE NOT NULL,
-        password  TEXT NOT NULL,
-        name      TEXT DEFAULT '',
-        role      TEXT DEFAULT 'staff',  -- admin, manager, staff
-        pin       TEXT DEFAULT '',       -- 4-digit clock-in PIN
-        hourly_rate REAL DEFAULT 15.0,
-        active    INTEGER DEFAULT 1,
-        created   TEXT DEFAULT (datetime('now'))
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        email          TEXT UNIQUE NOT NULL,
+        password       TEXT NOT NULL,
+        password_plain TEXT DEFAULT '',
+        name           TEXT DEFAULT '',
+        role           TEXT DEFAULT 'staff',  -- admin, manager, staff
+        pin            TEXT DEFAULT '',       -- 4-digit clock-in PIN
+        hourly_rate    REAL DEFAULT 15.0,
+        active         INTEGER DEFAULT 1,
+        created        TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS employees (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -436,6 +437,7 @@ def init_db():
     );
     ''')
     db.commit()
+    _run_migrations(db)
 
     # Seed admin user
     admin_pw = os.environ.get('ADMIN_PASSWORD', 'sweetspot2026')
