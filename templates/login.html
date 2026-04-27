@@ -7,17 +7,49 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',sans-serif;background:#0d0408;color:#fdf2f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .box{background:#1f0d16;border:1px solid #3d1a28;border-radius:18px;padding:40px 36px;width:100%;max-width:400px}
+    .box{background:#1f0d16;border:1px solid #3d1a28;border-radius:18px;padding:40px 36px;width:100%;max-width:420px}
     .logo{text-align:center;margin-bottom:28px}
     .logo-icon{font-size:3rem;margin-bottom:8px}
     .logo-name{font-family:'Playfair Display',serif;font-size:1.4rem;background:linear-gradient(135deg,#f472b6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .logo-sub{font-size:.8rem;color:#9d8890;margin-top:4px}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0;margin-bottom:28px;background:#2a1020;border-radius:10px;padding:4px}
+    .tab{flex:1;text-align:center;padding:9px 0;font-size:.85rem;font-weight:600;border-radius:7px;cursor:pointer;color:#9d8890;transition:all .2s;border:none;background:none}
+    .tab.active{background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff}
+
+    /* Forms */
+    .form-section{display:none}
+    .form-section.active{display:block}
     label{display:block;font-size:.8rem;font-weight:600;color:#9d8890;margin-bottom:5px}
-    input{width:100%;background:#2a1020;border:1px solid #3d1a28;border-radius:8px;padding:11px 14px;color:#fdf2f8;font-size:.9rem;font-family:'Inter',sans-serif;outline:none;margin-bottom:16px;transition:border-color .2s}
-    input:focus{border-color:#f472b6}
+    input,select{width:100%;background:#2a1020;border:1px solid #3d1a28;border-radius:8px;padding:11px 14px;color:#fdf2f8;font-size:.9rem;font-family:'Inter',sans-serif;outline:none;margin-bottom:16px;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+    input:focus,select:focus{border-color:#f472b6}
+    select option{background:#2a1020}
+
+    /* PIN pad */
+    .pin-display{
+      font-family:monospace;font-size:2rem;letter-spacing:.35em;text-align:center;
+      background:#2a1020;border:1px solid #3d1a28;border-radius:8px;padding:14px;
+      margin-bottom:16px;min-height:56px;color:#f472b6;
+    }
+    .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .pin-key{
+      background:#2a1020;border:1px solid #3d1a28;border-radius:10px;
+      padding:16px 0;font-size:1.2rem;font-weight:700;cursor:pointer;
+      text-align:center;transition:all .15s;color:#fdf2f8;
+    }
+    .pin-key:hover{background:#3d1a28;border-color:#f472b6}
+    .pin-key:active{transform:scale(.94)}
+    .pin-key.del{color:#f87171;font-size:1rem}
+    .pin-key.empty{visibility:hidden}
+
     .btn{width:100%;background:linear-gradient(135deg,#f472b6,#ec4899);color:#fff;border:none;border-radius:8px;padding:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .2s}
     .btn:hover{opacity:.88}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
     .alert{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:16px}
+    .pw-wrap{position:relative;margin-bottom:16px}
+    .pw-wrap input{margin-bottom:0}
+    .pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9d8890;font-size:1rem;padding:4px}
   </style>
 </head>
 <body>
@@ -27,16 +59,100 @@
       <div class="logo-name">{{ bakery }}</div>
       <div class="logo-sub">Staff Portal</div>
     </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}<div class="alert">{{ msg }}</div>{% endfor %}
     {% endwith %}
-    <form method="POST">
-      <label>Email</label>
-      <input type="email" name="email" required placeholder="you@sweetspot.com" autofocus>
-      <label>Password</label>
-      <input type="password" name="password" required placeholder="••••••••">
-      <button type="submit" class="btn">Sign In →</button>
-    </form>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" type="button" onclick="switchTab('employee')">👩‍🍳 Employee PIN</button>
+      <button class="tab" type="button" onclick="switchTab('staff')">🔑 Staff Login</button>
+    </div>
+
+    <!-- Employee PIN login -->
+    <div class="form-section active" id="form-employee">
+      <form method="POST">
+        <input type="hidden" name="login_type" value="employee">
+        <label>Select Your Name</label>
+        <select name="employee_id" id="emp-select" required onchange="resetPin()">
+          <option value="">— Choose employee —</option>
+          {% for emp in employees %}
+          <option value="{{ emp.id }}">{{ emp.name }}</option>
+          {% endfor %}
+        </select>
+        <label>Enter PIN</label>
+        <div class="pin-display" id="pin-display">——</div>
+        <input type="hidden" name="pin" id="pin-hidden">
+        <div class="pin-pad">
+          {% for n in ['1','2','3','4','5','6','7','8','9'] %}
+          <button type="button" class="pin-key" onclick="pinKey('{{ n }}')">{{ n }}</button>
+          {% endfor %}
+          <button type="button" class="pin-key empty" disabled></button>
+          <button type="button" class="pin-key" onclick="pinKey('0')">0</button>
+          <button type="button" class="pin-key del" onclick="pinDel()">⌫</button>
+        </div>
+        <button type="submit" class="btn" id="pin-submit" disabled>Sign In →</button>
+      </form>
+    </div>
+
+    <!-- Staff email + password login -->
+    <div class="form-section" id="form-staff">
+      <form method="POST">
+        <input type="hidden" name="login_type" value="staff">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@sweetspot.com" autofocus>
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" name="password" id="staff-pw" placeholder="••••••••">
+          <button type="button" class="pw-eye" onclick="toggleStaffPw()">👁</button>
+        </div>
+        <button type="submit" class="btn">Sign In →</button>
+      </form>
+    </div>
   </div>
+
+  <script>
+    let _pin = '';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (tab==='employee'&&i===0)||(tab==='staff'&&i===1)));
+      document.getElementById('form-employee').classList.toggle('active', tab === 'employee');
+      document.getElementById('form-staff').classList.toggle('active', tab === 'staff');
+    }
+
+    function resetPin() {
+      _pin = '';
+      updatePinDisplay();
+    }
+
+    function pinKey(digit) {
+      if (_pin.length >= 6) return;
+      _pin += digit;
+      updatePinDisplay();
+    }
+
+    function pinDel() {
+      _pin = _pin.slice(0, -1);
+      updatePinDisplay();
+    }
+
+    function updatePinDisplay() {
+      const disp = document.getElementById('pin-display');
+      const hidden = document.getElementById('pin-hidden');
+      const btn = document.getElementById('pin-submit');
+      disp.textContent = _pin.length ? '•'.repeat(_pin.length) : '——';
+      hidden.value = _pin;
+      btn.disabled = _pin.length < 4 || !document.getElementById('emp-select').value;
+    }
+
+    function toggleStaffPw() {
+      const inp = document.getElementById('staff-pw');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
+    // If there was a flash error on employee form, keep that tab active
+    document.getElementById('emp-select').addEventListener('change', updatePinDisplay);
+  </script>
 </body>
 </html>

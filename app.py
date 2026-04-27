@@ -976,22 +976,52 @@ def login():
     ip = request.remote_addr or 'unknown'
     if request.method == 'POST' and _rate_limit(f'login:{ip}', max_req=10, window=60):
         flash('Too many login attempts. Please wait a minute.', 'error')
-        return render_template('login.html'), 429
+        db = get_db()
+        emps = db.execute('SELECT id, name FROM employees WHERE active=1 ORDER BY name').fetchall()
+        return render_template('login.html', bakery=BAKERY_NAME, employees=emps), 429
+
+    db = get_db()
+    emps = db.execute('SELECT id, name FROM employees WHERE active=1 ORDER BY name').fetchall()
+
     if request.method == 'POST':
+        login_type = request.form.get('login_type', 'staff')
+
+        # ── Employee PIN login ────────────────────────────────────────────────
+        if login_type == 'employee':
+            emp_id = request.form.get('employee_id', '').strip()
+            pin    = request.form.get('pin', '').strip()
+            if not emp_id or not pin:
+                flash('Please select your name and enter your PIN.', 'error')
+                return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
+            emp = db.execute('SELECT * FROM employees WHERE id=? AND active=1', (emp_id,)).fetchone()
+            if not emp or not emp['pin'] or not _check_pin(pin, emp['pin']):
+                flash('Invalid PIN. Please try again.', 'error')
+                return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
+            # Map employee role to app role
+            app_role = 'manager' if emp['role'].lower() in ('manager', 'owner') else 'staff'
+            session['user_id']   = f'emp_{emp["id"]}'
+            session['name']      = emp['name']
+            session['role']      = app_role
+            session['email']     = emp['email'] or ''
+            session['is_employee'] = True
+            session.permanent    = True
+            return redirect(url_for('dashboard'))
+
+        # ── Staff email + password login ──────────────────────────────────────
         email = request.form.get('email', '').strip().lower()
         pw    = request.form.get('password', '')
-        db = get_db()
-        user = db.execute('SELECT * FROM users WHERE email=? AND active=1', (email,)).fetchone()
+        user  = db.execute('SELECT * FROM users WHERE email=? AND active=1', (email,)).fetchone()
         if not user or not bcrypt.checkpw(pw.encode(), user['password'].encode()):
             flash('Invalid email or password.', 'error')
-            return render_template('login.html', bakery=BAKERY_NAME)
+            return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
         session['user_id'] = user['id']
         session['name']    = user['name']
         session['role']    = user['role']
         session['email']   = user['email']
         session.permanent  = True
         return redirect(url_for('dashboard'))
-    return render_template('login.html', bakery=BAKERY_NAME)
+
+    return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
 
 @app.route('/logout')
 def logout():
