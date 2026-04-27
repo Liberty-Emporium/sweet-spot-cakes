@@ -130,37 +130,52 @@
     <div class="logo-name">{{ bakery }}</div>
     <div class="logo-sub">Bakery Management</div>
   </div>
+  {% set r = session.get('role','staff') %}
+  {% set rank = {'admin':4,'manager':3,'cashier':2,'kitchen':1,'staff':0}[r] if r in ['admin','manager','cashier','kitchen','staff'] else 0 %}
   <nav style="padding:8px 0;flex:1">
     <div class="nav-section">Main</div>
     <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' or request.path == '/' %}active{% endif %}">🏠 <span>Dashboard</span></a>
-    <a href="/orders" class="nav-item {% if '/orders' in request.path %}active{% endif %}">🎂 <span>Orders</span></a>
-    <a href="/customers" class="nav-item {% if '/customers' in request.path %}active{% endif %}">👥 <span>Customers</span></a>
+    {% if rank >= 2 %}<a href="/orders" class="nav-item {% if '/orders' in request.path %}active{% endif %}">🎂 <span>Orders</span></a>{% endif %}
+    {% if rank >= 2 %}<a href="/customers" class="nav-item {% if '/customers' in request.path %}active{% endif %}">👥 <span>Customers</span></a>{% endif %}
 
     <div class="nav-section">Kitchen</div>
-    <a href="/kitchen" class="nav-item {% if request.path == '/kitchen' or request.path.startswith('/kitchen/') %}active{% endif %}">🍳 <span>Kitchen Queue</span></a>
-    <a href="/recipes" class="nav-item {% if request.path == '/recipes' or request.path.startswith('/recipes/') %}active{% endif %}">📖 <span>Recipes</span></a>
-    <a href="/inventory" class="nav-item {% if request.path == '/inventory' or request.path.startswith('/inventory/') %}active{% endif %}">📦 <span>Inventory</span></a>
-    <a href="/tools" class="nav-item {% if request.path == '/tools' or request.path.startswith('/tools/') %}active{% endif %}">🔧 <span>Tools</span></a>
-    <a href="/suppliers" class="nav-item {% if '/suppliers' in request.path %}active{% endif %}">🚚 <span>Suppliers</span></a>
+    {% if rank >= 1 %}<a href="/kitchen" class="nav-item {% if request.path == '/kitchen' or request.path.startswith('/kitchen/') %}active{% endif %}">🍳 <span>Kitchen Queue</span></a>{% endif %}
+    {% if rank >= 1 %}<a href="/recipes" class="nav-item {% if request.path == '/recipes' or request.path.startswith('/recipes/') %}active{% endif %}">📖 <span>Recipes</span></a>{% endif %}
+    {% if rank >= 3 %}<a href="/inventory" class="nav-item {% if request.path == '/inventory' or request.path.startswith('/inventory/') %}active{% endif %}">📦 <span>Inventory</span></a>{% endif %}
+    {% if rank >= 3 %}<a href="/tools" class="nav-item {% if request.path == '/tools' or request.path.startswith('/tools/') %}active{% endif %}">🔧 <span>Tools</span></a>{% endif %}
+    {% if rank >= 3 %}<a href="/suppliers" class="nav-item {% if '/suppliers' in request.path %}active{% endif %}">🚚 <span>Suppliers</span></a>{% endif %}
 
+    {% if rank >= 1 %}<a href="/prep-sheet" class="nav-item {% if '/prep-sheet' in request.path %}active{% endif %}">📋 <span>Prep Sheet</span></a>{% endif %}
+
+    {% if rank >= 3 %}
     <div class="nav-section">Team</div>
     <a href="/employees" class="nav-item {% if '/employees' in request.path or '/timesheets' in request.path %}active{% endif %}">👩‍🍳 <span>Employees</span></a>
+    {% endif %}
+
+    {% if rank >= 3 %}
+    <div class="nav-section">Business</div>
+    <a href="/loyalty" class="nav-item {% if '/loyalty' in request.path %}active{% endif %}">⭐ <span>VIP Loyalty</span></a>
+    <a href="/marketing" class="nav-item {% if '/marketing' in request.path %}active{% endif %}">📣 <span>Marketing</span></a>
+    <a href="/expenses" class="nav-item {% if '/expenses' in request.path %}active{% endif %}">💸 <span>Expenses</span></a>
+    <a href="/reports" class="nav-item {% if '/reports' in request.path %}active{% endif %}">📊 <span>Reports</span></a>
+    {% endif %}
 
     <div class="nav-section">Public</div>
     <a href="/menu" class="nav-item" target="_blank">🎂 <span>Menu</span></a>
     <a href="/join" class="nav-item" target="_blank">⭐ <span>Join VIP</span></a>
-    <div class="nav-section">Business</div>
-    <a href="/loyalty" class="nav-item {% if '/loyalty' in request.path %}active{% endif %}">⭐ <span>VIP Loyalty</span></a>
-    <a href="/marketing" class="nav-item {% if '/marketing' in request.path %}active{% endif %}">📣 <span>Marketing</span></a>
     <a href="/qr" class="nav-item" target="_blank">📑 <span>QR Code</span></a>
-    <a href="/expenses" class="nav-item {% if '/expenses' in request.path %}active{% endif %}">💸 <span>Expenses</span></a>
-    <a href="/reports" class="nav-item {% if '/reports' in request.path %}active{% endif %}">📊 <span>Reports</span></a>
-    <a href="/prep-sheet" class="nav-item {% if '/prep-sheet' in request.path %}active{% endif %}">📋 <span>Prep Sheet</span></a>
+
+    {% if r == 'admin' %}
+    <div class="nav-section">Admin</div>
     <a href="/settings" class="nav-item {% if '/settings' in request.path %}active{% endif %}">⚙️ <span>Settings</span></a>
+    {% endif %}
   </nav>
   <div class="sidebar-footer">
-    <span>👤 {{ session.get('name','') }}</span>
-    <a href="/logout" style="margin-left:8px;font-size:.72rem;color:var(--muted)">logout</a>
+    <div>👤 {{ session.get('name','') }}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+      <span style="font-size:.68rem;background:rgba(244,114,182,.15);border:1px solid rgba(244,114,182,.3);color:var(--pink);padding:1px 8px;border-radius:20px">{{ session.get('role','staff') }}</span>
+      <a href="/logout" style="font-size:.72rem;color:var(--muted)">logout</a>
+    </div>
   </div>
 </aside>
 

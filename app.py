@@ -916,6 +916,17 @@ def init_db():
 init_db()
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
+# ── Role hierarchy ────────────────────────────────────────────────────
+# admin   → everything
+# manager → everything except Settings user management
+# cashier → orders, customers, timesheets, dashboard
+# kitchen → kitchen queue, recipes (view), timesheets, dashboard
+# staff   → dashboard + timesheets only (default fallback)
+ROLE_RANK = {'admin': 4, 'manager': 3, 'cashier': 2, 'kitchen': 1, 'staff': 0}
+
+def _role():  return session.get('role', 'staff')
+def _rank():  return ROLE_RANK.get(_role(), 0)
+
 def login_required(f):
     @wraps(f)
     def dec(*a, **kw):
@@ -925,12 +936,45 @@ def login_required(f):
     return dec
 
 def admin_required(f):
+    """Manager or admin."""
     @wraps(f)
     def dec(*a, **kw):
-        if not session.get('user_id'):
-            return redirect(url_for('login'))
-        if session.get('role') not in ('admin', 'manager'):
-            flash('Admin access required.', 'error')
+        if not session.get('user_id'): return redirect(url_for('login'))
+        if _rank() < 3:
+            flash('Access denied — managers and admins only.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*a, **kw)
+    return dec
+
+def cashier_required(f):
+    """Cashier, manager, or admin."""
+    @wraps(f)
+    def dec(*a, **kw):
+        if not session.get('user_id'): return redirect(url_for('login'))
+        if _rank() < 2:
+            flash('Access denied.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*a, **kw)
+    return dec
+
+def kitchen_required(f):
+    """Kitchen, cashier, manager, or admin."""
+    @wraps(f)
+    def dec(*a, **kw):
+        if not session.get('user_id'): return redirect(url_for('login'))
+        if _rank() < 1:
+            flash('Access denied.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*a, **kw)
+    return dec
+
+def superadmin_required(f):
+    """Admin only."""
+    @wraps(f)
+    def dec(*a, **kw):
+        if not session.get('user_id'): return redirect(url_for('login'))
+        if _role() != 'admin':
+            flash('Admin access only.', 'error')
             return redirect(url_for('dashboard'))
         return f(*a, **kw)
     return dec
@@ -997,8 +1041,16 @@ def login():
             if not emp or not emp['pin'] or not _check_pin(pin, emp['pin']):
                 flash('Invalid PIN. Please try again.', 'error')
                 return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
-            # Map employee role to app role
-            app_role = 'manager' if emp['role'].lower() in ('manager', 'owner') else 'staff'
+            # Map employee job title → app role
+            job = emp['role'].lower()
+            if job in ('manager', 'owner'):
+                app_role = 'manager'
+            elif job in ('cashier',):
+                app_role = 'cashier'
+            elif job in ('baker', 'decorator', 'driver', 'part-time'):
+                app_role = 'kitchen'
+            else:
+                app_role = 'staff'
             session['user_id']   = f'emp_{emp["id"]}'
             session['name']      = emp['name']
             session['role']      = app_role
@@ -2615,7 +2667,7 @@ def prep_sheet():
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 @app.route('/settings')
-@admin_required
+@superadmin_required
 def settings():
     db = get_db()
     users = db.execute("SELECT id,name,email,role,active FROM users ORDER BY name").fetchall()
@@ -2623,7 +2675,7 @@ def settings():
                            admin_email=ADMIN_EMAIL, stripe_configured=bool(stripe.api_key))
 
 @app.route('/settings/add-user', methods=['POST'])
-@admin_required
+@superadmin_required
 def add_user():
     db = get_db()
     email = request.form['email'].strip().lower()

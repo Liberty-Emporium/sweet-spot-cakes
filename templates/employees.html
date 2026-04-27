@@ -99,9 +99,17 @@
         <div class="form-group"><label class="form-label">Full Name *</label><input name="name" class="form-control" required placeholder="Jane Baker"></div>
         <div class="form-group"><label class="form-label">Role</label>
           <select name="role" class="form-control">
-            <option>Baker</option><option>Decorator</option><option>Cashier</option>
-            <option>Manager</option><option>Driver</option><option>Part-Time</option>
+            <optgroup label="Kitchen Access">
+              <option>Baker</option><option>Decorator</option><option>Driver</option><option>Part-Time</option>
+            </optgroup>
+            <optgroup label="Cashier Access">
+              <option>Cashier</option>
+            </optgroup>
+            <optgroup label="Manager Access">
+              <option>Manager</option>
+            </optgroup>
           </select>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Role sets what they can access after PIN login.</div>
         </div>
       </div>
       <div class="form-row">
@@ -156,8 +164,15 @@
         <div class="form-group"><label class="form-label">Full Name *</label><input name="name" id="edit-name" class="form-control" required></div>
         <div class="form-group"><label class="form-label">Role</label>
           <select name="role" id="edit-role" class="form-control">
-            <option>Baker</option><option>Decorator</option><option>Cashier</option>
-            <option>Manager</option><option>Driver</option><option>Part-Time</option>
+            <optgroup label="Kitchen Access">
+              <option>Baker</option><option>Decorator</option><option>Driver</option><option>Part-Time</option>
+            </optgroup>
+            <optgroup label="Cashier Access">
+              <option>Cashier</option>
+            </optgroup>
+            <optgroup label="Manager Access">
+              <option>Manager</option>
+            </optgroup>
           </select>
         </div>
       </div>
