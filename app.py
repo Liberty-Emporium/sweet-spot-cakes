@@ -416,7 +416,6 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_logs(action_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_employee ON activity_logs(employee_id, created_at);
-    CREATE INDEX IF NOT EXISTS idx_ts_source ON timesheets(source);
     CREATE TABLE IF NOT EXISTS specials (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         title       TEXT NOT NULL,
@@ -470,6 +469,10 @@ def init_db():
     ''')
     db.commit()
     _run_migrations(db)
+
+    # Create indexes that depend on migrated columns
+    db.execute('CREATE INDEX IF NOT EXISTS idx_ts_source ON timesheets(source)')
+    db.commit()
 
     # Seed admin user
     admin_pw = os.environ.get('ADMIN_PASSWORD', 'sweetspot2026')
