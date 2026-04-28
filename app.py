@@ -1881,6 +1881,12 @@ def _run_migrations(db):
             ('received_at', 'TEXT'),
             ('created',     "TEXT DEFAULT (datetime('now'))"),
         ],
+        'timesheets': [
+            ('latitude',  'REAL'),
+            ('longitude', 'REAL'),
+            ('accuracy',  'REAL'),
+            ('source',    "TEXT DEFAULT 'web'"),
+        ],
     }
     for table, cols in migrations.items():
         for col, defn in cols:
