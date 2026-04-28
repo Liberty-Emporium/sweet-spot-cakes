@@ -197,14 +197,12 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db: db.close()
 
-def _run_migrations(db):
-    """Run schema migrations for existing databases."""
-    # Add password_plain column to users table if it doesn't exist
+def _add_col(db, table, col, coldef):
     try:
-        db.execute("ALTER TABLE users ADD COLUMN password_plain TEXT DEFAULT ''")
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coldef}")
         db.commit()
     except Exception:
-        pass  # Column already exists
+        pass
 
 def init_db():
     db = sqlite3.connect(DB_PATH)
@@ -412,10 +410,11 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_ts_employee ON timesheets(employee_id);
     CREATE INDEX IF NOT EXISTS idx_oi_order ON order_items(order_id);
-    -- Activity logs indexes for audit trail
+    -- Activity logs indexes for audit trail (new DBs)
     CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_logs(action_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_employee ON activity_logs(employee_id, created_at);
+    -- idx_ts_source created by _run_migrations after column exists
     CREATE TABLE IF NOT EXISTS specials (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         title       TEXT NOT NULL,
@@ -469,10 +468,6 @@ def init_db():
     ''')
     db.commit()
     _run_migrations(db)
-
-    # Create indexes that depend on migrated columns
-    db.execute('CREATE INDEX IF NOT EXISTS idx_ts_source ON timesheets(source)')
-    db.commit()
 
     # Seed admin user
     admin_pw = os.environ.get('ADMIN_PASSWORD', 'sweetspot2026')
@@ -1876,14 +1871,6 @@ def _run_migrations(db):
             ('active',  'INTEGER DEFAULT 1'),
             ('created', "TEXT DEFAULT (datetime('now'))"),
         ],
-        'purchase_orders': [
-            ('status',      "TEXT DEFAULT 'pending'"),
-            ('total',       'REAL DEFAULT 0'),
-            ('notes',       "TEXT DEFAULT ''"),
-            ('ordered_at',  'TEXT'),
-            ('received_at', 'TEXT'),
-            ('created',     "TEXT DEFAULT (datetime('now'))"),
-        ],
         'timesheets': [
             ('latitude',  'REAL'),
             ('longitude', 'REAL'),
@@ -1891,12 +1878,37 @@ def _run_migrations(db):
             ('source',    "TEXT DEFAULT 'web'"),
         ],
     }
+    # Also create activity_logs table + indexes if missing
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action_type TEXT NOT NULL,
+            user_id TEXT,
+            employee_id INTEGER REFERENCES employees(id),
+            ip_address TEXT,
+            user_agent TEXT,
+            device_type TEXT,
+            latitude REAL,
+            longitude REAL,
+            location_accuracy REAL,
+            details TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )''')
+    _add_col(db, 'activity_logs', 'location_accuracy', 'REAL')
     for table, cols in migrations.items():
         for col, defn in cols:
             try:
                 db.execute(f'ALTER TABLE {table} ADD COLUMN {col} {defn}')
             except Exception:
-                pass  # column already exists — fine
+                pass
+    # Create indexes after columns exist
+    try:
+        db.execute("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id, created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_logs(action_type, created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_activity_employee ON activity_logs(employee_id, created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_ts_source ON timesheets(source)")
+    except Exception:
+        pass
     db.commit()
 
 def _ensure_kitchen_tables(db):
