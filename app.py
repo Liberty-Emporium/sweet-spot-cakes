@@ -246,8 +246,26 @@ def init_db():
         break_mins  INTEGER DEFAULT 0,
         notes       TEXT DEFAULT '',
         approved    INTEGER DEFAULT 0,
+        latitude    REAL,          -- GPS geolocation
+        longitude   REAL,
+        accuracy    REAL,          -- GPS accuracy in meters
+        source      TEXT DEFAULT 'web',  -- 'web', 'mobile', 'qr', 'manual'
         created     TEXT DEFAULT (datetime('now')),
         FOREIGN KEY(employee_id) REFERENCES employees(id)
+    );
+    CREATE TABLE IF NOT EXISTS activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action_type TEXT NOT NULL,          -- 'login', 'logout', 'clock_in', 'clock_out', 'employee_edit', etc.
+        user_id TEXT,
+        employee_id INTEGER REFERENCES employees(id),
+        ip_address TEXT,
+        user_agent TEXT,
+        device_type TEXT,                   -- 'mobile', 'desktop', 'tablet', 'qr'
+        latitude REAL,
+        longitude REAL,
+        location_accuracy REAL,
+        details TEXT,                       -- JSON with action-specific data
+        created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS suppliers (
         id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -394,6 +412,11 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_ts_employee ON timesheets(employee_id);
     CREATE INDEX IF NOT EXISTS idx_oi_order ON order_items(order_id);
+    -- Activity logs indexes for audit trail
+    CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_logs(action_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_employee ON activity_logs(employee_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_ts_source ON timesheets(source);
     CREATE TABLE IF NOT EXISTS specials (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         title       TEXT NOT NULL,
@@ -1057,6 +1080,9 @@ def login():
             session['email']     = emp['email'] or ''
             session['is_employee'] = True
             session.permanent    = True
+            session['is_employee'] = True
+            session.permanent    = True
+            log_activity('login', emp['id'], {'role': app_role, 'login_type': 'employee_pin'})
             return redirect(url_for('dashboard'))
 
         # ── Staff email + password login ──────────────────────────────────────
@@ -1070,7 +1096,9 @@ def login():
         session['name']    = user['name']
         session['role']    = user['role']
         session['email']   = user['email']
+        session['email']   = user['email']
         session.permanent  = True
+        log_activity('login_staff', user.get('id'), {'role': user['role'], 'login_type': 'email_password'})
         return redirect(url_for('dashboard'))
 
     return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
@@ -2382,6 +2410,270 @@ def clock_out():
     else:
         flash('Not clocked in.', 'warning')
     return redirect(url_for('employees'))
+
+# ── Mobile QR Clock In/Out with Geolocation ───────────────────────────────────────
+import json
+from functools import wraps
+
+def log_activity(action_type, employee_id=None, details=None, latitude=None, longitude=None, accuracy=None):
+    """Log activity to activity_logs table with optional geolocation."""
+    try:
+        db = get_db()
+        user_id = session.get('user_id')
+        ip = request.remote_addr
+        ua = request.user_agent.string if request.user_agent else None
+        
+        # Detect device type
+        device_type = 'desktop'
+        if ua:
+            ua_lower = ua.lower()
+            if 'mobile' in ua_lower or 'android' in ua_lower or 'iphone' in ua_lower:
+                device_type = 'mobile'
+            elif 'tablet' in ua_lower or 'ipad' in ua_lower:
+                device_type = 'tablet'
+        
+        # Check for explicit source header
+        source = request.headers.get('X-Source') or request.args.get('source') or request.form.get('source')
+        if source in ['qr', 'mobile', 'kiosk']:
+            device_type = source
+        
+        details_json = json.dumps(details) if details else None
+        
+        db.execute("""
+            INSERT INTO activity_logs 
+            (action_type, user_id, employee_id, ip_address, user_agent, device_type, 
+             latitude, longitude, location_accuracy, details)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (action_type, user_id, employee_id, ip, ua, device_type, latitude, longitude, accuracy, details_json))
+        db.commit()
+    except Exception as e:
+        app.logger.error(f"Audit logging error: {e}")
+
+def audit_log_decorator(action_type):
+    """Decorator to log route access"""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            result = f(*args, **kwargs)
+            try:
+                emp_id = kwargs.get('emp_id') or session.get('employee_id') if session else None
+                if isinstance(emp_id, str) and emp_id.startswith('emp_'):
+                    emp_id = int(emp_id.split('_')[1])
+                details = {'method': request.method, 'endpoint': request.endpoint}
+                if request.form and request.form.get('name'):
+                    details['employee_name'] = request.form.get('name')
+                log_activity(action_type, emp_id, details)
+            except:
+                pass
+            return result
+        return wrapper
+    return decorator
+
+@app.route('/clock/qr/<int:emp_id>')
+def clock_qr_page(emp_id):
+    """Display QR code page for employee mobile clock-in"""
+    db = get_db()
+    emp = db.execute("SELECT id, name, role FROM employees WHERE id=? AND active=1", (emp_id,)).fetchone()
+    if not emp:
+        abort(404)
+    
+    # Generate unique session token for this QR scan
+    import secrets
+    qr_token = secrets.token_urlsafe(32)
+    
+    # Store token temporarily in session for validation
+    session['qr_clock_token'] = qr_token
+    session['qr_employee_id'] = emp_id
+    
+    # Get current status
+    status = db.execute(
+        "SELECT clock_out IS NULL as clocked_in FROM timesheets WHERE employee_id=? AND clock_out IS NULL",
+        (emp_id,)
+    ).fetchone()
+    
+    return render_template('clock_qr.html', 
+                          employee=emp, 
+                          token=qr_token,
+                          clocked_in=bool(status['clocked_in']) if status else False,
+                          bakery=BAKERY_NAME)
+
+@app.route('/clock/mobile', methods=['POST'])
+def mobile_clock():
+    """Mobile/QR clock in/out with geolocation capture"""
+    db = get_db()
+    data = request.get_json() or request.form
+    
+    emp_id = data.get('employee_id')
+    token = data.get('token')
+    action = data.get('action')  # 'in' or 'out'
+    pin = data.get('pin', '').strip()
+    lat = data.get('latitude') or data.get('lat')
+    lng = data.get('longitude') or data.get('lng')
+    accuracy = data.get('accuracy')
+    
+    # Validate required fields
+    if not emp_id or not action or not pin:
+        return jsonify({'error': 'Missing required fields: employee_id, action, pin'}), 400
+    
+    emp_id = int(emp_id)
+    
+    # Verify employee and PIN
+    emp = db.execute("SELECT id, name, pin, pin_plain FROM employees WHERE id=? AND active=1", (emp_id,)).fetchone()
+    if not emp:
+        return jsonify({'error': 'Employee not found'}), 404
+    
+    if not _check_pin(pin, emp['pin']):
+        log_activity('clock_failed', emp_id, {'reason': 'bad_pin', 'action': action, 'source': 'mobile'}, lat, lng, accuracy)
+        return jsonify({'error': 'Invalid PIN'}), 403
+    
+    # Validate token if from QR scan
+    if token and token != session.get('qr_clock_token'):
+        return jsonify({'error': 'Invalid session token'}), 403
+    
+    if action == 'in':
+        # Check not already clocked in
+        existing = db.execute(
+            "SELECT id FROM timesheets WHERE employee_id=? AND clock_out IS NULL", (emp_id,)
+        ).fetchone()
+        if existing:
+            return jsonify({'error': 'Already clocked in', 'clocked_in': True}), 409
+        
+        # Insert with geolocation
+        db.execute("""
+            INSERT INTO timesheets(employee_id, clock_in, latitude, longitude, accuracy, source)
+            VALUES(datetime('now'), datetime('now'), ?, ?, ?, 'mobile')
+        """, (emp_id, lat, lng, accuracy))
+        db.commit()
+        
+        log_activity('clock_in', emp_id, 
+                    {'location': {'lat': lat, 'lng': lng, 'accuracy': accuracy}, 'source': 'mobile'}, 
+                    lat, lng, accuracy)
+        
+        return jsonify({
+            'success': True, 
+            'action': 'clock_in',
+            'employee': emp['name'],
+            'timestamp': db.execute("SELECT datetime('now')").fetchone()[0],
+            'location': {'lat': lat, 'lng': lng, 'accuracy': accuracy}
+        })
+    
+    elif action == 'out':
+        ts = db.execute(
+            "SELECT id FROM timesheets WHERE employee_id=? AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1",
+            (emp_id,)
+        ).fetchone()
+        if not ts:
+            return jsonify({'error': 'Not clocked in', 'clocked_in': False}), 409
+        
+        # Update with geolocation
+        db.execute("""
+            UPDATE timesheets 
+            SET clock_out=datetime('now'), latitude=COALESCE(?, latitude), 
+                longitude=COALESCE(?, longitude), accuracy=COALESCE(?, accuracy)
+            WHERE id=?
+        """, (lat, lng, accuracy, ts['id']))
+        db.commit()
+        
+        log_activity('clock_out', emp_id, 
+                    {'location': {'lat': lat, 'lng': lng, 'accuracy': accuracy}, 'source': 'mobile'}, 
+                    lat, lng, accuracy)
+        
+        return jsonify({
+            'success': True,
+            'action': 'clock_out',
+            'employee': emp['name'],
+            'timestamp': db.execute("SELECT datetime('now')").fetchone()[0],
+            'location': {'lat': lat, 'lng': lng, 'accuracy': accuracy}
+        })
+    
+    return jsonify({'error': 'Invalid action'}), 400
+
+@app.route('/admin/audit-logs')
+@login_required
+def audit_logs():
+    """View activity audit trail (admin only)"""
+    db = get_db()
+    
+    # Filters
+    action_filter = request.args.get('action', '')
+    emp_filter = request.args.get('employee', '')
+    date_from = request.args.get('from', '')
+    date_to = request.args.get('to', '')
+    
+    query = """
+        SELECT a.*, e.name as employee_name 
+        FROM activity_logs a 
+        LEFT JOIN employees e ON a.employee_id = e.id
+        WHERE 1=1
+    """
+    params = []
+    if action_filter:
+        query += " AND a.action_type = ?"
+        params.append(action_filter)
+    if emp_filter:
+        query += " AND (a.employee_id = ? OR e.name LIKE ?)"
+        params.extend([emp_filter, f"%{emp_filter}%"])
+    if date_from:
+        query += " AND a.created_at >= ?"
+        params.append(date_from)
+    if date_to:
+        query += " AND a.created_at <= ?"
+        params.append(date_to + " 23:59:59")
+    
+    query += " ORDER BY a.created_at DESC LIMIT 500"
+    
+    logs = db.execute(query, params).fetchall()
+    
+    # Get distinct actions for filter dropdown
+    actions = db.execute("SELECT DISTINCT action_type FROM activity_logs ORDER BY action_type").fetchall()
+    
+    return render_template('audit_logs.html', logs=logs, actions=actions,
+                          filters={'action': action_filter, 'employee': emp_filter,
+                                  'from': date_from, 'to': date_to},
+                          bakery=BAKERY_NAME)
+
+@app.route('/admin/audit-report')
+@login_required
+def audit_report_api():
+    """JSON API for audit report data"""
+    db = get_db()
+    
+    # Summary stats
+    summary = db.execute("""
+        SELECT 
+            action_type,
+            COUNT(*) as count,
+            COUNT(DISTINCT employee_id) as unique_employees,
+            MIN(created_at) as first_seen,
+            MAX(created_at) as last_seen
+        FROM activity_logs
+        WHERE created_at >= date('now', '-7 days')
+        GROUP BY action_type
+        ORDER BY count DESC
+    """).fetchall()
+    
+    # Geo activity (clocks with location)
+    geo_activity = db.execute("""
+        SELECT employee_id, action_type, latitude, longitude, location_accuracy, created_at
+        FROM activity_logs
+        WHERE latitude IS NOT NULL AND created_at >= date('now', '-30 days')
+        ORDER BY created_at DESC
+        LIMIT 100
+    """).fetchall()
+    
+    # Login patterns
+    logins = db.execute("""
+        SELECT device_type, COUNT(*) as count
+        FROM activity_logs
+        WHERE action_type LIKE '%login%' AND created_at >= date('now', '-7 days')
+        GROUP BY device_type
+    """).fetchall()
+    
+    return jsonify({
+        'summary': [dict(row) for row in summary],
+        'geo_activity': [dict(row) for row in geo_activity],
+        'login_devices': [dict(row) for row in logins]
+    })
 
 # ── Recipes ───────────────────────────────────────────────────────────────────
 @app.route('/recipes')

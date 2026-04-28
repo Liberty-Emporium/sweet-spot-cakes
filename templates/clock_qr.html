@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ employee.name }} - Clock In/Out</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 { font-size: 24px; color: #333; margin-bottom: 5px; }
+        .header .role { color: #666; font-size: 14px; }
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .status.in { background: #d4edda; color: #155724; }
+        .status.out { background: #f8d7da; color: #721c24; }
+        .pin-display {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .pin-display input {
+            width: 200px;
+            height: 60px;
+            font-size: 32px;
+            text-align: center;
+            letter-spacing: 15px;
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            background: #f8f9fa;
+        }
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .numpad button {
+            height: 65px;
+            font-size: 24px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            background: #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .numpad button:hover { background: #e0e0e0; transform: translateY(-2px); }
+        .numpad button:active { transform: translateY(0) scale(0.95); }
+        .numpad .action { background: #667eea; color: white; font-size: 18px; }
+        .numpad .action:hover { background: #5568d3; }
+        .numpad .clear { background: #ff6b6b; color: white; }
+        .numpad .clear:hover { background: #fa5252; }
+        .btn-clock {
+            width: 100%;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+        .btn-clock.in { background: #28a745; color: white; }
+        .btn-clock.in:hover { background: #218838; }
+        .btn-clock.out { background: #dc3545; color: white; }
+        .btn-clock.out:hover { background: #c82333; }
+        .location-info {
+            text-align: center;
+            padding: 12px;
+            background: #e7f3ff;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #0066cc;
+        }
+        .location-info.error { background: #ffe7e7; color: #cc0000; }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo h2 { color: white; font-size: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .result {
+            text-align: center;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+        .result.success { background: #d4edda; color: #155724; display: block; }
+        .result.error { background: #f8d7da; color: #721c24; display: block; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <h2>{{ bakery }}</h2>
+    </div>
+    
+    <div class="card">
+        <div class="header">
+            <h1>{{ employee.name }}</h1>
+            <div class="role">{{ employee.role }}</div>
+        </div>
+        
+        <div class="status {{ 'in' if clocked_in else 'out' }}">
+            {% if clocked_in %}
+                ✅ Currently Clocked IN
+            {% else %}
+                ⭕ Currently Clocked OUT
+            {% endif %}
+        </div>
+        
+        <div class="pin-display">
+            <input type="password" id="pinInput" maxlength="4" placeholder="••••" readonly>
+        </div>
+        
+        <div class="numpad">
+            <button onclick="addDigit('1')">1</button>
+            <button onclick="addDigit('2')">2</button>
+            <button onclick="addDigit('3')">3</button>
+            <button onclick="addDigit('4')">4</button>
+            <button onclick="addDigit('5')">5</button>
+            <button onclick="addDigit('6')">6</button>
+            <button onclick="addDigit('7')">7</button>
+            <button onclick="addDigit('8')">8</button>
+            <button onclick="addDigit('9')">9</button>
+            <button class="clear" onclick="clearPin()">⌫</button>
+            <button onclick="addDigit('0')">0</button>
+            <button class="action" onclick="submitClock()">⏎</button>
+        </div>
+        
+        <button id="clockBtn" class="btn-clock {{ 'out' if clocked_in else 'in' }}" onclick="submitClock()">
+            {% if clocked_in %}
+                🔴 CLOCK OUT
+            {% else %}
+                🟢 CLOCK IN
+            {% endif %}
+        </button>
+        
+        <div id="locationInfo" class="location-info">
+            📍 Getting location...
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        let pin = '';
+        let latitude = null;
+        let longitude = null;
+        let accuracy = null;
+        
+        // Get geolocation on load
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    latitude = pos.coords.latitude;
+                    longitude = pos.coords.longitude;
+                    accuracy = pos.coords.accuracy;
+                    document.getElementById('locationInfo').innerHTML = 
+                        `📍 Location captured (±${Math.round(accuracy)}m)`;
+                },
+                function(err) {
+                    document.getElementById('locationInfo').className = 'location-info error';
+                    document.getElementById('locationInfo').innerHTML = 
+                        `⚠️ Location unavailable: ${err.message}`;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            document.getElementById('locationInfo').className = 'location-info error';
+            document.getElementById('locationInfo').innerHTML = '⚠️ Geolocation not supported';
+        }
+        
+        function addDigit(digit) {
+            if (pin.length < 4) {
+                pin += digit;
+                document.getElementById('pinInput').value = pin;
+            }
+        }
+        
+        function clearPin() {
+            pin = '';
+            document.getElementById('pinInput').value = '';
+        }
+        
+        async function submitClock() {
+            if (pin.length !== 4) {
+                showResult('Please enter 4-digit PIN', false);
+                return;
+            }
+            
+            const action = {{ 'out' if clocked_in else 'in' }};
+            
+            try {
+                const response = await fetch('/clock/mobile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Source': 'mobile'
+                    },
+                    body: JSON.stringify({
+                        employee_id: {{ employee.id }},
+                        pin: pin,
+                        action: action,
+                        token: '{{ token }}',
+                        latitude: latitude,
+                        longitude: longitude,
+                        accuracy: accuracy
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ ${data.action === 'clock_in' ? 'Clocked IN' : 'Clocked OUT'} at ${new Date().toLocaleTimeString()}`, true);
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showResult(`❌ ${data.error || 'Failed'}`, false);
+                }
+            } catch (err) {
+                showResult(`❌ Network error: ${err.message}`, false);
+            }
+        }
+        
+        function showResult(msg, success) {
+            const el = document.getElementById('result');
+            el.textContent = msg;
+            el.className = 'result ' + (success ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>

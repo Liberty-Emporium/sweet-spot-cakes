@@ -72,6 +72,7 @@
             {% endif %}
 
             <a href="/employees/{{ emp.id }}/timesheets" class="btn btn-ghost btn-xs">Timesheets</a>
+            <a href="/clock/qr/{{ emp.id }}" class="btn btn-ghost btn-xs" target="_blank" title="Mobile QR Clock">📱 QR</a>
 
             <button class="btn btn-ghost btn-xs" style="color:var(--blue)"
               onclick="openEdit({{ emp.id }})">✏️ Edit</button>

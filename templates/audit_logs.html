@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - {{ bakery }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .filters select, .filters input {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .filters button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .filters button:hover { background: #5568d3; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card h4 {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+        .logs-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        tr:hover { background: #f8f9fa; }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-login { background: #d4edda; color: #155724; }
+        .badge-logout { background: #f8d7da; color: #721c24; }
+        .badge-clock_in { background: #cce5ff; color: #004085; }
+        .badge-clock_out { background: #e2e3e5; color: #383d41; }
+        .badge-employee_edit { background: #fff3cd; color: #856404; }
+        .badge-default { background: #e9ecef; color: #495057; }
+        .device-mobile { color: #28a745; }
+        .device-desktop { color: #6c757d; }
+        .device-qr { color: #dc3545; }
+        .details-btn {
+            background: #e9ecef;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .location-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .location-link:hover { text-decoration: underline; }
+        .empty { text-align: center; padding: 60px; color: #666; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+        }
+        .pagination a, .pagination span {
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #667eea;
+        }
+        .pagination a:hover { background: #667eea; color: white; }
+        .nav-back {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .nav-back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/employees" class="nav-back">← Back to Employees</a>
+        <h1>📊 Audit Trail & Activity Logs</h1>
+        
+        <form class="filters" method="get" action="/admin/audit-logs">
+            <select name="action">
+                <option value="">All Actions</option>
+                {% for a in actions %}
+                <option value="{{ a.action_type }}" {{ 'selected' if filters.action==a.action_type }}>{{ a.action_type }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="employee" placeholder="Employee name or ID" value="{{ filters.employee }}">
+            <input type="date" name="from" value="{{ filters.from }}">
+            <input type="date" name="to" value="{{ filters.to }}">
+            <button type="submit">Filter</button>
+            <a href="/admin/audit-logs"><button type="button" style="background:#6c757d;">Clear</button></a>
+            <a href="/admin/audit-report" target="_blank"><button type="button" style="background:#28a745;">JSON Report</button></a>
+        </form>
+        
+        {% if logs %}
+        <div class="logs-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Action</th>
+                        <th>Employee</th>
+                        <th>Device</th>
+                        <th>IP Address</th>
+                        <th>Location</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.created_at }}</td>
+                        <td>
+                            <span class="badge badge-{{ log.action_type.split('_')[0] if log.action_type.startswith(('login', 'logout', 'clock')) else 'default' }}">
+                                {{ log.action_type }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if log.employee_name %}
+                                {{ log.employee_name }} ({{ log.employee_id }})
+                            {% elif log.employee_id %}
+                                ID: {{ log.employee_id }}
+                            {% else %}
+                                {{ log.user_id or 'System' }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="device-{{ log.device_type }}">
+                                {{ log.device_type|title }}
+                            </span>
+                        </td>
+                        <td>{{ log.ip_address or '-' }}</td>
+                        <td>
+                            {% if log.latitude and log.longitude %}
+                                <a class="location-link" href="https://maps.google.com/?q={{ log.latitude }},{{ log.longitude }}" target="_blank">
+                                    📍 {{ "%.4f"|format(log.latitude) }}, {{ "%.4f"|format(log.longitude) }}
+                                    {% if log.location_accuracy %}(±{{ log.location_accuracy|int }}m){% endif %}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.details %}
+                                <button class="details-btn" title="{{ log.details }}">View</button>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty">
+            <h3>No logs found</h3>
+            <p>Try adjusting your filters or check back later.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
