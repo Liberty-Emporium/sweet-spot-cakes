@@ -2286,7 +2286,7 @@ def employee_add():
 def employee_edit(emp_id):
     db = get_db()
     raw_pin = request.form.get('pin', '').strip()
-    current = db.execute('SELECT pin FROM employees WHERE id=?', (emp_id,)).fetchone()
+    current = db.execute('SELECT pin, pin_plain FROM employees WHERE id=?', (emp_id,)).fetchone()
     if raw_pin:
         # New PIN entered — hash it
         new_pin = _hash_pin(raw_pin)
