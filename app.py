@@ -2952,7 +2952,7 @@ def prep_sheet():
             ingredients = db.execute('''
                 SELECT i.name, ri.quantity, ri.unit
                 FROM recipe_ingredients ri
-                JOIN inventory i ON i.id = ri.ingredient_id
+                JOIN ingredients i ON i.id = ri.ingredient_id
                 WHERE ri.recipe_id=?
             ''', (item['recipe_id'],)).fetchall()
             for ing in ingredients:
@@ -2960,7 +2960,7 @@ def prep_sheet():
                 needed = (ing['quantity'] or 0) * qty
                 if key not in ingredient_needs:
                     stock_row = db.execute(
-                        'SELECT quantity FROM inventory WHERE name=?', (key,)
+                        'SELECT quantity FROM ingredients WHERE name=?', (key,)
                     ).fetchone()
                     ingredient_needs[key] = {
                         'needed': 0,

@@ -145,7 +145,7 @@
     {% if rank >= 3 %}<a href="/tools" class="nav-item {% if request.path == '/tools' or request.path.startswith('/tools/') %}active{% endif %}">🔧 <span>Tools</span></a>{% endif %}
     {% if rank >= 3 %}<a href="/suppliers" class="nav-item {% if '/suppliers' in request.path %}active{% endif %}">🚚 <span>Suppliers</span></a>{% endif %}
 
-    {% if rank >= 1 %}<a href="/prep-sheet" class="nav-item {% if '/prep-sheet' in request.path %}active{% endif %}">📋 <span>Prep Sheet</span></a>{% endif %}
+{% if rank >= 1 %}<a href="/prep-sheet" class="nav-item {% if '/prep-sheet' in request.path %} active {% endif %}">📋 <span>Prep Sheet</span></a>{% endif %}
 
     {% if rank >= 3 %}
     <div class="nav-section">Team</div>
