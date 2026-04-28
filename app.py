@@ -467,7 +467,7 @@ def init_db():
     );
     ''')
     db.commit()
-    _run_migrations(db)
+    # _run_migrations called after it's defined (line ~3840)
 
     # Seed admin user
     admin_pw = os.environ.get('ADMIN_PASSWORD', 'sweetspot2026')
