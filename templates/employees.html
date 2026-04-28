@@ -32,10 +32,7 @@
         <td>
           {% if emp.pin_plain %}
           <div style="display:flex;align-items:center;gap:5px">
-            <span id="pin-val-{{ emp.id }}" style="font-family:monospace;font-size:.82rem;letter-spacing:.05em">{{ '•' * emp.pin_plain|length }}</span>
-            <button type="button" onclick="toggleEmpPin({{ emp.id }}, {{ emp.pin_plain | tojson }})" title="Show/hide PIN"
-              style="background:none;border:none;cursor:pointer;font-size:.9rem;color:var(--muted);padding:0 3px"
-              id="pin-btn-{{ emp.id }}">👁️</button>
+            <span style="font-family:monospace;font-size:.82rem;letter-spacing:.05em">{{ '•' * emp.pin_plain|length }}</span>
             <button type="button" onclick="openSetPin({{ emp.id }})" title="Change PIN"
               style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--muted);padding:0 3px">✏️</button>
           </div>
