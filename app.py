@@ -2287,6 +2287,182 @@ def supplier_delete(supplier_id):
     flash(f'Supplier "{supplier["name"]}" deleted.', 'success')
     return redirect(url_for('suppliers'))
 
+# ── Payroll ──────────────────────────────────────────────────────────────────
+
+@app.route('/payroll')
+@login_required
+def payroll():
+    db = get_db()
+    today = ny_now().date()
+
+    # Pay period: default = current week (Mon–Sun), or custom via query params
+    period = request.args.get('period', 'week')  # week | biweek | month | custom
+    period_end_str   = request.args.get('end',   today.isoformat())
+    try:
+        period_end = datetime.date.fromisoformat(period_end_str)
+    except Exception:
+        period_end = today
+
+    if period == 'week':
+        # Current Mon–Sun week containing period_end
+        period_start = period_end - datetime.timedelta(days=period_end.weekday())
+        period_end   = period_start + datetime.timedelta(days=6)
+    elif period == 'biweek':
+        period_start = period_end - datetime.timedelta(days=13)
+    elif period == 'month':
+        period_start = period_end.replace(day=1)
+        import calendar
+        last_day = calendar.monthrange(period_end.year, period_end.month)[1]
+        period_end = period_end.replace(day=last_day)
+    else:  # custom
+        period_start_str = request.args.get('start', period_end_str)
+        try:
+            period_start = datetime.date.fromisoformat(period_start_str)
+        except Exception:
+            period_start = period_end - datetime.timedelta(days=6)
+
+    start_str = period_start.isoformat()
+    end_str   = period_end.isoformat()
+
+    # All active employees with hours in period
+    employees_raw = db.execute(
+        "SELECT * FROM employees WHERE active=1 ORDER BY name"
+    ).fetchall()
+
+    payroll_rows = []
+    total_gross  = 0.0
+    total_hours  = 0.0
+
+    for emp in employees_raw:
+        shifts = db.execute('''
+            SELECT id, clock_in, clock_out, break_mins, approved, notes
+            FROM timesheets
+            WHERE employee_id=?
+              AND date(clock_in) >= ?
+              AND date(clock_in) <= ?
+            ORDER BY clock_in
+        ''', (emp['id'], start_str, end_str)).fetchall()
+
+        hrs = 0.0
+        shift_list = []
+        open_shifts = 0
+        approved_count = 0
+        for s in shifts:
+            if s['clock_out']:
+                try:
+                    ci = datetime.datetime.fromisoformat(s['clock_in'][:19])
+                    co = datetime.datetime.fromisoformat(s['clock_out'][:19])
+                    worked = max(0, (co - ci).total_seconds() / 3600.0 - (s['break_mins'] or 0) / 60.0)
+                except Exception:
+                    worked = 0.0
+            else:
+                worked = 0.0
+                open_shifts += 1
+            hrs += worked
+            if s['approved']:
+                approved_count += 1
+            shift_list.append({
+                'id':        s['id'],
+                'clock_in':  s['clock_in'],
+                'clock_out': s['clock_out'],
+                'break_mins': s['break_mins'] or 0,
+                'hours':     round(worked, 2),
+                'approved':  bool(s['approved']),
+                'notes':     s['notes'] or '',
+            })
+
+        hrs = round(hrs, 2)
+        rate  = float(emp['hourly_rate'] or 0)
+        gross = round(hrs * rate, 2)
+        total_hours += hrs
+        total_gross += gross
+        all_approved = len(shift_list) > 0 and approved_count == len(shift_list)
+
+        payroll_rows.append({
+            'emp':         emp,
+            'hours':       hrs,
+            'rate':        rate,
+            'gross':       gross,
+            'shifts':      shift_list,
+            'open_shifts': open_shifts,
+            'all_approved': all_approved,
+            'shift_count':  len(shift_list),
+        })
+
+    # Sort: most hours first
+    payroll_rows.sort(key=lambda r: r['hours'], reverse=True)
+
+    return render_template('payroll.html',
+        rows=payroll_rows,
+        period=period,
+        period_start=period_start,
+        period_end=period_end,
+        total_hours=round(total_hours, 2),
+        total_gross=round(total_gross, 2),
+        today=today,
+        bakery=BAKERY_NAME,
+    )
+
+
+@app.route('/payroll/approve', methods=['POST'])
+@login_required
+def payroll_approve():
+    """Approve one or all timesheets for an employee in a period."""
+    db = get_db()
+    mode = request.form.get('mode', 'single')  # single | all_employee | all_period
+
+    if mode == 'single':
+        ts_id = request.form.get('ts_id')
+        if ts_id:
+            db.execute("UPDATE timesheets SET approved=1 WHERE id=?", (ts_id,))
+            db.commit()
+            return ('', 204)
+
+    elif mode == 'all_employee':
+        emp_id     = request.form.get('emp_id')
+        start_str  = request.form.get('start')
+        end_str    = request.form.get('end')
+        if emp_id and start_str and end_str:
+            db.execute('''
+                UPDATE timesheets SET approved=1
+                WHERE employee_id=? AND date(clock_in)>=? AND date(clock_in)<=?
+                  AND clock_out IS NOT NULL
+            ''', (emp_id, start_str, end_str))
+            db.commit()
+
+    elif mode == 'all_period':
+        start_str  = request.form.get('start')
+        end_str    = request.form.get('end')
+        if start_str and end_str:
+            db.execute('''
+                UPDATE timesheets SET approved=1
+                WHERE date(clock_in)>=? AND date(clock_in)<=?
+                  AND clock_out IS NOT NULL
+            ''', (start_str, end_str))
+            db.commit()
+
+    # Redirect back to payroll page with same params
+    return redirect(request.referrer or '/payroll')
+
+
+@app.route('/payroll/timesheet/<int:ts_id>/edit', methods=['POST'])
+@login_required
+def payroll_timesheet_edit(ts_id):
+    """Manually correct a timesheet entry (admin fix for missed clock-outs etc)."""
+    db = get_db()
+    clock_in  = request.form.get('clock_in', '').strip()
+    clock_out = request.form.get('clock_out', '').strip()
+    break_mins = int(request.form.get('break_mins', 0) or 0)
+    notes      = request.form.get('notes', '').strip()
+    db.execute(
+        "UPDATE timesheets SET clock_in=?, clock_out=?, break_mins=?, notes=?, approved=0 WHERE id=?",
+        (clock_in, clock_out or None, break_mins, notes, ts_id)
+    )
+    db.commit()
+    flash('Timesheet entry updated.', 'success')
+    return redirect(request.referrer or '/payroll')
+
+
 # ── Employees ─────────────────────────────────────────────────────────────────
 @app.route('/employees')
 @login_required

@@ -195,6 +195,7 @@
     {% if rank >= 3 %}
     <div class="nav-section">Team</div>
     <a href="/employees" class="nav-item {% if '/employees' in request.path or '/timesheets' in request.path %}active{% endif %}">👩‍🍳 <span>Employees</span></a>
+    <a href="/payroll" class="nav-item {% if '/payroll' in request.path %}active{% endif %}">💰 <span>Payroll</span></a>
     {% endif %}
 
     {% if rank >= 3 %}

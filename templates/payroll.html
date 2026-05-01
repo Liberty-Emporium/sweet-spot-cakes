@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}Payroll — {{ bakery }}{% endblock %}
+{% block page_title %}💰 Payroll{% endblock %}
+
+{% block help_content %}
+<h3>Payroll Page</h3>
+<p>Review hours and calculate gross pay for every employee in the selected pay period.</p>
+<ul>
+  <li><strong>Pay Period</strong> — switch between weekly, bi-weekly, monthly, or custom date ranges.</li>
+  <li><strong>Approve Shifts</strong> — tick off each shift once you've reviewed it. Approve all at once with the "Approve All" button.</li>
+  <li><strong>Edit Entries</strong> — click ✏️ next to any shift to fix a missed clock-out or adjust break time.</li>
+  <li><strong>Open Shifts</strong> — employees still clocked in show a ⚠️ warning. Clock them out before running payroll.</li>
+</ul>
+<div class="help-tip">Always approve timesheets before running payroll — it locks the entries so they won't change.</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── Period selector ───────────────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:20px">
+  <form method="get" action="/payroll" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
+
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Pay Period</label>
+      <select name="period" onchange="this.form.submit()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.9rem">
+        <option value="week"    {% if period=='week'    %}selected{% endif %}>This Week</option>
+        <option value="biweek"  {% if period=='biweek'  %}selected{% endif %}>Last 2 Weeks</option>
+        <option value="month"   {% if period=='month'   %}selected{% endif %}>This Month</option>
+        <option value="custom"  {% if period=='custom'  %}selected{% endif %}>Custom Range</option>
+      </select>
+    </div>
+
+    {% if period == 'custom' %}
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">Start Date</label>
+      <input type="date" name="start" value="{{ period_start }}"
+             style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.9rem">
+    </div>
+    <div>
+      <label style="font-size:.78rem;color:var(--muted);display:block;margin-bottom:4px">End Date</label>
+      <input type="date" name="end" value="{{ period_end }}"
+             style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.9rem">
+    </div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    {% endif %}
+
+    <div style="flex:1;text-align:right;font-size:.85rem;color:var(--muted);align-self:center">
+      {{ period_start.strftime('%b %d') }} – {{ period_end.strftime('%b %d, %Y') }}
+    </div>
+
+  </form>
+</div>
+
+{# ── Summary totals ────────────────────────────────────────────────────────── #}
+<div class="grid-3" style="margin-bottom:24px">
+  <div class="card" style="text-align:center">
+    <div class="stat-num">{{ rows|length }}</div>
+    <div class="stat-label">Employees</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div class="stat-num">{{ total_hours }}h</div>
+    <div class="stat-label">Total Hours</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div class="stat-num green">${{ "%.2f"|format(total_gross) }}</div>
+    <div class="stat-label">Total Gross Pay</div>
+  </div>
+</div>
+
+{# ── Approve all button ────────────────────────────────────────────────────── #}
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;gap:10px">
+  <form method="post" action="/payroll/approve">
+    <input type="hidden" name="mode"  value="all_period">
+    <input type="hidden" name="start" value="{{ period_start }}">
+    <input type="hidden" name="end"   value="{{ period_end }}">
+    <button class="btn btn-primary" type="submit"
+            onclick="return confirm('Approve ALL timesheets for this period?')">
+      ✅ Approve All Timesheets
+    </button>
+  </form>
+</div>
+
+{# ── Employee rows ─────────────────────────────────────────────────────────── #}
+{% for row in rows %}
+<div class="card" style="margin-bottom:18px">
+
+  {# Employee header #}
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border)">
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--pink-dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;color:#fff;flex-shrink:0">
+        {{ row.emp.name[0]|upper }}
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:1rem">{{ row.emp.name }}</div>
+        <div style="font-size:.78rem;color:var(--muted)">{{ row.emp.role }} · ${{ "%.2f"|format(row.rate) }}/hr</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:24px;text-align:center;flex-wrap:wrap">
+      <div>
+        <div style="font-size:1.2rem;font-weight:700">{{ row.hours }}h</div>
+        <div style="font-size:.75rem;color:var(--muted)">Hours</div>
+      </div>
+      <div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--green)">${{ "%.2f"|format(row.gross) }}</div>
+        <div style="font-size:.75rem;color:var(--muted)">Gross Pay</div>
+      </div>
+      {% if row.open_shifts %}
+      <div>
+        <div style="font-size:1.2rem;font-weight:700;color:var(--yellow)">⚠️ {{ row.open_shifts }}</div>
+        <div style="font-size:.75rem;color:var(--muted)">Open Shift{{ 's' if row.open_shifts > 1 }}</div>
+      </div>
+      {% endif %}
+      <div>
+        {% if row.all_approved %}
+          <div style="font-size:1rem;color:var(--green)">✅ Approved</div>
+        {% elif row.shift_count > 0 %}
+          <form method="post" action="/payroll/approve" style="margin:0">
+            <input type="hidden" name="mode"   value="all_employee">
+            <input type="hidden" name="emp_id" value="{{ row.emp.id }}">
+            <input type="hidden" name="start"  value="{{ period_start }}">
+            <input type="hidden" name="end"    value="{{ period_end }}">
+            <button class="btn btn-sm btn-primary" type="submit">Approve All</button>
+          </form>
+        {% else %}
+          <span style="font-size:.8rem;color:var(--muted)">No shifts</span>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Shift table #}
+  {% if row.shifts %}
+  <div class="table-wrap">
+    <table style="font-size:.85rem">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Clock In</th>
+          <th>Clock Out</th>
+          <th>Break</th>
+          <th style="text-align:right">Hours</th>
+          <th style="text-align:right">Pay</th>
+          <th style="text-align:center">Status</th>
+          <th style="text-align:center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in row.shifts %}
+        <tr>
+          <td style="font-size:.8rem;color:var(--muted)">
+            {{ s.clock_in[:10] }}
+          </td>
+          <td style="font-family:monospace">
+            {{ s.clock_in[11:16] if s.clock_in else '—' }}
+          </td>
+          <td style="font-family:monospace">
+            {% if s.clock_out %}
+              {{ s.clock_out[11:16] }}
+            {% else %}
+              <span style="color:var(--yellow)">Still In ⚠️</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted)">{{ s.break_mins }}m</td>
+          <td style="text-align:right;font-weight:600">
+            {% if s.hours > 0 %}{{ s.hours }}h{% else %}<span style="color:var(--muted)">—</span>{% endif %}
+          </td>
+          <td style="text-align:right;color:var(--green)">
+            {% if s.hours > 0 %}${{ "%.2f"|format(s.hours * row.rate) }}{% else %}—{% endif %}
+          </td>
+          <td style="text-align:center">
+            {% if s.approved %}
+              <span class="badge badge-ready">✅</span>
+            {% elif s.clock_out %}
+              <form method="post" action="/payroll/approve" style="margin:0;display:inline">
+                <input type="hidden" name="mode"  value="single">
+                <input type="hidden" name="ts_id" value="{{ s.id }}">
+                <button class="btn btn-sm" type="submit" style="padding:2px 10px;font-size:.75rem">Approve</button>
+              </form>
+            {% else %}
+              <span class="badge badge-pending">Open</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center">
+            <button class="btn btn-sm btn-ghost"
+                    onclick="toggleEdit('edit-{{ s.id }}')"
+                    title="Edit this shift">✏️</button>
+          </td>
+        </tr>
+        {# Inline edit row #}
+        <tr id="edit-{{ s.id }}" style="display:none;background:var(--bg-dark)">
+          <td colspan="8" style="padding:12px 16px">
+            <form method="post" action="/payroll/timesheet/{{ s.id }}/edit"
+                  style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+              <div>
+                <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Clock In</label>
+                <input type="datetime-local" name="clock_in"
+                       value="{{ s.clock_in[:16] if s.clock_in else '' }}"
+                       style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:.82rem">
+              </div>
+              <div>
+                <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Clock Out</label>
+                <input type="datetime-local" name="clock_out"
+                       value="{{ s.clock_out[:16] if s.clock_out else '' }}"
+                       style="background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:.82rem">
+              </div>
+              <div>
+                <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Break (min)</label>
+                <input type="number" name="break_mins" value="{{ s.break_mins }}" min="0" max="120"
+                       style="width:70px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:.82rem">
+              </div>
+              <div style="flex:1;min-width:160px">
+                <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Notes</label>
+                <input type="text" name="notes" value="{{ s.notes }}" placeholder="Optional note"
+                       style="width:100%;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 10px;font-size:.82rem">
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEdit('edit-{{ s.id }}')">Cancel</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="font-weight:700;border-top:2px solid var(--border)">
+          <td colspan="4" style="padding-top:8px;color:var(--muted);font-size:.82rem">Total</td>
+          <td style="text-align:right;padding-top:8px">{{ row.hours }}h</td>
+          <td style="text-align:right;padding-top:8px;color:var(--green)">${{ "%.2f"|format(row.gross) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:20px;color:var(--muted);font-size:.9rem">
+    No shifts recorded for this period.
+  </div>
+  {% endif %}
+
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+  <div style="font-size:2rem;margin-bottom:8px">💰</div>
+  <div>No active employees found.</div>
+  <a href="/employees" class="btn btn-primary" style="margin-top:16px">Add Employees</a>
+</div>
+{% endfor %}
+
+<script>
+function toggleEdit(id) {
+  const row = document.getElementById(id);
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+{% endblock %}
