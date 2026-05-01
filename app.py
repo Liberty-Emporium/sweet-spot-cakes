@@ -1096,7 +1096,7 @@ def login():
         session['email']   = user['email']
         session['email']   = user['email']
         session.permanent  = True
-        log_activity('login_staff', user.get('id'), {'role': user['role'], 'login_type': 'email_password'})
+        log_activity('login_staff', user['id'], {'role': user['role'], 'login_type': 'email_password'})
         return redirect(url_for('dashboard'))
 
     return render_template('login.html', bakery=BAKERY_NAME, employees=emps)
