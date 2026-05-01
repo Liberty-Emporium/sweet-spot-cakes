@@ -1,6 +1,33 @@
 {% extends 'base.html' %}
 {% block title %}VIP Loyalty — {{ bakery }}{% endblock %}
 {% block page_title %}⭐ VIP Loyalty Club{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>The VIP Loyalty Club keeps your best customers coming back. Members earn points with every order and get access to exclusive specials and birthday offers.</p>
+<h3>How Customers Join</h3>
+<ul>
+  <li>They visit your public <strong>/join</strong> page (link in sidebar) and sign up</li>
+  <li>You can also manually add them from this page</li>
+  <li>Every customer with an order in the system can be enrolled</li>
+</ul>
+<h3>Managing Specials</h3>
+<ul>
+  <li>Click <strong>+ Add Special</strong> to create a discount or promotion for VIP members</li>
+  <li>Set a valid date range — expired specials deactivate automatically</li>
+  <li>Specials appear on the public menu and join page</li>
+</ul>
+<h3>Birthday Marketing</h3>
+<ul>
+  <li>The <strong>Birthdays This Month</strong> section shows members with birthdays coming up</li>
+  <li>Use this to proactively reach out with a birthday cake offer — it’s one of the highest-converting outreach moments</li>
+</ul>
+<h3>Driving Sales with Loyalty</h3>
+<ul>
+  <li>Members who feel valued order more often and refer friends</li>
+  <li>Use the Marketing page to send campaigns specifically to VIP members</li>
+</ul>
+<div class="help-tip">Tell every walk-in customer about the VIP club and hand them the /join QR code. Even 20 loyal members can significantly boost monthly revenue.</div>
+{% endblock %}
 {% block topbar_right %}
 <a href="/qr" class="btn btn-primary btn-sm" target="_blank">🖨️ Print QR Code</a>
 {% endblock %}

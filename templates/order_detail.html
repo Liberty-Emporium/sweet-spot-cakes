@@ -1,6 +1,29 @@
 {% extends 'base.html' %}
 {% block title %}{{ order.order_number }} — {{ bakery }}{% endblock %}
 {% block page_title %}🎂 {{ order.order_number }}{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>This is the full detail view for one order. Everything you do to an order — adding items, collecting payment, changing status, sending receipts — happens here.</p>
+<h3>The Order Workflow</h3>
+<ul>
+  <li><strong>Add Items</strong> — Search recipes and add them to the order. Quantities and prices calculate automatically.</li>
+  <li><strong>Collect Deposit</strong> — Use the payment section to record a partial payment (cash, card, or Stripe).</li>
+  <li><strong>Update Status</strong> — Move the order through: Confirmed → In Production → Ready → Delivered.</li>
+  <li><strong>Collect Balance</strong> — When customer picks up, collect the remaining balance and mark Paid in Full.</li>
+  <li><strong>Mark Delivered</strong> — Final step. Closes the order.</li>
+</ul>
+<h3>Getting Paid</h3>
+<ul>
+  <li>Use <strong>Record Payment</strong> to log cash or manual card payments</li>
+  <li>Use <strong>Charge with Stripe</strong> to send a payment link or charge a card online</li>
+  <li>The <strong>Balance Due</strong> field updates automatically as payments come in</li>
+</ul>
+<h3>Sending a Receipt</h3>
+<ul>
+  <li>Enter the customer’s email and hit <strong>Send Receipt</strong> to email them a summary</li>
+</ul>
+<div class="help-tip">Change status to “Ready” as soon as the cake is boxed up — it triggers the dashboard alert so staff know to call the customer.</div>
+{% endblock %}
 {% block content %}
 
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">

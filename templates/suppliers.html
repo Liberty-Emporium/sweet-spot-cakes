@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Suppliers — {{ bakery }}{% endblock %}
 {% block page_title %}🚚 Suppliers{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Suppliers are the vendors you buy ingredients and supplies from. Linking suppliers to inventory items means you always know exactly who to call or order from when stock runs low.</p>
+<h3>How to Use Suppliers</h3>
+<ul>
+  <li>Add each of your vendors — name, contact name, phone, email, and address</li>
+  <li>Go to <strong>Inventory</strong> and link each ingredient to its supplier</li>
+  <li>When you generate an Auto PO from inventory, it groups items by supplier automatically</li>
+</ul>
+<h3>Making Reorders Fast</h3>
+<ul>
+  <li>When Dashboard shows low stock, click through to Inventory</li>
+  <li>Use <strong>Auto PO</strong> to generate a purchase order — it pulls the supplier contact info in automatically</li>
+  <li>Call or email the supplier using the contact info stored here</li>
+</ul>
+<div class="help-tip">Add at least a backup supplier for your most critical ingredients (flour, butter, sugar). One call away from a supply chain problem becoming a missed order.</div>
+{% endblock %}
 {% block content %}
 <style>
   .sup-card { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:2rem; overflow:hidden; }

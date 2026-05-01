@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Orders — {{ bakery }}{% endblock %}
 {% block page_title %}🎂 Orders{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>This is your master order list — every cake, cupcake, and custom order in the system. This is where you track what needs to be made and what needs to go out the door.</p>
+<h3>Order Statuses (the lifecycle)</h3>
+<ul>
+  <li><strong>Pending</strong> — customer placed order, not yet reviewed</li>
+  <li><strong>Confirmed</strong> — you’ve accepted it, team knows it’s coming</li>
+  <li><strong>In Production</strong> — actively being baked/decorated</li>
+  <li><strong>Ready</strong> — finished and waiting for pickup</li>
+  <li><strong>Delivered</strong> — customer has it, order complete</li>
+  <li><strong>Cancelled</strong> — won’t be fulfilled</li>
+</ul>
+<h3>How to Move an Order Forward</h3>
+<ul>
+  <li>Click <strong>View →</strong> on any order to open the detail page</li>
+  <li>On the detail page, use the status dropdown to advance it</li>
+  <li>Add items, collect payment, and mark paid in full from there</li>
+</ul>
+<h3>Filtering &amp; Search</h3>
+<ul>
+  <li>Use the <strong>status pills</strong> at the top to quickly see just Pending or Ready orders</li>
+  <li>Search by customer name or order number in the search box</li>
+</ul>
+<div class="help-tip">Start every morning by clicking “Pending” to review and confirm overnight orders before baking starts.</div>
+{% endblock %}
 {% block topbar_right %}
 <a href="/orders/new" class="btn btn-primary btn-sm">+ New Order</a>
 {% endblock %}

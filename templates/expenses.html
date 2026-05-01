@@ -1,6 +1,33 @@
 {% extends 'base.html' %}
 {% block title %}Expenses — {{ bakery }}{% endblock %}
 {% block page_title %}💸 Expenses{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Track every dollar going out of the business — ingredients, packaging, equipment, rent, utilities, marketing spend. Expenses feed directly into your profit reports.</p>
+<h3>Logging an Expense</h3>
+<ul>
+  <li>Click <strong>+ Add Expense</strong></li>
+  <li>Enter the amount, category, vendor, and date</li>
+  <li>Add a description so you remember what it was for</li>
+  <li>Log expenses as they happen — don’t let them pile up</li>
+</ul>
+<h3>Categories to Use</h3>
+<ul>
+  <li><strong>Ingredients</strong> — flour, sugar, dairy, eggs, etc.</li>
+  <li><strong>Packaging</strong> — boxes, ribbon, bags, labels</li>
+  <li><strong>Equipment</strong> — pans, mixers, tools</li>
+  <li><strong>Marketing</strong> — social ads, printing, signage</li>
+  <li><strong>Utilities/Rent</strong> — overhead</li>
+  <li><strong>Labor</strong> — contractor or extra help</li>
+</ul>
+<h3>Why This Matters</h3>
+<ul>
+  <li>The <strong>Reports</strong> page subtracts expenses from revenue to show your real profit</li>
+  <li>Knowing your costs helps you price orders correctly — never guess on cake pricing</li>
+  <li>Tax time is much easier when expenses are already categorized</li>
+</ul>
+<div class="help-tip">Log every supply run the same day you make it. A 2-minute entry now saves hours of receipt-hunting later.</div>
+{% endblock %}
 {% block topbar_right %}
 <a href="/reports" class="btn btn-ghost btn-sm">📊 Reports</a>
 {% endblock %}

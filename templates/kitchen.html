@@ -1,6 +1,30 @@
 {% extends 'base.html' %}
 {% block title %}Kitchen — {{ bakery }}{% endblock %}
 {% block page_title %}🍳 Kitchen Production Queue{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>The Kitchen Queue is the baker’s view. It shows every active order that needs to be made, sorted by pickup date so the most urgent work is at the top.</p>
+<h3>How Bakers Use This Page</h3>
+<ul>
+  <li>Check this page at the start of every shift to see what’s due</li>
+  <li>Orders show customer name, pickup date/time, items ordered, and special notes</li>
+  <li>Tap an order to see full details including flavors, decorations, and allergy notes</li>
+  <li>When a cake is finished and boxed, change its status to <strong>Ready</strong></li>
+</ul>
+<h3>Priority Order</h3>
+<ul>
+  <li><strong>Today’s pickups first</strong> — always start with orders due today</li>
+  <li><strong>Confirmed</strong> orders are approved and ready to bake</li>
+  <li><strong>In Production</strong> means someone has already started — don’t duplicate work</li>
+</ul>
+<h3>Getting the Product Out</h3>
+<ul>
+  <li>Baker claims an order by moving it to <strong>In Production</strong></li>
+  <li>When done: box it, label it with customer name + pickup time, move to <strong>Ready</strong></li>
+  <li>Place it in the pickup area and notify the front staff</li>
+</ul>
+<div class="help-tip">Pull the Prep Sheet every morning (sidebar → Prep Sheet) — it tells you exactly what ingredients you need for today’s orders.</div>
+{% endblock %}
 {% block extra_css %}
 <style>
   .order-card { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:20px; overflow:hidden; }

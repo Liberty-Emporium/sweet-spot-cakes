@@ -1,6 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Timesheets — {{ emp.name }}{% endblock %}
 {% block page_title %}⏱️ {{ emp.name }} — Timesheets{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>This page shows the complete clock-in/clock-out history for one employee. Use it to review hours worked, approve timesheets, and calculate pay.</p>
+<h3>Reading the Timesheet</h3>
+<ul>
+  <li><strong>Clock In / Clock Out</strong> — exact times the employee started and ended their shift</li>
+  <li><strong>Hours</strong> — calculated automatically (minus any break time)</li>
+  <li><strong>Source</strong> — whether they clocked in via web, mobile, or QR code</li>
+  <li><strong>Location</strong> — if GPS was captured at clock-in (mobile/QR), confirms they were on-site</li>
+</ul>
+<h3>Approving &amp; Payroll</h3>
+<ul>
+  <li>Review entries at the end of each pay period</li>
+  <li>Check for missing clock-outs (employee forgot) and correct manually if needed</li>
+  <li>Total hours × hourly rate (set on the employee profile) = wages owed</li>
+</ul>
+<h3>Fixing Errors</h3>
+<ul>
+  <li>If an employee forgot to clock out, their shift will show as still open — edit the record and add a clock-out time</li>
+</ul>
+<div class="help-tip">Run a timesheet review every Friday before weekend shifts start — it’s easier to fix errors while the week is fresh.</div>
+{% endblock %}
 {% block content %}
 
 <a href="/employees" class="btn btn-ghost btn-sm" style="margin-bottom:16px">← Back to Employees</a>

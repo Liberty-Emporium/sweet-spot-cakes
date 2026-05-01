@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Employees — {{ bakery }}{% endblock %}
 {% block page_title %}👩‍🍳 Employees{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Manage your team here. Every staff member who clocks in, uses the kitchen queue, or handles orders needs a profile in this page.</p>
+<h3>Employee Roles</h3>
+<ul>
+  <li><strong>Admin</strong> — full access to everything including settings</li>
+  <li><strong>Manager</strong> — all operational access, no settings</li>
+  <li><strong>Cashier</strong> — can take orders and process payments</li>
+  <li><strong>Kitchen</strong> — can see the kitchen queue and prep sheet only</li>
+  <li><strong>Staff</strong> — basic access, dashboard only</li>
+</ul>
+<h3>Setting Up a New Employee</h3>
+<ul>
+  <li>Click <strong>+ Add Employee</strong></li>
+  <li>Set their name, role, email, phone, and hourly rate</li>
+  <li>Assign a 4-6 digit <strong>PIN</strong> — this is what they use to clock in and log into the app on shared devices</li>
+</ul>
+<h3>Clock In / Clock Out</h3>
+<ul>
+  <li>Employees use their PIN on the Login page to clock in</li>
+  <li>Use the <strong>QR Code</strong> on their profile for mobile clock-in (great for kitchen staff with floury hands)</li>
+  <li>View timesheets by clicking <strong>Timesheets</strong> on any employee row</li>
+</ul>
+<div class="help-tip">Give kitchen staff the “Kitchen” role, not “Staff” — they need access to the Kitchen Queue and Prep Sheet to do their job.</div>
+{% endblock %}
 {% block content %}
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:16px">

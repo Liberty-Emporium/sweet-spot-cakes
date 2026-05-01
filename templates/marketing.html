@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Marketing — {{ bakery }}{% endblock %}
 {% block page_title %}📣 Marketing & Ads{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Create and manage marketing campaigns to bring in new orders and re-engage existing customers. Run birthday blasts, seasonal promos, and VIP-only offers from here.</p>
+<h3>Creating a Campaign</h3>
+<ul>
+  <li>Click <strong>+ New Campaign</strong> and give it a name and goal (e.g., “Mother’s Day Promo”)</li>
+  <li>Choose your <strong>audience</strong>: all customers, VIP members only, or birthday customers this month</li>
+  <li>Write your message — keep it short: what’s the offer and how do they order?</li>
+  <li>Use <strong>Generate Ad Copy</strong> to have AI write the message for you</li>
+</ul>
+<h3>Sending Campaigns</h3>
+<ul>
+  <li>Review the recipient list before sending — make sure you’re targeting the right people</li>
+  <li>Campaigns send via email to customers who have an email address on file</li>
+  <li>Mark campaigns as <strong>Sent</strong> so you can track what went out and when</li>
+</ul>
+<h3>What Works</h3>
+<ul>
+  <li><strong>Birthday offers</strong> — highest open rate of any campaign type</li>
+  <li><strong>Holiday specials</strong> — Valentine’s, Mother’s Day, Christmas — order 2 weeks ahead</li>
+  <li><strong>Flash sales</strong> — “This weekend only” creates urgency</li>
+  <li><strong>New item launches</strong> — tell your existing customers first</li>
+</ul>
+<div class="help-tip">Run at least one campaign per month. Even a simple “what are you celebrating this month?” email keeps your bakery top of mind.</div>
+{% endblock %}
 {% block topbar_right %}
 <button class="btn btn-primary btn-sm" onclick="document.getElementById('newCampaignModal').style.display='flex'">+ New Campaign</button>
 {% endblock %}

@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Reports — {{ bakery }}{% endblock %}
 {% block page_title %}📊 Reports — {{ month }}{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Reports show you how the business is actually performing — revenue, order volume, best-selling items, busiest days, and profit after expenses. Use this to make smart decisions about pricing, staffing, and inventory.</p>
+<h3>What You’ll Find Here</h3>
+<ul>
+  <li><strong>Revenue</strong> — total payments collected in the selected month</li>
+  <li><strong>Orders</strong> — how many orders were placed, completed, and cancelled</li>
+  <li><strong>Top Items</strong> — your best-selling recipes by quantity and revenue</li>
+  <li><strong>Expenses</strong> — what went out (from the Expenses page)</li>
+  <li><strong>Profit</strong> — revenue minus expenses</li>
+  <li><strong>Busiest Days</strong> — which days of the week generate the most orders</li>
+</ul>
+<h3>How to Use Reports for Growth</h3>
+<ul>
+  <li>If a recipe is in your top 3 every month — feature it on your menu and in marketing</li>
+  <li>If profit is thin — look at ingredient costs vs. recipe prices and adjust</li>
+  <li>If weekends are busiest — make sure you’re fully staffed and stocked heading into Friday</li>
+  <li>Compare month-over-month to spot growth trends or problems early</li>
+</ul>
+<h3>Changing the Month</h3>
+<ul>
+  <li>Use the month selector at the top to view any previous month</li>
+</ul>
+<div class="help-tip">Review reports on the 1st of every month. 15 minutes of analysis can tell you exactly what to focus on to grow revenue.</div>
+{% endblock %}
 {% block content %}
 
 <div class="stats-grid">

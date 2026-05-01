@@ -1,6 +1,30 @@
 {% extends 'base.html' %}
 {% block title %}Inventory — {{ bakery }}{% endblock %}
 {% block page_title %}📦 Inventory{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Inventory tracks every ingredient in your bakery — flour, sugar, butter, packaging, everything. Keeping this accurate means you never get caught without what you need to fill an order.</p>
+<h3>Key Columns</h3>
+<ul>
+  <li><strong>Quantity</strong> — how much you have right now</li>
+  <li><strong>Reorder Level</strong> — when quantity drops to this number, the Dashboard flags it as Low Stock</li>
+  <li><strong>Cost per Unit</strong> — used by Reports to calculate ingredient costs</li>
+  <li><strong>Supplier</strong> — who you buy this from (linked to Suppliers page)</li>
+</ul>
+<h3>Keeping Stock Accurate</h3>
+<ul>
+  <li>Update quantities when deliveries arrive — click an item and adjust the number</li>
+  <li>Stock automatically decreases when orders with linked recipes are fulfilled</li>
+  <li>Do a physical count weekly and correct any drift</li>
+</ul>
+<h3>Never Run Out Mid-Order</h3>
+<ul>
+  <li>Set realistic <strong>Reorder Levels</strong> — at minimum, enough for 2–3 days of average orders</li>
+  <li>Red items on the Dashboard mean you’re below reorder — order from your supplier today</li>
+  <li>Use <strong>Auto PO</strong> to generate a purchase order for low-stock items automatically</li>
+</ul>
+<div class="help-tip">Check inventory every Monday morning before the week’s orders kick in. A 10-minute stock check saves hours of scrambling later.</div>
+{% endblock %}
 {% block content %}
 <style>
   .no-arrows::-webkit-outer-spin-button,

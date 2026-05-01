@@ -1,6 +1,33 @@
 {% extends 'base.html' %}
 {% block title %}Settings — {{ bakery }}{% endblock %}
 {% block page_title %}⚙️ Settings{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Settings controls the configuration for the entire bakery app — your business name, tax rate, email settings, admin password, and integrations like Stripe and Square.</p>
+<h3>What to Configure First</h3>
+<ul>
+  <li><strong>Bakery Name</strong> — appears on receipts, menus, and the login screen</li>
+  <li><strong>Tax Rate</strong> — applied automatically to all orders (enter as a decimal, e.g., 0.075 for 7.5%)</li>
+  <li><strong>Admin Email</strong> — where order notifications and system emails go</li>
+  <li><strong>Admin Password</strong> — change this from the default immediately</li>
+</ul>
+<h3>Payment Integrations</h3>
+<ul>
+  <li><strong>Stripe</strong> — add your Stripe secret key to enable online payments and payment links on orders</li>
+  <li><strong>Square</strong> — add your Square access token and location ID to process in-person card payments</li>
+</ul>
+<h3>Email (SMTP)</h3>
+<ul>
+  <li>Configure your Gmail or SMTP credentials so the app can send order receipts to customers</li>
+  <li>Use a Gmail App Password — not your regular Gmail password</li>
+</ul>
+<h3>User Management</h3>
+<ul>
+  <li>Add or deactivate staff login accounts (separate from employee PIN logins)</li>
+  <li>Staff accounts are for managers and admins who need full app access</li>
+</ul>
+<div class="help-tip">Set your tax rate and bakery name before taking any orders — these appear on every receipt you send to customers.</div>
+{% endblock %}
 {% block content %}
 
 <div class="grid-2">

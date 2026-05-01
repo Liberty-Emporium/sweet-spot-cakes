@@ -1,6 +1,31 @@
 {% extends 'base.html' %}
 {% block title %}Recipes — {{ bakery }}{% endblock %}
 {% block page_title %}📖 Recipes{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Recipes are your product catalog. Every cake, cupcake, and item you sell lives here. Recipes are added to orders and appear on your public Menu page.</p>
+<h3>What a Recipe Contains</h3>
+<ul>
+  <li><strong>Name &amp; Category</strong> — how it appears on the menu and in orders</li>
+  <li><strong>Base Price</strong> — the starting price added to orders automatically</li>
+  <li><strong>Ingredients</strong> — linked to inventory so stock levels update when orders are placed</li>
+  <li><strong>Tools needed</strong> — what equipment the baker needs</li>
+  <li><strong>Prep &amp; Bake time</strong> — helps with scheduling and the prep sheet</li>
+</ul>
+<h3>How Recipes Drive Sales</h3>
+<ul>
+  <li>Only <strong>active</strong> recipes appear on the public menu and in the order form — deactivate anything you’re not currently making</li>
+  <li>Accurate prices here mean orders are priced correctly from the start</li>
+  <li>Keep descriptions and photos updated — they show on the customer-facing menu</li>
+</ul>
+<h3>Adding a New Recipe</h3>
+<ul>
+  <li>Click <strong>+ New Recipe</strong>, fill in name, category, price, and description</li>
+  <li>Add ingredients from inventory — this links your stock to production</li>
+  <li>Set it to Active when ready to sell</li>
+</ul>
+<div class="help-tip">Set accurate prep + bake times on every recipe — the Prep Sheet uses them to estimate kitchen workload for the day.</div>
+{% endblock %}
 {% block topbar_right %}<a href="/recipes/add" class="btn btn-primary btn-sm">+ New Recipe</a>{% endblock %}
 {% block content %}
 

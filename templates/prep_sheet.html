@@ -1,6 +1,29 @@
 {% extends 'base.html' %}
 {% block title %}Daily Prep Sheet — {{ bakery }}{% endblock %}
 {% block page_title %}📋 Daily Prep Sheet{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>The Prep Sheet is your daily production plan. It rolls up every order due today and tomorrow into a single list of what to bake, how much of each ingredient you need, and what equipment to pull.</p>
+<h3>How to Use It Every Morning</h3>
+<ul>
+  <li>Open the Prep Sheet at the start of each shift — it auto-generates from today’s confirmed orders</li>
+  <li>Print it or keep it open on a tablet in the kitchen</li>
+  <li>Check off items as they’re completed</li>
+</ul>
+<h3>What’s on the Sheet</h3>
+<ul>
+  <li><strong>Orders due today</strong> — customer name, item, pickup time</li>
+  <li><strong>Total ingredients needed</strong> — aggregated across all orders so you pull once</li>
+  <li><strong>Equipment needed</strong> — based on recipe tool requirements</li>
+  <li><strong>Estimated time</strong> — total prep + bake time so you know when to start</li>
+</ul>
+<h3>Getting Orders Out on Time</h3>
+<ul>
+  <li>Work backwards from the earliest pickup time — if a cake needs 3 hours and pickup is at noon, start by 9 AM</li>
+  <li>If the ingredient list shows something you’re low on, check Inventory and reorder or substitute immediately</li>
+</ul>
+<div class="help-tip">Print the Prep Sheet and post it in the kitchen every morning. Your bakers shouldn’t need to log into the app just to know what to make.</div>
+{% endblock %}
 {% block topbar_right %}
 <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨️ Print</button>
 {% endblock %}

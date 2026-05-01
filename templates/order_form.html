@@ -1,6 +1,25 @@
 {% extends 'base.html' %}
 {% block title %}New Order — {{ bakery }}{% endblock %}
 {% block page_title %}🎂 New Order{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Use this form every time a customer places an order — in person, by phone, or online. Fill it out completely so the kitchen knows exactly what to make.</p>
+<h3>Step-by-Step</h3>
+<ul>
+  <li><strong>1. Customer Info</strong> — Name, phone, and email. If they’re in the system, their info will auto-populate.</li>
+  <li><strong>2. Pickup Date &amp; Time</strong> — Critical! This drives the kitchen schedule. Always confirm with the customer.</li>
+  <li><strong>3. Order Type</strong> — Custom cake, cupcakes, etc.</li>
+  <li><strong>4. Special Notes</strong> — Flavor, colors, text on cake, allergies, anything the baker needs to know.</li>
+  <li><strong>5. Submit</strong> — Creates the order as “Pending.” Go to the order detail next to add items and collect a deposit.</li>
+</ul>
+<h3>After Submitting</h3>
+<ul>
+  <li>You’ll land on the <strong>Order Detail</strong> page — add the specific items (recipes) from there</li>
+  <li>Collect a deposit payment right away if possible</li>
+  <li>Change status to <strong>Confirmed</strong> once deposit is received</li>
+</ul>
+<div class="help-tip">Always enter a pickup time, not just a date — it helps staff prioritize same-day orders.</div>
+{% endblock %}
 {% block content %}
 
 <div style="max-width:700px">

@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Tools & Equipment — {{ bakery }}{% endblock %}
 {% block page_title %}🔧 Tools & Equipment{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Tools &amp; Equipment tracks every piece of equipment in your bakery — mixers, cake pans, piping bags, decorating turntables, everything. Recipes are linked to the tools they require.</p>
+<h3>Why Track Tools?</h3>
+<ul>
+  <li>Recipes linked to tools show on the <strong>Prep Sheet</strong> so bakers know what equipment to pull</li>
+  <li>Helps you spot when a tool is needed for multiple same-day orders (scheduling conflicts)</li>
+  <li>Tracks quantity — if you have 3 round pans, you know you can bake 3 cakes simultaneously</li>
+</ul>
+<h3>Managing Equipment</h3>
+<ul>
+  <li>Add every major piece of equipment with its quantity and location in the kitchen</li>
+  <li>Mark tools <strong>inactive</strong> if they’re broken or out for repair so they don’t show in recipe requirements</li>
+  <li>Use the notes field for maintenance reminders (e.g., “serviced annually”)</li>
+</ul>
+<div class="help-tip">Link tools to recipes when you set them up — the Prep Sheet will then include an equipment checklist for each day’s production run.</div>
+{% endblock %}
 {% block content %}
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">

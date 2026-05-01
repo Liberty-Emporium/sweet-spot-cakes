@@ -112,6 +112,26 @@
     .low-stock{color:var(--red)!important;font-weight:700}
     .ok-stock{color:var(--green)}
 
+    /* ── Help Panel ─────────────────────────────────────────────────────── */
+    .help-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.76rem;font-weight:600;cursor:pointer;border:1px solid rgba(96,165,250,.35);background:rgba(96,165,250,.08);color:var(--blue);transition:all .2s;white-space:nowrap}
+    .help-btn:hover{background:rgba(96,165,250,.18);border-color:var(--blue)}
+    .help-drawer{position:fixed;top:0;right:-420px;bottom:0;width:420px;max-width:100vw;background:var(--bg2);border-left:1px solid var(--border);z-index:400;display:flex;flex-direction:column;transition:right .28s ease;overflow:hidden}
+    .help-drawer.open{right:0}
+    .help-drawer-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .help-drawer-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;color:var(--blue)}
+    .help-drawer-close{background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px;transition:color .15s}
+    .help-drawer-close:hover{color:var(--text)}
+    .help-drawer-body{padding:20px 24px;overflow-y:auto;flex:1}
+    .help-drawer-body h3{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--pink);margin:18px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px}
+    .help-drawer-body h3:first-child{margin-top:0}
+    .help-drawer-body p{font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:10px}
+    .help-drawer-body ul{padding-left:18px;margin-bottom:10px}
+    .help-drawer-body ul li{font-size:.83rem;color:var(--muted);line-height:1.7}
+    .help-drawer-body ul li strong{color:var(--text)}
+    .help-tip{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 14px;font-size:.81rem;color:var(--yellow);line-height:1.55;margin-top:14px}
+    .help-tip::before{content:'💡 Tip: ';font-weight:700}
+    .help-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:350}
+    .help-overlay.open{display:block}
     /* Mobile hamburger button */
     .menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:300;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--text);font-size:1.2rem;line-height:1}
     /* Overlay backdrop */
@@ -207,9 +227,10 @@
 <div class="main">
   <div class="topbar">
     <div class="topbar-title">{% block page_title %}{{ bakery }}{% endblock %}</div>
-    <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:.78rem;color:var(--muted)" id="clock"></span>
       {% block topbar_right %}{% endblock %}
+      <button class="help-btn" onclick="openHelp()">❓ Help</button>
     </div>
   </div>
   <div class="content">
@@ -222,7 +243,24 @@
   </div>
 </div>
 
+<!-- Help Drawer -->
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp()"></div>
+<div class="help-drawer" id="helpDrawer">
+  <div class="help-drawer-header">
+    <div class="help-drawer-title">❓ Page Help</div>
+    <button class="help-drawer-close" onclick="closeHelp()">✕</button>
+  </div>
+  <div class="help-drawer-body" id="helpBody">
+    {% block help_content %}
+    <h3>Welcome to Sweet Spot</h3>
+    <p>Select a page from the sidebar to get started. Each page has its own help guide — just tap the <strong>Help</strong> button.</p>
+    {% endblock %}
+  </div>
+</div>
+
 <script>
+function openHelp(){document.getElementById('helpDrawer').classList.add('open');document.getElementById('helpOverlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeHelp(){document.getElementById('helpDrawer').classList.remove('open');document.getElementById('helpOverlay').classList.remove('open');document.body.style.overflow='';}
 function tick(){
   const now=new Date();
   document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});

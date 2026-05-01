@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Customers — {{ bakery }}{% endblock %}
 {% block page_title %}👥 Customers{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>Your customer directory. Every person who has ever placed an order is stored here automatically. Use it to look up order history, contact info, and loyalty status.</p>
+<h3>How to Use It</h3>
+<ul>
+  <li><strong>Search</strong> by name, email, or phone to find a customer fast</li>
+  <li>Click a customer to see all their past orders and total spend</li>
+  <li>Add a <strong>birthday</strong> to their profile — the Loyalty page will surface it so you can send a birthday offer</li>
+</ul>
+<h3>Why This Matters for Sales</h3>
+<ul>
+  <li>Repeat customers are your best customers — knowing their order history lets you upsell (“Last time you got chocolate, want to try our new strawberry?”)</li>
+  <li>Customers with emails can receive receipts, specials, and marketing campaigns</li>
+  <li>Customers are auto-enrolled in VIP when they join via the public Join page</li>
+</ul>
+<div class="help-tip">Always collect an email at point of sale — it unlocks receipts, birthday offers, and marketing campaigns.</div>
+{% endblock %}
 {% block content %}
 
 {% if upcoming_birthdays %}

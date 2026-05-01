@@ -1,6 +1,32 @@
 {% extends 'base.html' %}
 {% block title %}Dashboard — {{ bakery }}{% endblock %}
 {% block page_title %}🏠 Dashboard{% endblock %}
+{% block help_content %}
+<h3>What is this page?</h3>
+<p>The Dashboard is your home base. It gives you a live snapshot of everything happening in the bakery right now — orders, revenue, stock levels, and who’s clocked in.</p>
+<h3>The 6 Stat Tiles</h3>
+<ul>
+  <li><strong>Orders Today</strong> — how many new orders came in today</li>
+  <li><strong>Pending</strong> — orders waiting to be confirmed</li>
+  <li><strong>Ready for Pickup</strong> — finished cakes waiting on customers</li>
+  <li><strong>Revenue (7 days)</strong> — total payments collected this week</li>
+  <li><strong>Low Stock</strong> — ingredients below reorder level (red = act now)</li>
+  <li><strong>Staff Clocked In</strong> — how many employees are on the clock</li>
+</ul>
+<h3>Getting Orders Out the Door</h3>
+<ul>
+  <li>Check <strong>Upcoming Pickups</strong> — these are orders due soon. Click any to view or update it.</li>
+  <li>Click <strong>+ New Order</strong> to start a fresh order immediately.</li>
+  <li>Red low-stock items mean you might not be able to fill upcoming orders — restock or adjust recipes.</li>
+</ul>
+<h3>Daily Routine</h3>
+<ul>
+  <li><strong>Morning:</strong> Check pending orders, confirm any overnights, check low stock.</li>
+  <li><strong>Midday:</strong> Move in-production orders to Ready when done.</li>
+  <li><strong>Close:</strong> Verify all pickups were collected or rescheduled.</li>
+</ul>
+<div class="help-tip">Bookmark this page as your browser home tab so you always open to the dashboard first.</div>
+{% endblock %}
 {% block content %}
 
 <div class="stats-grid">
