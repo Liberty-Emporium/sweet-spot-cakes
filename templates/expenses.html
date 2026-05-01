@@ -112,7 +112,7 @@
   {% if expenses %}
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Supplier</th><th>Amount</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Supplier</th><th>Amount</th><th style="text-align:center">Delete</th></tr></thead>
       <tbody>
       {% for e in expenses %}
       <tr>
@@ -121,9 +121,9 @@
         <td style="font-size:.88rem">{{ e.description }}</td>
         <td style="font-size:.82rem;color:var(--muted)">{{ e.supplier_name or '—' }}</td>
         <td style="font-weight:700;color:var(--red)">${{ "%.2f"|format(e.amount) }}</td>
-        <td>
-          <form method="POST" action="/expenses/{{ e.id }}/delete" onsubmit="return confirm('Delete this expense?')">
-            <button type="submit" class="btn btn-danger btn-xs">🗑</button>
+        <td style="text-align:center">
+          <form method="POST" action="/expenses/{{ e.id }}/delete" onsubmit="return confirm('Delete this expense? This cannot be undone.')">
+            <button type="submit" class="btn btn-danger btn-xs" title="Delete expense" style="min-width:60px">🗑 Del</button>
           </form>
         </td>
       </tr>
