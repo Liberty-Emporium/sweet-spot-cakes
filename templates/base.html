@@ -112,19 +112,44 @@
     .low-stock{color:var(--red)!important;font-weight:700}
     .ok-stock{color:var(--green)}
 
+    /* Mobile hamburger button */
+    .menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:300;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--text);font-size:1.2rem;line-height:1}
+    /* Overlay backdrop */
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;backdrop-filter:blur(2px)}
+    .sidebar-overlay.open{display:block}
+
     @media(max-width:900px){
-      .sidebar{width:60px}
-      .logo-name,.logo-sub,.nav-section,.sidebar-footer,.nav-item span{display:none}
-      .nav-item{justify-content:center;padding:12px}
-      .main{margin-left:60px}
+      .menu-toggle{display:flex;align-items:center;justify-content:center}
+      .sidebar{transform:translateX(-100%);transition:transform .25s ease;width:260px;z-index:200}
+      .sidebar.open{transform:translateX(0)}
+      /* Always show text in sidebar - never hide words */
+      .logo-name,.logo-sub,.nav-section,.sidebar-footer,.nav-item span{display:block !important}
+      .nav-item{justify-content:flex-start;padding:11px 20px}
+      .main{margin-left:0}
+      .topbar{padding:0 16px 0 56px}
+      .content{padding:16px}
       .form-row,.form-row-3,.grid-2,.grid-3{grid-template-columns:1fr}
+      .stats-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+      .table-wrap{font-size:.78rem}
+      thead th,tbody td{padding:8px 10px}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:1fr 1fr}
+      .content{padding:12px}
+      .card{padding:14px}
+      .btn{padding:7px 12px;font-size:.8rem}
     }
   </style>
   {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<aside class="sidebar">
+<!-- Hamburger button -->
+<button class="menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
+<!-- Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-cake">🎂</div>
     <div class="logo-name">{{ bakery }}</div>
@@ -203,6 +228,21 @@ function tick(){
   document.getElementById('clock').textContent=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 }
 tick(); setInterval(tick,1000);
+
+// Mobile sidebar toggle
+(function(){
+  var toggle=document.getElementById('menuToggle');
+  var sidebar=document.getElementById('sidebar');
+  var overlay=document.getElementById('sidebarOverlay');
+  function openNav(){sidebar.classList.add('open');overlay.classList.add('open');document.body.style.overflow='hidden';}
+  function closeNav(){sidebar.classList.remove('open');overlay.classList.remove('open');document.body.style.overflow='';}
+  toggle.addEventListener('click',openNav);
+  overlay.addEventListener('click',closeNav);
+  // Close on nav link tap
+  sidebar.querySelectorAll('.nav-item').forEach(function(a){
+    a.addEventListener('click',closeNav);
+  });
+})();
 </script>
 {% block extra_js %}{% endblock %}
 <script src="https://ai-agent-widget-production.up.railway.app/widget/Fx9e5L1JSpqJtjnhl2jLsQ.js"></script>
