@@ -2807,13 +2807,47 @@ def reports():
     today = ny_now().date()
     month_start = today.replace(day=1).isoformat()
 
-    revenue_month = db.execute("SELECT COALESCE(SUM(amount),0) FROM receipts WHERE date(created)>=?", (month_start,)).fetchone()[0]
-    orders_month  = db.execute("SELECT COUNT(*) FROM orders WHERE date(created)>=?", (month_start,)).fetchone()[0]
-    top_items     = db.execute('''SELECT name, SUM(quantity) as qty, SUM(total) as rev
-                                  FROM order_items GROUP BY name ORDER BY rev DESC LIMIT 10''').fetchall()
+    # Revenue = actual payments received this month (receipts table)
+    # Fall back to orders.total for orders with no receipt (e.g. demo/test orders)
+    revenue_month = db.execute(
+        "SELECT COALESCE(SUM(amount),0) FROM receipts WHERE date(created)>=?",
+        (month_start,)).fetchone()[0]
+    # If receipts are empty but orders exist, use orders.total as fallback
+    if revenue_month == 0:
+        revenue_month = db.execute(
+            "SELECT COALESCE(SUM(total),0) FROM orders WHERE status NOT IN ('cancelled','pending') AND (date(created)>=? OR date(pickup_date)>=?)",
+            (month_start, month_start)).fetchone()[0]
+
+    # Orders this month = created OR pickup_date falls in this month
+    orders_month = db.execute(
+        "SELECT COUNT(*) FROM orders WHERE status NOT IN ('cancelled') AND (date(created)>=? OR date(pickup_date)>=?)",
+        (month_start, month_start)).fetchone()[0]
+
+    # Top items this month (with all-time fallback if no this-month data)
+    top_items = db.execute('''SELECT oi.name, SUM(oi.quantity) as qty, SUM(oi.total) as rev
+                               FROM order_items oi
+                               JOIN orders o ON o.id = oi.order_id
+                               WHERE o.status NOT IN ('cancelled')
+                               AND (date(o.created)>=? OR date(o.pickup_date)>=?)
+                               GROUP BY oi.name ORDER BY rev DESC LIMIT 10''',
+                           (month_start, month_start)).fetchall()
+    # All-time fallback if this month has no items
+    if not top_items:
+        top_items = db.execute('''SELECT name, SUM(quantity) as qty, SUM(total) as rev
+                                   FROM order_items GROUP BY name ORDER BY rev DESC LIMIT 10''').fetchall()
+
     revenue_by_day = db.execute('''SELECT date(created) as day, SUM(amount) as total
                                    FROM receipts WHERE date(created)>=?
                                    GROUP BY day ORDER BY day''', (month_start,)).fetchall()
+    # Fallback: build revenue by day from orders if no receipts
+    if not revenue_by_day:
+        revenue_by_day = db.execute('''SELECT
+               COALESCE(date(pickup_date), date(o.created)) as day,
+               SUM(o.total) as total
+           FROM orders o
+           WHERE o.status NOT IN ('cancelled')
+           AND (date(o.created)>=? OR date(o.pickup_date)>=?)
+           GROUP BY day ORDER BY day''', (month_start, month_start)).fetchall()
     employee_hours = db.execute('''
         SELECT e.name,
                ROUND(SUM(
