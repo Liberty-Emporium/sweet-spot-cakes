@@ -8,6 +8,7 @@
   {% if session.get('role') == 'admin' %}
   <form method="POST" action="/recipes/{{ recipe.id }}/delete" style="margin-left:auto"
         onsubmit="return confirm('Delete recipe {{ recipe.name }}? This cannot be undone.')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete Recipe</button>
   </form>
   {% endif %}
@@ -70,6 +71,7 @@
           <!-- Inline qty editor -->
           <form method="POST" action="/recipes/{{ recipe.id }}/update-ingredient/{{ i.id }}"
                 style="display:flex;align-items:center;gap:4px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input name="quantity" type="number" step="0.01" min="0.01"
                    value="{{ i.quantity }}"
                    style="width:70px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:3px 7px;color:var(--text);font-size:.82rem;text-align:right">
@@ -79,6 +81,7 @@
           <span style="color:var(--pink);font-size:.78rem;min-width:40px;text-align:right">${{ "%.2f"|format(i.quantity * i.cost_per_unit) }}</span>
           <form method="POST" action="/recipes/{{ recipe.id }}/remove-ingredient/{{ i.id }}"
                 onsubmit="return confirm('Remove {{ i.ing_name }} from this recipe?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger btn-xs" title="Remove">×</button>
           </form>
         </div>
@@ -91,6 +94,7 @@
 
     <!-- Add ingredient -->
     <form method="POST" action="/recipes/{{ recipe.id }}/add-ingredient" style="border-top:1px solid var(--border);padding-top:14px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Ingredient</label>

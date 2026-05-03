@@ -136,7 +136,7 @@
     </div>
     {% endfor %}
   {% else %}
-    <div class="no-items">No tools linked to recipes yet. <a href="/recipes">Link tools in Recipes ↗</a></div>
+    <div class="no-items">No tools linked to recipes yet. <a href="/tools">Go to Tools ↗</a></div>
   {% endif %}
 </div>
 
@@ -144,6 +144,7 @@
 <div class="section-card no-print">
   <div class="section-head">⚡ Update Order Status</div>
   <form method="POST" action="/orders/{{ order.id }}/status" style="display:flex;gap:10px;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <select name="status" class="form-control" style="max-width:200px">
       <option value="pending" {% if order.status=='pending' %}selected{% endif %}>Pending</option>
       <option value="confirmed" {% if order.status=='confirmed' %}selected{% endif %}>Confirmed</option>

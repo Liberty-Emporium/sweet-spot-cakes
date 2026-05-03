@@ -101,6 +101,7 @@
   {% endwith %}
 
   <form method="POST" id="orderForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <!-- 1. Your Info -->
     <div class="form-card">

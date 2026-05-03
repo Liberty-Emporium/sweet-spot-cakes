@@ -55,6 +55,7 @@
         <td style="font-size:.82rem">
           <span id="cost-display-{{ item.id }}" onclick="startEditCost({{ item.id }}, {{ item.cost_per_unit }})" title="Click to edit" style="cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.3);padding-bottom:1px">${{ "%.2f"|format(item.cost_per_unit) }} ✏️</span>
           <form id="cost-form-{{ item.id }}" method="POST" action="/inventory/{{ item.id }}/edit" style="display:none;flex-direction:row;gap:4px;align-items:center">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="name" value="{{ item.name }}">
             <input type="hidden" name="unit" value="{{ item.unit }}">
             <input type="hidden" name="reorder_level" value="{{ item.reorder_level }}">
@@ -69,6 +70,7 @@
         </td>
         <td style="font-size:.82rem">
           <form method="POST" action="/inventory/{{ item.id }}/set-supplier" style="margin:0">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="supplier_id" class="form-control" style="padding:3px 6px;font-size:.78rem;min-width:130px" onchange="this.form.submit()">
               <option value="" {% if not item.supplier_id %}selected{% endif %}>— None —</option>
               {% for s in suppliers %}
@@ -85,6 +87,7 @@
         <td>
           <div style="display:flex;gap:6px;align-items:center">
             <form id="adj-form-{{ item.id }}" method="POST" action="/inventory/{{ item.id }}/adjust" style="display:flex;gap:4px;align-items:center">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="delta" id="adj-delta-{{ item.id }}">
               <input type="number" step="0.5" min="0.5" placeholder="qty"
                      id="adj-qty-{{ item.id }}"
@@ -97,6 +100,7 @@
                 onclick="submitAdj({{ item.id }}, 1)">+</button>
             </form>
             <form method="POST" action="/inventory/{{ item.id }}/delete" onsubmit="return confirm('Delete {{ item.name }}?')" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-xs" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:3px 8px;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑</button>
             </form>
           </div>
@@ -151,6 +155,7 @@ document.addEventListener('keydown', function(e) {
     <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">Add Ingredient</div>
     <form method="POST" action="/inventory/add">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Name *</label><input name="name" class="form-control" required placeholder="All-Purpose Flour"></div>
         <div class="form-group"><label class="form-label">Unit</label>

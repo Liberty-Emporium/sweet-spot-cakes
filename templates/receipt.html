@@ -77,6 +77,7 @@
 
   <!-- Email form -->
   <form method="POST" action="/orders/{{ order.id }}/receipt/email" class="email-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="email" name="to_email" placeholder="customer@email.com"
            value="{{ order.customer_email or '' }}" required>
     <button type="submit" class="btn btn-green">📧 Email Receipt</button>

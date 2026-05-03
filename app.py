@@ -32,6 +32,25 @@ import stripe
 
 app = Flask(__name__)
 
+# ── CSRF protection ─────────────────────────────────────────────────────────
+def _get_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+app.jinja_env.globals['csrf_token'] = _get_csrf_token
+
+def csrf_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method == 'POST':
+            token = request.form.get('csrf_token', '')
+            if not token or token != session.get('csrf_token', ''):
+                return jsonify({'error': 'Invalid CSRF token'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
 # ── Jinja2 filters ───────────────────────────────────────────────────────────
 @app.template_filter('ny_time')
 def ny_time_filter(dt_str, fmt='%m/%d/%Y %I:%M %p'):
@@ -1011,6 +1030,23 @@ def tax_rate():
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'app': BAKERY_NAME})
+
+# ── CSRF before_request ─────────────────────────────────────────────────────────
+# Exempt: Stripe webhooks, cakely API, public order/menu, echo reporter
+_CSRF_EXEMPT_PREFIXES = ('/api/', '/webhook', '/cakely/', '/order/', '/menu',
+                         '/join', '/public-order', '/echo-report', '/health')
+
+@app.before_request
+def check_csrf():
+    if request.method != 'POST':
+        return
+    path = request.path
+    if any(path.startswith(p) for p in _CSRF_EXEMPT_PREFIXES):
+        return
+    token = request.form.get('csrf_token', '')
+    if not token or token != session.get('csrf_token', ''):
+        session['csrf_token'] = secrets.token_hex(32)
+        return 'Form expired or invalid. Please go back and try again.', 403
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
 @app.after_request

@@ -122,6 +122,7 @@
 
       {% if stripe_configured %}
       <form method="POST" action="/orders/{{ order.id }}/checkout" id="stripe-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="amount_type" value="custom">
         <input type="hidden" name="custom_amount" id="stripe-amount" value="{{ order.balance_due or 0 }}">
         <button type="submit" class="pay-btn stripe" style="width:100%">
@@ -139,6 +140,7 @@
 
       {% if square_configured %}
       <form method="POST" action="/orders/{{ order.id }}/square-checkout" id="square-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="custom_amount" id="square-amount" value="{{ order.balance_due or 0 }}">
         <button type="submit" class="pay-btn square" style="width:100%">
           <span class="icon">⬛</span>
@@ -196,6 +198,7 @@
       </div>
 
       <form method="POST" action="/orders/{{ order.id }}/cash-payment" id="cash-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="amount" id="cash-amount-input" value="{{ order.balance_due or 0 }}">
         <input type="hidden" name="method" id="cash-method-input" value="cash">
         <input type="hidden" name="notes" id="cash-notes-input" value="">

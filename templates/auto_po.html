@@ -32,6 +32,7 @@
   <div style="font-size:.82rem;color:var(--muted);margin-bottom:16px">Review quantities and prices below, then submit to log this purchase.</div>
 
   <form method="POST" action="/suppliers/{{ supplier.id }}/purchase" id="autoPOForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div id="line-items">
       {% for item in low_items %}

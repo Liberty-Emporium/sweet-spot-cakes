@@ -46,6 +46,7 @@
       {% endfor %}
     </div>
     <form method="POST" action="/settings/add-user">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="card-title" style="font-size:.85rem;margin-bottom:10px">Add Staff Login</div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Name</label><input name="name" class="form-control" required></div>

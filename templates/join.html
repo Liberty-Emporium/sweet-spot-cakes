@@ -73,6 +73,7 @@
   </div>
 
   <form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Your Name *</label>
     <input name="name" required placeholder="Jane Smith" autofocus>
 

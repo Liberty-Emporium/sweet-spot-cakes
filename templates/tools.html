@@ -67,6 +67,7 @@
               <div style="display:flex;gap:6px">
                 <button class="btn btn-ghost btn-xs" onclick="openEdit({{ tool.id }}, '{{ tool.name|replace("'","\\'") }}', '{{ tool.category }}', {{ tool.quantity }}, '{{ tool.unit }}', '{{ tool.location|replace("'","\\'") }}', '{{ tool.notes|replace("'","\\'") }}')">Edit</button>
                 <form method="POST" action="/tools/{{ tool.id }}/delete" onsubmit="return confirm('Remove this tool?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-danger btn-xs">Remove</button>
                 </form>
               </div>
@@ -91,6 +92,7 @@
     <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">🔧 Add Tool / Equipment</div>
     <form method="POST" action="/tools/add">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Name *</label>
@@ -142,6 +144,7 @@
     <button onclick="document.getElementById('editModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">✏️ Edit Tool</div>
     <form method="POST" id="editForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Name *</label>

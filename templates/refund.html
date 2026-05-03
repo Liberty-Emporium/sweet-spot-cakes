@@ -69,6 +69,7 @@
 
     <!-- Refund form -->
     <form method="POST" action="/orders/{{ order.id }}/refund" id="refund-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <!-- Pick a payment to refund (optional) -->
       <div class="form-row">

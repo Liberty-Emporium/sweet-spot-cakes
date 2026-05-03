@@ -98,6 +98,7 @@
       </div>
       <a href="/suppliers/{{ s.id }}/auto-po" class="btn btn-ghost btn-xs">📦 Auto-PO</a>
       <form method="POST" action="/suppliers/{{ s.id }}/delete" onsubmit="return confirm('Delete {{ s.name }}?')" style="display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" style="background:none;border:1px solid #e55;color:#e55;border-radius:6px;padding:4px 12px;font-size:.78rem;cursor:pointer" onmouseover="this.style.background='#e55';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='#e55'">🗑 Delete</button>
       </form>
     </div>
@@ -152,6 +153,7 @@
       <!-- Log Purchase Form -->
       <div id="po-form-{{ s.id }}" class="log-form">
         <form method="POST" action="/suppliers/{{ s.id }}/purchase" id="po-form-inner-{{ s.id }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div style="font-size:.82rem;font-weight:700;margin-bottom:10px">Log a Purchase from {{ s.name }}</div>
 
           <div id="line-items-{{ s.id }}">
@@ -228,6 +230,7 @@
     <button onclick="document.getElementById('addModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
     <div class="card-title" style="margin-bottom:16px">Add Supplier</div>
     <form method="POST" action="/suppliers/add">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group"><label class="form-label">Company Name *</label><input name="name" class="form-control" required placeholder="Sweet Supply Co."></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Contact Person</label><input name="contact" class="form-control" placeholder="John Smith"></div>

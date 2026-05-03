@@ -70,6 +70,7 @@
 {# ── Approve all button ────────────────────────────────────────────────────── #}
 <div style="display:flex;justify-content:flex-end;margin-bottom:16px;gap:10px">
   <form method="post" action="/payroll/approve">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="mode"  value="all_period">
     <input type="hidden" name="start" value="{{ period_start }}">
     <input type="hidden" name="end"   value="{{ period_end }}">
@@ -117,6 +118,7 @@
           <div style="font-size:1rem;color:var(--green)">✅ Approved</div>
         {% elif row.shift_count > 0 %}
           <form method="post" action="/payroll/approve" style="margin:0">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="mode"   value="all_employee">
             <input type="hidden" name="emp_id" value="{{ row.emp.id }}">
             <input type="hidden" name="start"  value="{{ period_start }}">
@@ -175,6 +177,7 @@
               <span class="badge badge-ready">✅</span>
             {% elif s.clock_out %}
               <form method="post" action="/payroll/approve" style="margin:0;display:inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="mode"  value="single">
                 <input type="hidden" name="ts_id" value="{{ s.id }}">
                 <button class="btn btn-sm" type="submit" style="padding:2px 10px;font-size:.75rem">Approve</button>
@@ -194,6 +197,7 @@
           <td colspan="8" style="padding:12px 16px">
             <form method="post" action="/payroll/timesheet/{{ s.id }}/edit"
                   style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div>
                 <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Clock In</label>
                 <input type="datetime-local" name="clock_in"

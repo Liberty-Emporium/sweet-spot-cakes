@@ -73,6 +73,7 @@
     <!-- Employee PIN login -->
     <div class="form-section active" id="form-employee">
       <form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="login_type" value="employee">
         <label>Select Your Name</label>
         <select name="employee_id" id="emp-select" required onchange="resetPin()">
@@ -99,6 +100,7 @@
     <!-- Staff email + password login -->
     <div class="form-section" id="form-staff">
       <form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="login_type" value="staff">
         <label>Email</label>
         <input type="email" name="email" placeholder="you@sweetspot.com" autofocus>

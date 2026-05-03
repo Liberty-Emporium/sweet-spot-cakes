@@ -52,6 +52,7 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:14px">✏️ Edit Campaign</div>
       <form method="POST" action="/marketing/campaigns/{{ campaign.id }}/edit">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ campaign.name }}"></div>
         <div class="form-group">
           <label class="form-label">Audience</label>
@@ -88,6 +89,7 @@
       </div>
       <button class="btn btn-ghost btn-xs" style="margin-top:6px;margin-bottom:14px" onclick="copyEl('emailList')">📋 Copy Email List</button>
       <form method="POST" action="/marketing/campaigns/{{ campaign.id }}/mark-sent">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="count" value="{{ members|length }}">
         <button type="submit" class="btn btn-success">✅ Mark as Sent ({{ members|length }} members)</button>
       </form>

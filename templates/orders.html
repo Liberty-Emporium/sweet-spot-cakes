@@ -82,6 +82,7 @@
             {% if session.get('role') == 'admin' %}
             <form method="POST" action="/orders/{{ o.id }}/delete" style="display:inline"
                   onsubmit="return confirm('Delete order {{ o.order_number }}? This cannot be undone.')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger btn-xs">🗑️</button>
             </form>
             {% endif %}

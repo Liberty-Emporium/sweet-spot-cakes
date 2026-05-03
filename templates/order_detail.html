@@ -34,6 +34,7 @@
   {% if session.get('role') == 'admin' %}
   <form method="POST" action="/orders/{{ order.id }}/delete" style="margin-left:auto"
         onsubmit="return confirm('Delete order {{ order.order_number }}? This cannot be undone.')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete Order</button>
   </form>
   {% endif %}
@@ -72,6 +73,7 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:12px">📋 Update Status</div>
       <form method="POST" action="/orders/{{ order.id }}/status" style="display:flex;gap:8px;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% for s in ['pending','confirmed','in_production','ready','delivered','cancelled'] %}
         <button name="status" value="{{ s }}" type="submit"
           class="btn btn-sm {% if order.status == s %}btn-primary{% else %}btn-ghost{% endif %}">
@@ -93,6 +95,7 @@
           </a>
           {% if p.caption %}<div style="font-size:.72rem;color:var(--muted);margin-top:3px;text-align:center">{{ p.caption[:30] }}</div>{% endif %}
           <form method="POST" action="/orders/{{ order.id }}/delete-photo/{{ p.id }}" style="position:absolute;top:4px;right:4px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" style="background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:.65rem;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Remove">✕</button>
           </form>
         </div>
@@ -102,6 +105,7 @@
       <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px">No reference photos yet.</div>
       {% endif %}
       <form method="POST" action="/orders/{{ order.id }}/upload-photo" style="border-top:1px solid var(--border);padding-top:12px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
           <label class="form-label">Add Photo URL</label>
           <input name="photo_url" class="form-control" placeholder="https://... (Instagram, Pinterest, etc.)" required>
@@ -118,6 +122,7 @@
     <div class="card">
       <div class="card-title" style="margin-bottom:12px">➕ Add Item</div>
       <form method="POST" action="/orders/{{ order.id }}/add-item">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
           <label class="form-label">Item Name</label>
           <input name="name" class="form-control" required placeholder="6-inch Custom Birthday Cake" id="itemName">
@@ -199,6 +204,7 @@
       {% if order.total and order.total > 0 %}
       <!-- Stripe checkout -->
       <form method="POST" action="/orders/{{ order.id }}/checkout" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <select name="amount_type" class="form-control" style="flex:1;min-width:140px">
           <option value="balance">Pay Balance (${{ "%.2f"|format(order.balance_due or 0) }})</option>
           <option value="deposit">50% Deposit (${{ "%.2f"|format((order.total or 0) * 0.5) }})</option>
@@ -208,6 +214,7 @@
 
       <!-- Cash/card payment -->
       <form method="POST" action="/orders/{{ order.id }}/cash-payment" style="display:flex;gap:8px;flex-wrap:wrap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input name="amount" type="number" step="0.01" class="form-control" placeholder="Amount" style="flex:1;min-width:100px">
         <select name="method" class="form-control" style="max-width:100px">
           <option value="cash">Cash</option>

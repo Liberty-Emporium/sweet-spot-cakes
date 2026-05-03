@@ -65,6 +65,7 @@
     </div>
 
     <form method="POST" action="/orders/{{ order.id }}/square-demo-confirm" id="confirm-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="amount" value="{{ amount }}">
       <button type="button" class="pay-now-btn" onclick="simulatePay()">
         Pay ${{ "%.2f"|format(amount) }}
