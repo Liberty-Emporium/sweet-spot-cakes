@@ -122,11 +122,19 @@
             </div>
             {% endfor %}
           {% else %}
-            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No ingredients linked yet.
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">
               {% if item.recipe_id %}
-              <a href="/recipes/{{ item.recipe_id }}">Edit Recipe ↗</a>
+              No ingredients linked yet. <a href="/recipes/{{ item.recipe_id }}">Edit Recipe ↗</a>
               {% else %}
-              <a href="/recipes">Link a Recipe first ↗</a>
+              <div class="recipe-linker" data-item-id="{{ item.id }}">
+                <span style="margin-right:6px">No recipe linked —</span>
+                <select class="recipe-picker form-control" style="display:inline-block;width:auto;font-size:.78rem;padding:3px 8px;height:auto;vertical-align:middle">
+                  <option value="">Pick a recipe…</option>
+                  {% for r in all_recipes %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+                </select>
+                <button class="btn btn-primary btn-xs recipe-save-btn" style="margin-left:6px;vertical-align:middle" disabled>Save</button>
+                <span class="recipe-save-msg" style="font-size:.75rem;margin-left:6px"></span>
+              </div>
               {% endif %}
             </div>
           {% endif %}
@@ -149,11 +157,11 @@
               {% endfor %}
             </div>
           {% else %}
-            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No tools linked yet.
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">
               {% if item.recipe_id %}
-              <a href="/recipes/{{ item.recipe_id }}">Add via Recipe ↗</a>
+              No tools linked yet. <a href="/recipes/{{ item.recipe_id }}">Add via Recipe ↗</a>
               {% else %}
-              <a href="/recipes">Link a Recipe first ↗</a>
+              Use the recipe picker above to link a recipe.
               {% endif %}
             </div>
           {% endif %}
@@ -175,4 +183,55 @@
   </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Inline recipe linker — Kitchen Queue
+document.querySelectorAll('.recipe-linker').forEach(function(linker) {
+  var itemId  = linker.dataset.itemId;
+  var picker  = linker.querySelector('.recipe-picker');
+  var saveBtn = linker.querySelector('.recipe-save-btn');
+  var msg     = linker.querySelector('.recipe-save-msg');
+
+  picker.addEventListener('change', function() {
+    saveBtn.disabled = !picker.value;
+    msg.textContent  = '';
+  });
+
+  saveBtn.addEventListener('click', function() {
+    var recipeId = picker.value;
+    if (!recipeId) return;
+    saveBtn.disabled    = true;
+    saveBtn.textContent = 'Saving…';
+    msg.style.color     = 'var(--muted)';
+    msg.textContent     = '';
+
+    fetch('/api/order-items/' + itemId + '/set-recipe', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({recipe_id: parseInt(recipeId)})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        msg.style.color = 'var(--green)';
+        msg.textContent = '✅ Saved! Reloading…';
+        setTimeout(function() { location.reload(); }, 800);
+      } else {
+        msg.style.color     = 'var(--red)';
+        msg.textContent     = d.error || 'Error saving';
+        saveBtn.disabled    = false;
+        saveBtn.textContent = 'Save';
+      }
+    })
+    .catch(function() {
+      msg.style.color     = 'var(--red)';
+      msg.textContent     = 'Network error';
+      saveBtn.disabled    = false;
+      saveBtn.textContent = 'Save';
+    });
+  });
+});
+</script>
 {% endblock %}

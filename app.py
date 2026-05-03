@@ -1309,6 +1309,28 @@ def order_add_item(order_id):
     flash('Item added.', 'success')
     return redirect(url_for('order_detail', order_id=order_id))
 
+@app.route('/api/order-items/<int:item_id>/set-recipe', methods=['POST'])
+@login_required
+def order_item_set_recipe(item_id):
+    """Link a recipe to an existing order item (called from Kitchen Queue inline picker)."""
+    db = get_db()
+    item = db.execute('SELECT * FROM order_items WHERE id=?', (item_id,)).fetchone()
+    if not item:
+        return jsonify({'error': 'item not found'}), 404
+    data      = request.get_json(force=True)
+    recipe_id = data.get('recipe_id')
+    if not recipe_id:
+        return jsonify({'error': 'recipe_id required'}), 400
+    recipe = db.execute('SELECT * FROM recipes WHERE id=? AND active=1', (recipe_id,)).fetchone()
+    if not recipe:
+        return jsonify({'error': 'recipe not found'}), 404
+    db.execute('UPDATE order_items SET recipe_id=? WHERE id=?', (recipe_id, item_id))
+    db.commit()
+    log_activity('kitchen_link_recipe', session.get('user_id'),
+                 {'item_id': item_id, 'recipe_id': recipe_id, 'recipe_name': recipe['name']})
+    return jsonify({'ok': True, 'recipe_name': recipe['name']})
+
+
 @app.route('/orders/<int:order_id>/status', methods=['POST'])
 @login_required
 def order_status(order_id):
@@ -2063,7 +2085,9 @@ def kitchen():
 
         production_orders.append({'order': order, 'order_items': enriched_items})
 
-    return render_template('kitchen.html', production_orders=production_orders, bakery=BAKERY_NAME)
+    all_recipes = db.execute('SELECT id, name, category FROM recipes WHERE active=1 ORDER BY name').fetchall()
+    return render_template('kitchen.html', production_orders=production_orders,
+                           all_recipes=all_recipes, bakery=BAKERY_NAME)
 
 @app.route('/kitchen/order/<int:order_id>')
 @login_required
