@@ -666,6 +666,21 @@ def init_db():
 
     def _seed_recipe(name, category, description, servings, prep_mins, bake_mins, base_price, ingredients, tools_list):
         if name in existing_recipes:
+            # Recipe row exists — but check if it's missing ingredients/tools and repair
+            rid = db.execute('SELECT id FROM recipes WHERE name=?', (name,)).fetchone()['id']
+            has_ingr = db.execute('SELECT COUNT(*) FROM recipe_ingredients WHERE recipe_id=?', (rid,)).fetchone()[0]
+            has_tool = db.execute('SELECT COUNT(*) FROM recipe_tools WHERE recipe_id=?', (rid,)).fetchone()[0]
+            if has_ingr == 0:
+                for iname, qty, unit in ingredients:
+                    iid = ingr_map.get(iname)
+                    if iid:
+                        db.execute('INSERT OR IGNORE INTO recipe_ingredients(recipe_id,ingredient_id,quantity,unit) VALUES(?,?,?,?)', (rid, iid, qty, unit))
+            if has_tool == 0:
+                for tname in tools_list:
+                    tid = tool_map.get(tname)
+                    if tid:
+                        db.execute('INSERT OR IGNORE INTO recipe_tools(recipe_id,tool_id) VALUES(?,?)', (rid, tid))
+            db.commit()
             return
         cur2 = db.execute(
             'INSERT INTO recipes(name,category,description,servings,prep_mins,bake_mins,base_price,active) VALUES(?,?,?,?,?,?,?,1)',
@@ -675,7 +690,7 @@ def init_db():
         for iname, qty, unit in ingredients:
             iid = ingr_map.get(iname)
             if iid:
-                db.execute('INSERT INTO recipe_ingredients(recipe_id,ingredient_id,quantity,unit) VALUES(?,?,?,?)', (rid, iid, qty, unit))
+                db.execute('INSERT OR IGNORE INTO recipe_ingredients(recipe_id,ingredient_id,quantity,unit) VALUES(?,?,?,?)', (rid, iid, qty, unit))
         for tname in tools_list:
             tid = tool_map.get(tname)
             if tid:
