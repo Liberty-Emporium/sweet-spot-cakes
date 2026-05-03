@@ -1,4 +1,4 @@
-import os, json, sqlite3, secrets, hashlib, datetime, threading, time, smtplib
+import os, json, sqlite3, secrets, hashlib, datetime, threading, time, smtplib, zipfile, io, csv
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
@@ -4102,6 +4102,227 @@ with app.app_context():
     _run_migrations(_mig_db)
     _migrate_pins(_mig_db)
     _mig_db.close()
+
+
+# ── Data Backup ───────────────────────────────────────────────────────────────
+
+def _build_backup_zip() -> bytes:
+    """Export all DB tables to CSV files + a copy of the raw DB, bundled in a ZIP.
+    Returns the ZIP as bytes."""
+    buf = io.BytesIO()
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+
+    tables = [
+        'orders', 'order_items', 'customers', 'recipes',
+        'recipe_ingredients', 'ingredients', 'tools', 'recipe_tools',
+        'employees', 'users', 'suppliers', 'purchase_orders', 'po_items',
+        'expenses', 'loyalty_points', 'activity_logs',
+    ]
+
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # 1. CSV export for each table
+        for table in tables:
+            try:
+                rows = db.execute(f'SELECT * FROM {table}').fetchall()
+            except Exception:
+                continue
+            if not rows:
+                continue
+            csv_buf = io.StringIO()
+            writer = csv.DictWriter(csv_buf, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows([dict(r) for r in rows])
+            zf.writestr(f'csv/{table}.csv', csv_buf.getvalue())
+
+        # 2. Raw SQLite DB copy
+        try:
+            with open(DB_PATH, 'rb') as dbf:
+                zf.writestr('sweetspot.db', dbf.read())
+        except Exception:
+            pass
+
+        # 3. Backup manifest
+        manifest = {
+            'bakery': BAKERY_NAME,
+            'generated_at': timestamp,
+            'tables_exported': tables,
+            'note': 'To restore: replace sweetspot.db on the server /data volume.'
+        }
+        zf.writestr('README.json', json.dumps(manifest, indent=2))
+
+    db.close()
+    buf.seek(0)
+    return buf.read()
+
+
+@app.route('/admin/backup/download')
+@superadmin_required
+def admin_backup_download():
+    """Admin: download a full ZIP backup of all data."""
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+    filename  = f'sweetspot-backup-{timestamp}.zip'
+    try:
+        data = _build_backup_zip()
+    except Exception as e:
+        app.logger.error(f'Backup download error: {e}')
+        flash('Backup failed — check server logs.', 'error')
+        return redirect(url_for('admin_backup_page'))
+    log_activity('backup_download', session.get('user_id'), {})
+    from flask import make_response
+    resp = make_response(data)
+    resp.headers['Content-Type']        = 'application/zip'
+    resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return resp
+
+
+def _send_backup_email(recipient: str = None) -> bool:
+    """Build backup ZIP, attach to email, send to admin.
+    Returns True on success."""
+    if not SMTP_ENABLED:
+        app.logger.warning('Backup email skipped — SMTP not configured.')
+        return False
+
+    to_addr   = recipient or ADMIN_EMAIL
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %I:%M %p')
+    filename  = f'sweetspot-backup-{datetime.datetime.now().strftime("%Y-%m-%d")}.zip'
+
+    try:
+        zip_data = _build_backup_zip()
+    except Exception as e:
+        app.logger.error(f'Backup email build error: {e}')
+        return False
+
+    try:
+        from email.mime.base import MIMEBase
+        from email import encoders
+
+        msg = MIMEMultipart()
+        msg['Subject'] = f'🎂 Sweet Spot Daily Backup — {datetime.datetime.now().strftime("%B %d, %Y")}'
+        msg['From']    = f'{BAKERY_NAME} <{SMTP_FROM}>'
+        msg['To']      = to_addr
+
+        html = f"""
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto">
+          <h2 style="color:#ec4899">🎂 Sweet Spot Daily Backup</h2>
+          <p>Your automated backup is attached. Generated at <strong>{timestamp}</strong>.</p>
+          <p>The ZIP file contains:</p>
+          <ul>
+            <li><strong>sweetspot.db</strong> — full database (can restore directly)</li>
+            <li><strong>csv/orders.csv</strong> — all orders</li>
+            <li><strong>csv/customers.csv</strong> — all customers</li>
+            <li><strong>csv/recipes.csv</strong> — all recipes</li>
+            <li><em>…and all other tables</em></li>
+          </ul>
+          <p style="color:#6b7280;font-size:.85em">Save this file to your USB drive or a safe folder.
+          To restore, replace the <code>sweetspot.db</code> file on the Railway /data volume.</p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">
+          <p style="color:#9ca3af;font-size:.75em">{BAKERY_NAME} · Automated Backup System</p>
+        </div>"""
+
+        msg.attach(MIMEText(html, 'html'))
+
+        # Attach ZIP
+        part = MIMEBase('application', 'zip')
+        part.set_payload(zip_data)
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
+        msg.attach(part)
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.sendmail(SMTP_FROM, to_addr, msg.as_string())
+
+        app.logger.info(f'Backup email sent to {to_addr}')
+        return True
+
+    except Exception as e:
+        app.logger.error(f'Backup email send error: {e}')
+        return False
+
+
+@app.route('/admin/backup/send-now', methods=['POST'])
+@superadmin_required
+def admin_backup_send_now():
+    """Admin: trigger an immediate backup email."""
+    def _send():
+        with app.app_context():
+            _send_backup_email()
+    threading.Thread(target=_send, daemon=True).start()
+    log_activity('backup_email_manual', session.get('user_id'), {})
+    flash(f'Backup email is on its way to {ADMIN_EMAIL}! Check your inbox in a minute.', 'success')
+    return redirect(url_for('admin_backup_page'))
+
+
+@app.route('/admin/backup')
+@superadmin_required
+def admin_backup_page():
+    """Admin: backup management page."""
+    # Read last backup log from DB if it exists
+    db = get_db()
+    last_backup = None
+    try:
+        row = db.execute(
+            "SELECT created_at FROM activity_logs WHERE action_type='backup_download' "
+            "OR action_type='backup_email_auto' OR action_type='backup_email_manual' "
+            "ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            last_backup = row['created_at']
+    except Exception:
+        pass
+
+    smtp_ok = SMTP_ENABLED
+    return render_template('admin_backup.html',
+                           last_backup=last_backup,
+                           smtp_ok=smtp_ok,
+                           admin_email=ADMIN_EMAIL,
+                           bakery=BAKERY_NAME)
+
+
+# ── Daily backup scheduler ─────────────────────────────────────────────────────
+
+def _daily_backup_scheduler():
+    """Background thread: sends backup email every day at 8:00 AM Eastern."""
+    import zoneinfo
+    tz = zoneinfo.ZoneInfo('America/New_York')
+    app.logger.info('Daily backup scheduler started.')
+    while True:
+        try:
+            now  = datetime.datetime.now(tz)
+            # Target: next 8:00 AM
+            target = now.replace(hour=8, minute=0, second=0, microsecond=0)
+            if now >= target:
+                target += datetime.timedelta(days=1)
+            wait_secs = (target - now).total_seconds()
+            app.logger.info(f'Next backup email in {wait_secs/3600:.1f}h at {target.strftime("%Y-%m-%d %H:%M %Z")}')
+            time.sleep(wait_secs)
+            # Send the backup
+            with app.app_context():
+                success = _send_backup_email()
+                if success:
+                    db = sqlite3.connect(DB_PATH)
+                    db.execute(
+                        "INSERT INTO activity_logs(action_type, details, created_at) VALUES(?,?,?)",
+                        ('backup_email_auto', json.dumps({'to': ADMIN_EMAIL}),
+                         datetime.datetime.utcnow().isoformat())
+                    )
+                    db.commit()
+                    db.close()
+        except Exception as e:
+            app.logger.error(f'Backup scheduler error: {e}')
+            time.sleep(3600)  # retry in 1 hour on error
+
+
+# Start scheduler only in the main gunicorn worker (not every reload)
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    _scheduler_thread = threading.Thread(target=_daily_backup_scheduler, daemon=True)
+    _scheduler_thread.start()
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

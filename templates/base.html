@@ -214,6 +214,7 @@
     {% if r == 'admin' %}
     <div class="nav-section">Admin</div>
     <a href="/settings" class="nav-item {% if '/settings' in request.path %}active{% endif %}">⚙️ <span>Settings</span></a>
+    <a href="/admin/backup" class="nav-item {% if '/admin/backup' in request.path %}active{% endif %}">🗄️ <span>Backup</span></a>
     {% endif %}
   </nav>
   <div class="sidebar-footer">

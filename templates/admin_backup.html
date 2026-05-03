@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Data Backup — {{ bakery }}{% endblock %}
+{% block page_title %}🗄️ Data Backup{% endblock %}
+{% block content %}
+
+<div style="max-width:680px">
+
+  <!-- Status card -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:16px">📊 Backup Status</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="padding:14px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Last Backup</div>
+        <div style="font-weight:700;font-size:.95rem">
+          {% if last_backup %}
+            {{ last_backup[:16].replace('T',' ') }} UTC
+          {% else %}
+            <span style="color:var(--yellow)">No backups yet</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="padding:14px;background:var(--card2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Daily Email</div>
+        <div style="font-weight:700;font-size:.95rem">
+          {% if smtp_ok %}
+            <span style="color:var(--green)">✅ Active — 8:00 AM daily</span>
+          {% else %}
+            <span style="color:var(--red)">⚠️ SMTP not configured</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% if smtp_ok %}
+    <div style="margin-top:12px;font-size:.8rem;color:var(--muted)">
+      📧 Backup emails go to <strong>{{ admin_email }}</strong>
+    </div>
+    {% else %}
+    <div style="margin-top:12px;padding:10px 14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:.82rem;color:var(--yellow)">
+      ⚠️ Set <code>SMTP_USER</code> and <code>SMTP_PASS</code> in Railway env vars to enable email backups.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Download NOW -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:6px">💾 Download Backup Now</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Downloads a ZIP file containing your complete database + CSV exports of every table.
+      Save it to your USB drive for safekeeping.
+    </p>
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.82rem">
+      <div style="font-weight:600;margin-bottom:8px">📦 ZIP contains:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;color:var(--muted)">
+        <span>✓ sweetspot.db (full database)</span>
+        <span>✓ csv/orders.csv</span>
+        <span>✓ csv/customers.csv</span>
+        <span>✓ csv/recipes.csv</span>
+        <span>✓ csv/ingredients.csv</span>
+        <span>✓ csv/employees.csv</span>
+        <span>✓ csv/expenses.csv</span>
+        <span>✓ all other tables…</span>
+      </div>
+    </div>
+    <a href="/admin/backup/download" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;font-size:.95rem;padding:10px 22px">
+      ⬇️ Download Backup ZIP
+    </a>
+    <div style="margin-top:10px;font-size:.75rem;color:var(--muted)">
+      💡 Tip: plug in your USB drive first, then click download → save to the USB drive.
+    </div>
+  </div>
+
+  <!-- Send email NOW -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:6px">📧 Send Backup Email Now</div>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      Sends the backup ZIP as an email attachment to <strong>{{ admin_email }}</strong> right now.
+      Don't wait for the daily schedule — get it instantly.
+    </p>
+    {% if smtp_ok %}
+    <form method="POST" action="/admin/backup/send-now">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-success" style="display:inline-flex;align-items:center;gap:8px;font-size:.95rem;padding:10px 22px">
+        📤 Send to {{ admin_email }}
+      </button>
+    </form>
+    {% else %}
+    <button class="btn btn-success" disabled style="opacity:.45;cursor:not-allowed;font-size:.95rem;padding:10px 22px">
+      📤 Email Not Configured
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- How to restore -->
+  <div class="card">
+    <div class="card-title" style="margin-bottom:10px">🔄 How to Restore a Backup</div>
+    <div style="font-size:.84rem;color:var(--muted);line-height:1.8">
+      <p>If something goes wrong and you need to restore your data:</p>
+      <ol style="padding-left:18px;margin:8px 0">
+        <li>Unzip the backup file</li>
+        <li>Find <code>sweetspot.db</code> inside</li>
+        <li>Contact Jay — he can upload it to Railway's /data volume to restore everything</li>
+      </ol>
+      <p style="margin-top:10px">The CSV files can also be opened in Excel or Google Sheets to read your data directly.</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
