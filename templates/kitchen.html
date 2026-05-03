@@ -122,7 +122,13 @@
             </div>
             {% endfor %}
           {% else %}
-            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No ingredients linked yet. <a href="/recipes">Link via Recipes ↗</a></div>
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No ingredients linked yet.
+              {% if item.recipe_id %}
+              <a href="/recipes/{{ item.recipe_id }}">Edit Recipe ↗</a>
+              {% else %}
+              <a href="/recipes">Link a Recipe first ↗</a>
+              {% endif %}
+            </div>
           {% endif %}
         </div>
 
@@ -143,7 +149,13 @@
               {% endfor %}
             </div>
           {% else %}
-            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No tools linked yet. <a href="/tools">Add Tools ↗</a></div>
+            <div style="color:var(--muted);font-size:.8rem;padding:8px 0">No tools linked yet.
+              {% if item.recipe_id %}
+              <a href="/recipes/{{ item.recipe_id }}">Add via Recipe ↗</a>
+              {% else %}
+              <a href="/recipes">Link a Recipe first ↗</a>
+              {% endif %}
+            </div>
           {% endif %}
         </div>
       </div>

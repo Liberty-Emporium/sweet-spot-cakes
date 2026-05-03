@@ -2147,8 +2147,15 @@ def api_recipe_tools_add(recipe_id):
 @login_required
 def api_recipe_tools_remove(rt_id):
     db = get_db()
+    # find recipe_id before deleting so we can redirect back
+    row = db.execute('SELECT recipe_id FROM recipe_tools WHERE id=?', (rt_id,)).fetchone()
     db.execute('DELETE FROM recipe_tools WHERE id=?', (rt_id,))
     db.commit()
+    # if called from a form (not JSON), redirect back to recipe
+    if request.content_type and 'application/json' in request.content_type:
+        return jsonify({'ok': True})
+    if row:
+        return redirect(url_for('recipe_detail', recipe_id=row['recipe_id']))
     return jsonify({'ok': True})
 
 
@@ -2947,8 +2954,17 @@ def recipe_detail(recipe_id):
     ''', (recipe_id,)).fetchall()
     cost = sum(r['quantity'] * r['cost_per_unit'] for r in ingreds)
     all_ingreds = db.execute("SELECT id,name,unit FROM ingredients ORDER BY name").fetchall()
+    _ensure_kitchen_tables(db)
+    recipe_tools = db.execute(
+        'SELECT rt.id, t.id as tool_id, t.name, t.category, t.location '
+        'FROM recipe_tools rt JOIN tools t ON rt.tool_id=t.id '
+        'WHERE rt.recipe_id=? AND t.active=1 ORDER BY t.category, t.name',
+        (recipe_id,)
+    ).fetchall()
+    all_tools = db.execute('SELECT id, name, category FROM tools WHERE active=1 ORDER BY category, name').fetchall()
     return render_template('recipe_detail.html', recipe=recipe, ingreds=ingreds,
-                           cost=round(cost,2), all_ingreds=all_ingreds, bakery=BAKERY_NAME)
+                           cost=round(cost,2), all_ingreds=all_ingreds,
+                           recipe_tools=recipe_tools, all_tools=all_tools, bakery=BAKERY_NAME)
 
 @app.route('/recipes/<int:recipe_id>/add-ingredient', methods=['POST'])
 @login_required

@@ -111,5 +111,68 @@
       <button type="submit" class="btn btn-primary btn-sm">+ Add to Recipe</button>
     </form>
   </div>
+
+  <!-- Tools & Equipment -->
+  <div class="card" style="margin-top:0">
+    <div class="card-title" style="margin-bottom:14px">🔧 Tools & Equipment</div>
+    {% if recipe_tools %}
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+      {% for t in recipe_tools %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--card2);border-radius:6px;border:1px solid var(--border);font-size:.84rem">
+        <div style="flex:1">
+          <span style="font-weight:500">{{ t.name }}</span>
+          <span style="color:var(--muted);font-size:.75rem;margin-left:8px">{{ t.category }}</span>
+          {% if t.location %}<span style="color:var(--muted);font-size:.72rem;margin-left:6px">📍 {{ t.location }}</span>{% endif %}
+        </div>
+        <form method="POST" action="/api/recipe-tools/remove/{{ t.id }}"
+              onsubmit="return confirm('Remove {{ t.name }} from this recipe?')"
+              style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger btn-xs" title="Remove">×</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="color:var(--muted);font-size:.84rem;margin-bottom:14px">No tools linked yet.</div>
+    {% endif %}
+
+    <!-- Add tool -->
+    <form id="add-tool-form" style="border-top:1px solid var(--border);padding-top:14px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Tool / Equipment</label>
+          <select id="tool-select" class="form-control" required>
+            <option value="">— Select —</option>
+            {% for t in all_tools %}
+            <option value="{{ t.id }}">{{ t.name }} ({{ t.category }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">+ Add to Recipe</button>
+      <span id="tool-msg" style="font-size:.8rem;margin-left:10px"></span>
+    </form>
+    <script>
+    document.getElementById('add-tool-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var toolId = document.getElementById('tool-select').value;
+      if (!toolId) return;
+      var msg = document.getElementById('tool-msg');
+      fetch('/api/recipe-tools/{{ recipe.id }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tool_id: parseInt(toolId)})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) { msg.style.color='var(--green)'; msg.textContent='✓ Added!'; setTimeout(()=>location.reload(),800); }
+        else { msg.style.color='var(--red)'; msg.textContent = d.error || 'Error'; }
+      })
+      .catch(() => { msg.style.color='var(--red)'; msg.textContent='Network error'; });
+    });
+    </script>
+  </div>
 </div>
 {% endblock %}
