@@ -169,7 +169,16 @@
             {% if item.customizations %}<div style="font-size:.75rem;color:var(--muted)">{{ item.customizations }}</div>{% endif %}
             <div style="font-size:.75rem;color:var(--muted)">qty {{ item.quantity }} × ${{ "%.2f"|format(item.unit_price) }}</div>
           </div>
-          <div style="font-weight:700;color:var(--pink);white-space:nowrap">${{ "%.2f"|format(item.total) }}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-weight:700;color:var(--pink);white-space:nowrap">${{ "%.2f"|format(item.total) }}</div>
+            {% if session.get('role') in ('admin','manager') %}
+            <form method="POST" action="/orders/{{ order.id }}/delete-item/{{ item.id }}"
+                  onsubmit="return confirm('Remove {{ item.name | replace(\"'\",\"\") }} from this order?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-xs" title="Remove item">×</button>
+            </form>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
       </div>

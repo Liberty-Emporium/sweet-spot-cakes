@@ -1309,6 +1309,38 @@ def order_add_item(order_id):
     flash('Item added.', 'success')
     return redirect(url_for('order_detail', order_id=order_id))
 
+@app.route('/orders/<int:order_id>/delete-item/<int:item_id>', methods=['POST'])
+@login_required
+def order_delete_item(order_id, item_id):
+    """Delete a single order item — manager or admin only."""
+    if _role() not in ('admin', 'manager'):
+        flash('Access denied — managers and admins only.', 'error')
+        return redirect(url_for('order_detail', order_id=order_id))
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    item = db.execute('SELECT * FROM order_items WHERE id=? AND order_id=?', (item_id, order_id)).fetchone()
+    if not item:
+        flash('Item not found.', 'error')
+        return redirect(url_for('order_detail', order_id=order_id))
+    db.execute('DELETE FROM order_items WHERE id=?', (item_id,))
+    # Recalculate order totals
+    subtotal = db.execute('SELECT COALESCE(SUM(total),0) FROM order_items WHERE order_id=?', (order_id,)).fetchone()[0]
+    tax      = round(subtotal * tax_rate(), 2)
+    discount = order['discount'] or 0
+    grand    = round(subtotal + tax - discount, 2)
+    balance  = round(grand - (order['deposit_paid'] or 0), 2)
+    db.execute('UPDATE orders SET subtotal=?,tax=?,total=?,balance_due=? WHERE id=?',
+               (subtotal, tax, grand, balance, order_id))
+    db.commit()
+    log_activity('delete_order_item', session.get('user_id'),
+                 {'order_id': order_id, 'item_id': item_id, 'item_name': item['name']})
+    flash(f'Item "{item["name"]}" removed.', 'success')
+    return redirect(url_for('order_detail', order_id=order_id))
+
+
 @app.route('/api/order-items/<int:item_id>/set-recipe', methods=['POST'])
 @login_required
 def order_item_set_recipe(item_id):
