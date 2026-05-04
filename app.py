@@ -1,7 +1,10 @@
 import os, json, sqlite3, secrets, hashlib, datetime, threading, time, smtplib, zipfile, io, csv
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
 
 NY_TZ = ZoneInfo('America/New_York')
 
@@ -4359,8 +4362,7 @@ def admin_backup_page():
 
 def _daily_backup_scheduler():
     """Background thread: sends backup email every day at 8:00 AM Eastern."""
-    import zoneinfo
-    tz = zoneinfo.ZoneInfo('America/New_York')
+    tz = ZoneInfo('America/New_York')
     app.logger.info('Daily backup scheduler started.')
     while True:
         try:
