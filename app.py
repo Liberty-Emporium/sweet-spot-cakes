@@ -3918,7 +3918,7 @@ def public_order():
         )
         order_id = cur.lastrowid
 
-        # Add order item
+        # Add cake order item
         item_name = f'{size} — {flavor}' if size and flavor else (size or flavor or 'Custom Cake')
         if addons:
             item_name += f' + {", ".join(addons)}'
@@ -3926,11 +3926,31 @@ def public_order():
             'INSERT INTO order_items(order_id,name,description,quantity,unit_price,total,customizations) VALUES(?,?,?,?,?,?,?)',
             (order_id, item_name, full_notes, 1, subtotal, subtotal, full_notes)
         )
+
+        # Add drink items
+        drink_prices = {d['name']: d['price'] for d in DRINKS}
+        drinks_ordered = request.form.getlist('drinks')
+        for drink_name in drinks_ordered:
+            drink_qty = int(request.form.get(f'drink_qty_{drink_name}', 1) or 1)
+            drink_price = drink_prices.get(drink_name, 0)
+            drink_total = round(drink_price * drink_qty, 2)
+            if drink_total > 0:
+                db.execute(
+                    'INSERT INTO order_items(order_id,name,quantity,unit_price,total) VALUES(?,?,?,?,?)',
+                    (order_id, drink_name, drink_qty, drink_price, drink_total)
+                )
+                # Recalculate totals to include drinks
+                subtotal += drink_total
+
+        tax_amt  = round(subtotal * tax_rate(), 2)
+        total    = round(subtotal + tax_amt, 2)
+        db.execute('UPDATE orders SET subtotal=?,tax=?,total=?,balance_due=? WHERE id=?',
+                   (subtotal, tax_amt, total, total, order_id))
         db.commit()
         return redirect(url_for('order_confirmation', order_number=onum))
 
-    return render_template('public_order.html', bakery=BAKERY_NAME,
-                           cake_sizes=CAKE_SIZES, flavors=FLAVORS, add_ons=ADD_ONS)
+    return render_template('tablet_order.html', bakery=BAKERY_NAME,
+                           cake_sizes=CAKE_SIZES, flavors=FLAVORS, add_ons=ADD_ONS, drinks=DRINKS)
 
 
 @app.route('/order/confirmation/<order_number>')
@@ -4102,6 +4122,17 @@ FLAVORS = [
 ]
 
 ADD_ONS = _load_price_matrix()['addons']
+
+DRINKS = [
+    {'name': 'Sparkling Lemonade',    'price': 4.00,  'emoji': '🍋', 'desc': 'Fresh-squeezed with a hint of lavender',       'photo': 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&q=80'},
+    {'name': 'Strawberry Punch',      'price': 4.50,  'emoji': '🍓', 'desc': 'House-made strawberry punch, lightly sparkling', 'photo': 'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=600&q=80'},
+    {'name': 'Milk (Cold)',           'price': 2.50,  'emoji': '🥛', 'desc': 'Ice-cold whole milk — perfect with cake',        'photo': 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&q=80'},
+    {'name': 'Hot Coffee',            'price': 3.50,  'emoji': '☕',    'desc': 'Freshly brewed medium roast',                   'photo': 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=80'},
+    {'name': 'Iced Coffee',           'price': 4.00,  'emoji': '🧐', 'desc': 'Cold brew over ice, lightly sweetened',         'photo': 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&q=80'},
+    {'name': 'Hot Tea',               'price': 3.00,  'emoji': '🍵', 'desc': 'Earl Grey, chamomile, or green tea',             'photo': 'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?w=600&q=80'},
+    {'name': 'Pink Raspberry Spritz', 'price': 4.50,  'emoji': '🌸', 'desc': 'Sparkling water with raspberry & rose syrup',    'photo': 'https://images.unsplash.com/photo-1560508180-03f285f67ded?w=600&q=80'},
+    {'name': 'Water',                 'price': 1.50,  'emoji': '💧', 'desc': 'Still or sparkling bottled water',               'photo': 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=600&q=80'},
+]
 
 
 @app.route('/menu')
