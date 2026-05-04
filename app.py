@@ -3630,30 +3630,48 @@ def settings_integrations():
                 msg = '❌ ECDASH_APP_TOKEN is not set in Railway. Go to Railway → Sweet Spot service → Variables → add ECDASH_APP_TOKEN.'
                 msg_type = 'error'
             else:
-                # Try both endpoints and report which ones work
-                import urllib.request as _ur, json as _jj
-                results = []
-                note_payload = _jj.dumps({'text': '[Sweet Spot] Test ping — connection working!'}).encode()
-                bridge_payload = _jj.dumps({'task': '[Sweet Spot] Test ping from settings', 'app': 'sweet-spot-cakes'}).encode()
+                try:
+                    import urllib.request as _ur2, json as _jj2
+                    test_results = []
+                    note_payload = _jj2.dumps({'text': '[Sweet Spot] Test ping — connection working!'}).encode()
+                    bridge_payload = _jj2.dumps({'task': '[Sweet Spot] Test ping from settings', 'app': 'sweet-spot-cakes'}).encode()
 
-                for label, url, method, payload, headers in [
-                    ('Notes (X-Brain-Sync-Token)', f'{ECDASH_URL}/api/notes/echo', 'POST',
-                     note_payload, {'Content-Type':'application/json','X-Brain-Sync-Token': ECDASH_TOKEN}),
-                    ('Echo-Bridge (Bearer)', f'{ECDASH_URL}/api/echo-bridge', 'POST',
-                     bridge_payload, {'Content-Type':'application/json','Authorization': f'Bearer {ECDASH_TOKEN}'}),
-                ]:
+                    # Test notes endpoint (X-Brain-Sync-Token auth)
                     try:
-                        req = _ur.Request(url, data=payload, headers=headers, method=method)
-                        r = _ur.urlopen(req, timeout=6)
-                        results.append(f'✅ {label}: HTTP {r.status}')
-                    except _ur.error.HTTPError as e:
-                        results.append(f'❌ {label}: HTTP {e.code} — check token value')
-                    except Exception as e:
-                        results.append(f'❌ {label}: {str(e)[:60]}')
+                        req_n = _ur2.Request(
+                            f'{ECDASH_URL}/api/notes/echo',
+                            data=note_payload,
+                            headers={'Content-Type': 'application/json', 'X-Brain-Sync-Token': ECDASH_TOKEN},
+                            method='POST'
+                        )
+                        resp_n = _ur2.urlopen(req_n, timeout=6)
+                        test_results.append(f'✅ Notes endpoint: HTTP {resp_n.status}')
+                    except _ur2.error.HTTPError as he:
+                        test_results.append(f'❌ Notes endpoint: HTTP {he.code} — wrong token?')
+                    except Exception as ne:
+                        test_results.append(f'❌ Notes endpoint: {str(ne)[:60]}')
 
-                any_ok = any(r.startswith('✅') for r in results)
-                msg = ('✅ EcDash connection working! ' if any_ok else '❌ EcDash connection failed. ') + ' | '.join(results)
-                msg_type = 'success' if any_ok else 'error'
+                    # Test echo-bridge endpoint (Bearer auth)
+                    try:
+                        req_b = _ur2.Request(
+                            f'{ECDASH_URL}/api/echo-bridge',
+                            data=bridge_payload,
+                            headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {ECDASH_TOKEN}'},
+                            method='POST'
+                        )
+                        resp_b = _ur2.urlopen(req_b, timeout=6)
+                        test_results.append(f'✅ Echo-Bridge endpoint: HTTP {resp_b.status}')
+                    except _ur2.error.HTTPError as he:
+                        test_results.append(f'❌ Echo-Bridge endpoint: HTTP {he.code} — wrong token?')
+                    except Exception as be:
+                        test_results.append(f'❌ Echo-Bridge endpoint: {str(be)[:60]}')
+
+                    any_ok = any(item.startswith('✅') for item in test_results)
+                    msg = ('✅ EcDash connected! ' if any_ok else '❌ EcDash connection failed. ') + ' | '.join(test_results)
+                    msg_type = 'success' if any_ok else 'error'
+                except Exception as test_err:
+                    msg = f'❌ Test error: {str(test_err)}'
+                    msg_type = 'error'
 
         elif action == 'test_cakely':
             # Test that the Cakely token is valid by hitting /cakely/api/dashboard
