@@ -605,9 +605,13 @@
     <div class="panel" id="panel-checkout">
       <div id="cart-empty" class="summary-empty">
         <div class="empty-icon">&#127874;</div>
-        <div style="font-size:1rem;font-weight:700;margin-bottom:8px">Your order is empty</div>
-        <div style="font-size:.85rem">Go back and pick a cake!</div>
-        <button class="place-btn" style="max-width:240px;margin:20px auto 0" onclick="showPanel('cakes',document.querySelectorAll('.tab')[0])">&#8592; Build My Order</button>
+        <div style="font-size:1rem;font-weight:700;margin-bottom:8px">Nothing in your order yet</div>
+        <div style="font-size:.85rem">Pick a cake, treats, or drinks to get started!</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px">
+          <button class="place-btn" style="max-width:200px;margin:0" onclick="showPanel('cakes',document.querySelectorAll('.tab')[0])">&#127874; Cakes</button>
+          <button class="place-btn" style="max-width:200px;margin:0;background:linear-gradient(135deg,#f59e0b,#d97706)" onclick="showPanel('treats',document.querySelectorAll('.tab')[1])">&#127850; Treats</button>
+          <button class="place-btn" style="max-width:200px;margin:0;background:linear-gradient(135deg,#60a5fa,#3b82f6)" onclick="showPanel('drinks',document.querySelectorAll('.tab')[2])">&#127866; Drinks</button>
+        </div>
       </div>
 
       <div id="cart-has-items" style="display:none">
