@@ -102,6 +102,66 @@ SQUARE_BASE_URL      = 'https://connect.squareup.com' if SQUARE_ENV == 'producti
 BAKERY_NAME    = os.environ.get('BAKERY_NAME', 'Sweet Spot Custom Cakes')
 ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', 'info@sweetspotcustomcakes.com')
 
+# ── Social OAuth (Google + Facebook) ────────────────────────────────────────
+GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+FACEBOOK_APP_ID      = os.environ.get('FACEBOOK_APP_ID', '')
+FACEBOOK_APP_SECRET  = os.environ.get('FACEBOOK_APP_SECRET', '')
+
+_oauth = None
+def _get_oauth():
+    """Lazy-init Authlib OAuth registry."""
+    global _oauth
+    if _oauth is not None:
+        return _oauth
+    try:
+        from authlib.integrations.flask_client import OAuth
+        _oauth = OAuth(app)
+        if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+            _oauth.register(
+                name='google',
+                client_id=GOOGLE_CLIENT_ID,
+                client_secret=GOOGLE_CLIENT_SECRET,
+                server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+                client_kwargs={'scope': 'openid email profile'},
+            )
+        if FACEBOOK_APP_ID and FACEBOOK_APP_SECRET:
+            _oauth.register(
+                name='facebook',
+                client_id=FACEBOOK_APP_ID,
+                client_secret=FACEBOOK_APP_SECRET,
+                api_base_url='https://graph.facebook.com/',
+                access_token_url='https://graph.facebook.com/oauth/access_token',
+                authorize_url='https://www.facebook.com/dialog/oauth',
+                client_kwargs={'scope': 'email public_profile'},
+            )
+    except Exception:
+        pass
+    return _oauth
+
+def _oauth_enabled():
+    return bool((GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET) or
+                (FACEBOOK_APP_ID  and FACEBOOK_APP_SECRET))
+
+def _upsert_social_member(name, email, phone, avatar, source):
+    """Create or find customer + loyalty member from social login. Returns customer row."""
+    db = get_db()
+    existing = None
+    if email:
+        existing = db.execute('SELECT * FROM customers WHERE email=?', (email,)).fetchone()
+    if existing:
+        cust_id = existing['id']
+    else:
+        cur = db.execute(
+            'INSERT INTO customers(name,email,phone,notes) VALUES(?,?,?,?)',
+            (name, email, phone or '', f'Social signup via {source}')
+        )
+        cust_id = cur.lastrowid
+    db.execute('INSERT OR IGNORE INTO loyalty_members(customer_id,source) VALUES(?,?)',
+               (cust_id, source))
+    db.commit()
+    return db.execute('SELECT * FROM customers WHERE id=?', (cust_id,)).fetchone()
+
 # ── SMTP (optional — set in Railway env vars to enable email receipts) ──────────────
 SMTP_HOST  = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
 SMTP_PORT  = int(os.environ.get('SMTP_PORT', '587'))
@@ -3903,6 +3963,62 @@ def order_confirmation(order_number):
 
 
 # ── Loyalty / QR Signup ────────────────────────────────────────────────────────────
+# ── Social OAuth routes ────────────────────────────────────────────────
+
+@app.route('/auth/google/join')
+def auth_google_join():
+    oauth = _get_oauth()
+    if not oauth or not GOOGLE_CLIENT_ID:
+        flash('Google sign-in is not configured yet.', 'error')
+        return redirect(url_for('join'))
+    redirect_uri = url_for('auth_google_join_callback', _external=True)
+    session['oauth_next'] = 'join'
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google/join/callback')
+def auth_google_join_callback():
+    oauth = _get_oauth()
+    try:
+        token = oauth.google.authorize_access_token()
+        userinfo = token.get('userinfo') or oauth.google.userinfo()
+        name   = userinfo.get('name', '')
+        email  = userinfo.get('email', '').lower()
+        avatar = userinfo.get('picture', '')
+        _upsert_social_member(name, email, '', avatar, 'google')
+        session['social_joined'] = {'name': name, 'email': email, 'avatar': avatar}
+        return redirect(url_for('join', social_success='1'))
+    except Exception as e:
+        flash(f'Google sign-in failed: {e}', 'error')
+        return redirect(url_for('join'))
+
+@app.route('/auth/facebook/join')
+def auth_facebook_join():
+    oauth = _get_oauth()
+    if not oauth or not FACEBOOK_APP_ID:
+        flash('Facebook sign-in is not configured yet.', 'error')
+        return redirect(url_for('join'))
+    redirect_uri = url_for('auth_facebook_join_callback', _external=True)
+    session['oauth_next'] = 'join'
+    return oauth.facebook.authorize_redirect(redirect_uri)
+
+@app.route('/auth/facebook/join/callback')
+def auth_facebook_join_callback():
+    oauth = _get_oauth()
+    try:
+        token = oauth.facebook.authorize_access_token()
+        resp  = oauth.facebook.get('/me?fields=id,name,email,picture.type(large)')
+        info  = resp.json()
+        name   = info.get('name', '')
+        email  = info.get('email', '').lower()
+        avatar = (info.get('picture') or {}).get('data', {}).get('url', '')
+        _upsert_social_member(name, email, '', avatar, 'facebook')
+        session['social_joined'] = {'name': name, 'email': email, 'avatar': avatar}
+        return redirect(url_for('join', social_success='1'))
+    except Exception as e:
+        flash(f'Facebook sign-in failed: {e}', 'error')
+        return redirect(url_for('join'))
+
+
 @app.route('/join', methods=['GET', 'POST'])
 def join():
     """Public QR signup page — no login required."""
@@ -3937,7 +4053,16 @@ def join():
     # Get active specials to show on signup page
     db = get_db()
     specials = db.execute("SELECT * FROM specials WHERE active=1 ORDER BY created DESC LIMIT 3").fetchall()
-    return render_template('join.html', success=success, specials=specials, bakery=BAKERY_NAME)
+    # Handle social signup success
+    social_success = request.args.get('social_success')
+    social_user = None
+    if social_success:
+        social_user = session.pop('social_joined', None)
+        success = bool(social_user)
+    return render_template('join.html', success=success, specials=specials, bakery=BAKERY_NAME,
+                           social_user=social_user,
+                           google_enabled=bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
+                           facebook_enabled=bool(FACEBOOK_APP_ID and FACEBOOK_APP_SECRET))
 
 
 @app.route('/qr')
