@@ -4,9 +4,15 @@ from email.mime.text import MIMEText
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
-    from backports.zoneinfo import ZoneInfo
+    try:
+        from backports.zoneinfo import ZoneInfo
+    except ImportError:
+        ZoneInfo = None
 
-NY_TZ = ZoneInfo('America/New_York')
+try:
+    NY_TZ = ZoneInfo('America/New_York') if ZoneInfo else datetime.timezone.utc
+except Exception:
+    NY_TZ = datetime.timezone.utc
 
 def utc_to_ny(dt_str: str, fmt: str = '%m/%d/%Y %I:%M %p') -> str:
     """Convert a UTC datetime string (from SQLite) to New York local time."""
@@ -4362,7 +4368,7 @@ def admin_backup_page():
 
 def _daily_backup_scheduler():
     """Background thread: sends backup email every day at 8:00 AM Eastern."""
-    tz = ZoneInfo('America/New_York')
+    tz = NY_TZ
     app.logger.info('Daily backup scheduler started.')
     while True:
         try:
