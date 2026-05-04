@@ -3939,8 +3939,21 @@ def public_order():
                     'INSERT INTO order_items(order_id,name,quantity,unit_price,total) VALUES(?,?,?,?,?)',
                     (order_id, drink_name, drink_qty, drink_price, drink_total)
                 )
-                # Recalculate totals to include drinks
                 subtotal += drink_total
+
+        # Add treats (cookies, cupcakes, brownies)
+        all_treats = {t['name']: t['price'] for t in (COOKIES + CUPCAKES + BROWNIES)}
+        treats_ordered = request.form.getlist('treats')
+        for treat_name in treats_ordered:
+            treat_qty = int(request.form.get(f'treat_qty_{treat_name}', 1) or 1)
+            treat_price = all_treats.get(treat_name, 0)
+            treat_total = round(treat_price * treat_qty, 2)
+            if treat_total > 0:
+                db.execute(
+                    'INSERT INTO order_items(order_id,name,quantity,unit_price,total) VALUES(?,?,?,?,?)',
+                    (order_id, treat_name, treat_qty, treat_price, treat_total)
+                )
+                subtotal += treat_total
 
         tax_amt  = round(subtotal * tax_rate(), 2)
         total    = round(subtotal + tax_amt, 2)
@@ -3950,7 +3963,8 @@ def public_order():
         return redirect(url_for('order_confirmation', order_number=onum))
 
     return render_template('tablet_order.html', bakery=BAKERY_NAME,
-                           cake_sizes=CAKE_SIZES, flavors=FLAVORS, add_ons=ADD_ONS, drinks=DRINKS)
+                           cake_sizes=CAKE_SIZES, flavors=FLAVORS, add_ons=ADD_ONS,
+                           drinks=DRINKS, cookies=COOKIES, cupcakes=CUPCAKES, brownies=BROWNIES)
 
 
 @app.route('/order/confirmation/<order_number>')
@@ -4122,6 +4136,32 @@ FLAVORS = [
 ]
 
 ADD_ONS = _load_price_matrix()['addons']
+
+COOKIES = [
+    {'name': 'Classic Chocolate Chip',  'price': 3.00,  'emoji': '🍪', 'desc': 'Buttery golden cookie loaded with semi-sweet chocolate chips',              'photo': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=600&q=80'},
+    {'name': 'Double Chocolate Fudge',  'price': 3.50,  'emoji': '🍫', 'desc': 'Rich cocoa dough, dark chocolate chunks, fudgy center',                     'photo': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80'},
+    {'name': 'Snickerdoodle',           'price': 2.75,  'emoji': '✨', 'desc': 'Soft cinnamon-sugar rolled cookie, crisp edges, chewy middle',               'photo': 'https://images.unsplash.com/photo-1504973960431-1c467e159aa4?w=600&q=80'},
+    {'name': 'Strawberry Sugar Cookie', 'price': 3.50,  'emoji': '🍓', 'desc': 'Soft sugar cookie with strawberry buttercream and sprinkles',                 'photo': 'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=600&q=80'},
+    {'name': 'Lemon Crinkle',           'price': 3.00,  'emoji': '🍋', 'desc': 'Bright zesty lemon cookie dusted in powdered sugar with crinkled tops',      'photo': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80'},
+    {'name': 'Oatmeal Raisin',          'price': 2.75,  'emoji': '🌾', 'desc': 'Hearty oats, plump raisins, warm cinnamon — a timeless classic',             'photo': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=600&q=80'},
+]
+
+CUPCAKES = [
+    {'name': 'Classic Vanilla Cupcake',     'price': 4.50,  'emoji': '🧁', 'desc': 'Fluffy vanilla sponge topped with swirls of silky vanilla buttercream',   'photo': 'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?w=600&q=80'},
+    {'name': 'Triple Chocolate Cupcake',    'price': 5.00,  'emoji': '🍫', 'desc': 'Chocolate cake, chocolate ganache filling, whipped chocolate frosting',    'photo': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80'},
+    {'name': 'Strawberry Shortcake Cupcake','price': 5.00,  'emoji': '🍓', 'desc': 'Vanilla sponge, fresh strawberry compote, whipped cream topping',         'photo': 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80'},
+    {'name': 'Red Velvet Cupcake',          'price': 4.75,  'emoji': '❤️', 'desc': 'Velvety red cake with tangy cream cheese frosting and red crumble',       'photo': 'https://images.unsplash.com/photo-1586788680434-30d324b2d46f?w=600&q=80'},
+    {'name': 'Lemon Blueberry Cupcake',     'price': 4.75,  'emoji': '🍋', 'desc': 'Lemon zest sponge with blueberry jam filling and lemon curd frosting',    'photo': 'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?w=600&q=80'},
+    {'name': 'Funfetti Cupcake',            'price': 4.50,  'emoji': '🎉', 'desc': 'Rainbow sprinkle-packed vanilla cake with celebration buttercream swirl', 'photo': 'https://images.unsplash.com/photo-1535141192574-5d4897c12636?w=600&q=80'},
+]
+
+BROWNIES = [
+    {'name': 'Classic Fudge Brownie',       'price': 4.00,  'emoji': '🍫', 'desc': 'Dense, fudgy Valrhona chocolate brownie with crackly top',                'photo': 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=600&q=80'},
+    {'name': 'Salted Caramel Brownie',      'price': 4.75,  'emoji': '🧂', 'desc': 'Fudge brownie swirled with house-made salted caramel',                    'photo': 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=600&q=80'},
+    {'name': 'Cookies & Cream Brownie',     'price': 4.75,  'emoji': '🍪', 'desc': 'Chocolate brownie base topped with Oreo crumbles and white chocolate',   'photo': 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=600&q=80'},
+    {'name': 'Raspberry Swirl Brownie',     'price': 4.75,  'emoji': '🍓', 'desc': 'Dark chocolate brownie with fresh raspberry jam ribbon',                  'photo': 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=600&q=80'},
+    {'name': 'Peanut Butter Brownie',       'price': 4.50,  'emoji': '🥜', 'desc': 'Rich chocolate base with creamy peanut butter swirl and chocolate chips', 'photo': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80'},
+]
 
 DRINKS = [
     {'name': 'Sparkling Lemonade',    'price': 4.00,  'emoji': '🍋', 'desc': 'Fresh-squeezed with a hint of lavender',       'photo': 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&q=80'},

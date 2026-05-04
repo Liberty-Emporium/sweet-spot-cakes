@@ -362,6 +362,7 @@
   <!-- Category tabs -->
   <div class="tabs">
     <button class="tab active" onclick="showPanel('cakes',this)">&#127874; Cakes</button>
+    <button class="tab" onclick="showPanel('treats',this)">&#127850; Treats</button>
     <button class="tab" onclick="showPanel('drinks',this)">&#127866; Drinks</button>
     <button class="tab" onclick="showPanel('addons',this)">&#10024; Add-Ons</button>
     <button class="tab" onclick="showPanel('checkout',this)">&#128722; Checkout <span class="tab-count" id="tabCount" style="display:none">0</span></button>
@@ -445,11 +446,94 @@
         </div>
       </div>
 
-      <button class="place-btn" style="margin-top:8px;margin-bottom:24px" onclick="showPanel('drinks', document.querySelectorAll('.tab')[1])">
-        Next: Add Drinks &#8594;
+      <button class="place-btn" style="margin-top:8px;margin-bottom:24px" onclick="showPanel('treats', document.querySelectorAll('.tab')[1])">
+        Next: Add Treats &#8594;
       </button>
 
     </div><!-- /panel-cakes -->
+
+    <!-- ── TREATS PANEL ── -->
+    <div class="panel" id="panel-treats">
+
+      <!-- Cookies -->
+      <div class="sub-section">
+        <div class="sub-title">Cookies</div>
+        <div class="menu-grid">
+          {% for item in cookies %}
+          <div class="menu-item" id="treat-item-{{ item.name|replace(' ','-') }}" onclick="toggleTreat(this,'{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}')">
+            <div class="qty-badge" id="treat-badge-{{ item.name|replace(' ','-') }}">1</div>
+            <img class="photo" src="{{ item.photo }}" alt="{{ item.name }}" loading="lazy"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="photo-placeholder" style="display:none">{{ item.emoji }}</div>
+            <div class="info">
+              <div class="item-name">{{ item.emoji }} {{ item.name }}</div>
+              <div class="item-desc">{{ item.desc }}</div>
+              <div class="item-price">${{ '%.2f'|format(item.price) }} each</div>
+            </div>
+            <div class="drink-qty" id="treat-qty-{{ item.name|replace(' ','-') }}">
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',-1)">&#8722;</button>
+              <span class="qty-num" id="treat-qty-num-{{ item.name|replace(' ','-') }}">1</span>
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',1)">+</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Cupcakes -->
+      <div class="sub-section">
+        <div class="sub-title">Cupcakes</div>
+        <div class="menu-grid">
+          {% for item in cupcakes %}
+          <div class="menu-item" id="treat-item-{{ item.name|replace(' ','-') }}" onclick="toggleTreat(this,'{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}')">
+            <div class="qty-badge" id="treat-badge-{{ item.name|replace(' ','-') }}">1</div>
+            <img class="photo" src="{{ item.photo }}" alt="{{ item.name }}" loading="lazy"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="photo-placeholder" style="display:none">{{ item.emoji }}</div>
+            <div class="info">
+              <div class="item-name">{{ item.emoji }} {{ item.name }}</div>
+              <div class="item-desc">{{ item.desc }}</div>
+              <div class="item-price">${{ '%.2f'|format(item.price) }} each</div>
+            </div>
+            <div class="drink-qty" id="treat-qty-{{ item.name|replace(' ','-') }}">
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',-1)">&#8722;</button>
+              <span class="qty-num" id="treat-qty-num-{{ item.name|replace(' ','-') }}">1</span>
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',1)">+</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Brownies -->
+      <div class="sub-section">
+        <div class="sub-title">Brownies</div>
+        <div class="menu-grid">
+          {% for item in brownies %}
+          <div class="menu-item" id="treat-item-{{ item.name|replace(' ','-') }}" onclick="toggleTreat(this,'{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}')">
+            <div class="qty-badge" id="treat-badge-{{ item.name|replace(' ','-') }}">1</div>
+            <img class="photo" src="{{ item.photo }}" alt="{{ item.name }}" loading="lazy"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="photo-placeholder" style="display:none">{{ item.emoji }}</div>
+            <div class="info">
+              <div class="item-name">{{ item.emoji }} {{ item.name }}</div>
+              <div class="item-desc">{{ item.desc }}</div>
+              <div class="item-price">${{ '%.2f'|format(item.price) }} each</div>
+            </div>
+            <div class="drink-qty" id="treat-qty-{{ item.name|replace(' ','-') }}">
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',-1)">&#8722;</button>
+              <span class="qty-num" id="treat-qty-num-{{ item.name|replace(' ','-') }}">1</span>
+              <button class="qty-btn" onclick="event.stopPropagation();adjustTreat('{{ item.name }}',{{ item.price }},'{{ item.name|replace(\" \",\"-\") }}',1)">+</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button class="place-btn" style="margin-top:8px;margin-bottom:24px" onclick="showPanel('drinks', document.querySelectorAll('.tab')[2])">
+        Next: Add Drinks &#8594;
+      </button>
+    </div><!-- /panel-treats -->
 
     <!-- ── DRINKS PANEL ── -->
     <div class="panel" id="panel-drinks">
@@ -475,7 +559,7 @@
         </div>
         {% endfor %}
       </div>
-      <button class="place-btn" style="margin-top:20px;margin-bottom:24px" onclick="showPanel('addons', document.querySelectorAll('.tab')[2])">
+      <button class="place-btn" style="margin-top:20px;margin-bottom:24px" onclick="showPanel('addons', document.querySelectorAll('.tab')[3])">
         Next: Add-Ons &#8594;
       </button>
     </div><!-- /panel-drinks -->
@@ -512,7 +596,7 @@
         <div class="addon-check">&#10003;</div>
       </div>
       {% endfor %}
-      <button class="place-btn" style="margin-top:20px;margin-bottom:24px" onclick="showPanel('checkout', document.querySelectorAll('.tab')[3])">
+      <button class="place-btn" style="margin-top:20px;margin-bottom:24px" onclick="showPanel('checkout', document.querySelectorAll('.tab')[4])">
         Review My Order &#8594;
       </button>
     </div><!-- /panel-addons -->
@@ -549,6 +633,7 @@
             <input type="hidden" name="message_text" id="h-message">
             <!-- drinks and addons injected by JS -->
             <div id="h-drinks-container"></div>
+            <div id="h-treats-container"></div>
             <div id="h-addons-container"></div>
 
             <div class="form-row">
@@ -618,6 +703,7 @@ const state = {
   message:   '',
   addons:    {},    // name -> price
   drinks:    {},    // name -> {price, qty}
+  treats:    {},    // name -> {price, qty}
 };
 
 // ── Splash ────────────────────────────────────────────────────────────────
@@ -695,6 +781,40 @@ function adjustDrink(name, price, idx, delta) {
   updateBadge();
 }
 
+// ── Treats ───────────────────────────────────────────────────────────────
+function toggleTreat(el, name, price, slug) {
+  if (el.classList.contains('selected')) {
+    el.classList.remove('selected');
+    const badge = document.getElementById('treat-badge-' + slug);
+    if (badge) badge.style.display = 'none';
+    delete state.treats[name];
+  } else {
+    el.classList.add('selected');
+    const badge = document.getElementById('treat-badge-' + slug);
+    if (badge) { badge.style.display = 'flex'; badge.textContent = '1'; }
+    state.treats[name] = {price, qty: 1};
+  }
+  updateBadge();
+}
+
+function adjustTreat(name, price, slug, delta) {
+  const el    = document.getElementById('treat-item-' + slug);
+  const num   = document.getElementById('treat-qty-num-' + slug);
+  const badge = document.getElementById('treat-badge-' + slug);
+  let qty = (state.treats[name]?.qty || 0) + delta;
+  if (qty <= 0) {
+    if (el) el.classList.remove('selected');
+    if (badge) badge.style.display = 'none';
+    delete state.treats[name];
+    qty = 0;
+  } else {
+    state.treats[name] = {price, qty};
+    if (num) num.textContent = qty;
+    if (badge) badge.textContent = qty;
+  }
+  updateBadge();
+}
+
 // ── Add-ons ───────────────────────────────────────────────────────────────
 function toggleAddon(el, name, price) {
   el.classList.toggle('selected');
@@ -711,6 +831,7 @@ function updateBadge() {
   let count = 0;
   if (state.size && state.flavor) count++;
   count += Object.keys(state.drinks).length;
+  count += Object.keys(state.treats).length;
   count += Object.keys(state.addons).length;
 
   const badge   = document.getElementById('cartBadge');
@@ -728,10 +849,17 @@ function updateBadge() {
 
 // ── Build checkout view ───────────────────────────────────────────────────
 function buildCheckout() {
-  const hasItems = state.size && state.flavor;
-  document.getElementById('cart-empty').style.display    = hasItems ? 'none' : 'block';
+  const hasCake   = state.size && state.flavor;
+  const hasTreats = Object.keys(state.treats).length > 0;
+  const hasDrinks = Object.keys(state.drinks).length > 0;
+  const hasItems  = hasCake || hasTreats || hasDrinks;
+  document.getElementById('cart-empty').style.display     = hasItems ? 'none' : 'block';
   document.getElementById('cart-has-items').style.display = hasItems ? 'block' : 'none';
   if (!hasItems) return;
+
+  // Cake is optional if they only want treats/drinks
+  const cakeRequired = !hasCake;  // just track for submit
+  document.getElementById('placeBtn').disabled = false;
 
   // Sync hidden fields
   document.getElementById('h-size').value    = state.size?.label || '';
@@ -750,6 +878,17 @@ function buildCheckout() {
     drinksCont.appendChild(i1); drinksCont.appendChild(i2);
   }
 
+  // Treats hidden inputs
+  const treatsCont = document.getElementById('h-treats-container');
+  treatsCont.innerHTML = '';
+  for (const [name, {qty}] of Object.entries(state.treats)) {
+    const i1 = document.createElement('input');
+    i1.type = 'hidden'; i1.name = 'treats'; i1.value = name;
+    const i2 = document.createElement('input');
+    i2.type = 'hidden'; i2.name = `treat_qty_${name}`; i2.value = qty;
+    treatsCont.appendChild(i1); treatsCont.appendChild(i2);
+  }
+
   // Addons hidden inputs
   const addonsCont = document.getElementById('h-addons-container');
   addonsCont.innerHTML = '';
@@ -763,14 +902,16 @@ function buildCheckout() {
   const lines = document.getElementById('order-lines');
   lines.innerHTML = '';
 
-  // Cake line
-  const cakePrice = state.size.price;
-  lines.appendChild(makeLine(
-    `${state.flavor} Cake`,
-    state.size.label.split('(')[0].trim(),
-    cakePrice,
-    () => { state.size = null; state.flavor = null; updateBadge(); buildCheckout(); }
-  ));
+  // Cake line (only if a cake was selected)
+  const cakePrice = (state.size && state.flavor) ? state.size.price : 0;
+  if (state.size && state.flavor) {
+    lines.appendChild(makeLine(
+      `${state.flavor} Cake`,
+      state.size.label.split('(')[0].trim(),
+      cakePrice,
+      () => { state.size = null; state.flavor = null; updateBadge(); buildCheckout(); }
+    ));
+  }
 
   // Addon lines
   for (const [name, price] of Object.entries(state.addons)) {
@@ -782,6 +923,13 @@ function buildCheckout() {
         });
         updateBadge(); buildCheckout();
       }
+    ));
+  }
+
+  // Treat lines
+  for (const [name, {price, qty}] of Object.entries(state.treats)) {
+    lines.appendChild(makeLine(name, `× ${qty}`, price * qty,
+      () => { delete state.treats[name]; updateBadge(); buildCheckout(); }
     ));
   }
 
@@ -798,15 +946,14 @@ function buildCheckout() {
   // Totals
   const addonTotal  = Object.values(state.addons).reduce((s, p) => s + p, 0);
   const drinkTotal  = Object.values(state.drinks).reduce((s, {price, qty}) => s + price * qty, 0);
-  const subtotal    = cakePrice + addonTotal + drinkTotal;
+  const treatTotal  = Object.values(state.treats).reduce((s, {price, qty}) => s + price * qty, 0);
+  const subtotal    = cakePrice + addonTotal + drinkTotal + treatTotal;
   const tax         = Math.round(subtotal * 0.07 * 100) / 100;
   const total       = subtotal + tax;
 
   document.getElementById('sum-subtotal').textContent = '$' + subtotal.toFixed(2);
   document.getElementById('sum-tax').textContent      = '$' + tax.toFixed(2);
   document.getElementById('sum-total').textContent    = '$' + total.toFixed(2);
-
-  document.getElementById('placeBtn').disabled = false;
 }
 
 function makeLine(name, meta, price, removeFn) {
