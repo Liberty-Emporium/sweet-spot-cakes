@@ -3507,9 +3507,11 @@ def shopping_list():
     have_enough = []
     for item in sorted(ingredient_needs.values(), key=lambda x: x['name']):
         shortfall = round(item['needed'] - item['stock'], 3)
-        item['shortfall'] = max(0, shortfall)
-        item['buy_qty']   = max(0, shortfall)
-        item['est_cost']  = round(item['buy_qty'] * item['cost_per_unit'], 2)
+        item['shortfall']   = max(0, shortfall)
+        item['buy_qty']     = max(0, shortfall)
+        item['est_cost']    = round(item['buy_qty'] * item['cost_per_unit'], 2)
+        # Cost of the amount actually needed (regardless of stock)
+        item['needed_cost'] = round(item['needed'] * item['cost_per_unit'], 2)
         if shortfall > 0:
             to_buy.append(item)
         else:
@@ -3517,11 +3519,15 @@ def shopping_list():
 
     # Supplier lookup
     suppliers = {s['id']: s['name'] for s in db.execute('SELECT id, name FROM suppliers').fetchall()}
-    total_est = round(sum(i['est_cost'] for i in to_buy), 2)
+    total_est          = round(sum(i['est_cost'] for i in to_buy), 2)
+    total_week_cost    = round(sum(i['needed_cost'] for i in to_buy + have_enough), 2)
+    total_have_cost    = round(sum(i['needed_cost'] for i in have_enough), 2)
 
     return render_template('shopping_list.html',
                            orders=orders, to_buy=to_buy, have_enough=have_enough,
                            suppliers=suppliers, total_est=total_est,
+                           total_week_cost=total_week_cost,
+                           total_have_cost=total_have_cost,
                            today_str=today_str, week_end=week_end,
                            bakery=BAKERY_NAME)
 

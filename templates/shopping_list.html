@@ -9,13 +9,16 @@
   .shop-table tr:hover td{background:rgba(255,255,255,.02)}
   .need-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:2px 8px;border-radius:8px;font-size:.75rem;font-weight:600}
   .ok-badge{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;padding:2px 8px;border-radius:8px;font-size:.75rem}
-  .total-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .stat-box{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:140px}
+  .stat-label{font-size:.7rem;color:var(--muted);font-weight:600;letter-spacing:.05em;margin-bottom:4px;text-transform:uppercase}
+  .stat-val{font-size:1.5rem;font-weight:900}
   @media print{
-    .sidebar,.topbar,.btn{display:none!important}
+    .sidebar,.topbar,.btn,.no-print{display:none!important}
     .main{margin:0!important;padding:16px!important}
     body{background:#fff!important;color:#000!important}
-    .shop-table td,.shop-table th{color:#000!important}
-    .card-title{color:#000!important}
+    .shop-table td,.shop-table th{color:#000!important;border-color:#ccc!important}
+    .card-title,.stat-label{color:#333!important}
+    .stat-val{color:#000!important}
   }
 </style>
 {% endblock %}
@@ -25,25 +28,35 @@
     Ingredients needed for <strong>{{ orders|length }} order(s)</strong> due
     {{ today_str }} → {{ week_end }}
   </p>
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px" class="no-print">
     <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨️ Print</button>
     <a href="/kitchen" class="btn btn-ghost btn-sm">← Kitchen</a>
   </div>
 </div>
 
 <!-- Summary bar -->
-<div class="total-bar">
-  <div>
-    <div style="font-size:.75rem;color:var(--muted);margin-bottom:2px">ESTIMATED COST TO BUY</div>
-    <div style="font-size:1.6rem;font-weight:900;color:var(--pink)">${{ "%.2f"|format(total_est) }}</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+  <div class="stat-box">
+    <div class="stat-label">Total Ingredient Cost This Week</div>
+    <div class="stat-val" style="color:var(--pink)">${{ "%.2f"|format(total_week_cost) }}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:2px">all {{ (to_buy|length) + (have_enough|length) }} ingredients combined</div>
   </div>
-  <div style="text-align:right">
-    <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">ORDERS THIS WEEK</div>
+  <div class="stat-box">
+    <div class="stat-label">Already In Stock (value)</div>
+    <div class="stat-val" style="color:#4ade80">${{ "%.2f"|format(total_have_cost) }}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:2px">{{ have_enough|length }} item(s) you already have</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-label">Need to Buy</div>
+    <div class="stat-val" style="color:{% if total_est > 0 %}#f87171{% else %}#4ade80{% endif %}">${{ "%.2f"|format(total_est) }}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:2px">{{ to_buy|length }} item(s) short on stock</div>
+  </div>
+  <div class="stat-box" style="flex:2;min-width:200px">
+    <div class="stat-label">Orders This Week</div>
     {% for o in orders %}
-    <div style="font-size:.78rem;color:var(--muted)">
-      <strong style="color:var(--text)">#{{ o.order_number }}</strong>
-      — {{ o.customer_name }}
-      {% if o.pickup_date %} · 📅 {{ o.pickup_date }}{% endif %}
+    <div style="font-size:.78rem;color:var(--muted);line-height:1.7">
+      <strong style="color:var(--text)">#{{ o.order_number }}</strong> — {{ o.customer_name }}
+      {% if o.pickup_date %}<span style="color:var(--pink)"> · 📅 {{ o.pickup_date }}</span>{% endif %}
     </div>
     {% else %}
     <div style="color:var(--muted);font-size:.82rem">No orders this week</div>
@@ -54,14 +67,15 @@
 {% if to_buy %}
 <!-- NEED TO BUY -->
 <div class="card" style="margin-bottom:20px">
-  <div class="card-title" style="margin-bottom:14px;color:#f87171">🛒 Need to Buy ({{ to_buy|length }} items)</div>
+  <div class="card-title" style="margin-bottom:14px;color:#f87171">🛒 Need to Buy ({{ to_buy|length }} items · ${{ "%.2f"|format(total_est) }})</div>
   <table class="shop-table">
     <thead>
       <tr>
         <th>Ingredient</th>
-        <th>Have in Stock</th>
-        <th>Need for Orders</th>
+        <th>In Stock</th>
+        <th>Need</th>
         <th>Buy</th>
+        <th>Cost/Unit</th>
         <th>Est. Cost</th>
         <th>Supplier</th>
       </tr>
@@ -73,19 +87,22 @@
         <td style="color:var(--muted)">{{ item.stock }} {{ item.unit }}</td>
         <td>{{ item.needed }} {{ item.unit }}</td>
         <td><span class="need-badge">{{ item.buy_qty }} {{ item.unit }}</span></td>
-        <td style="color:var(--pink);font-weight:700">${{ "%.2f"|format(item.est_cost) }}</td>
+        <td style="color:var(--muted);font-size:.8rem">
+          {% if item.cost_per_unit > 0 %} ${{ "%.2f"|format(item.cost_per_unit) }}/{{ item.unit }}{% else %}—{% endif %}
+        </td>
+        <td style="color:var(--pink);font-weight:700">
+          {% if item.est_cost > 0 %}${{ "%.2f"|format(item.est_cost) }}{% else %}<span style="color:var(--muted);font-size:.75rem">Set cost in Inventory</span>{% endif %}
+        </td>
         <td style="color:var(--muted);font-size:.78rem">
-          {% if item.supplier_id and item.supplier_id in suppliers %}
-            {{ suppliers[item.supplier_id] }}
-          {% else %}—{% endif %}
+          {% if item.supplier_id and item.supplier_id in suppliers %}{{ suppliers[item.supplier_id] }}{% else %}—{% endif %}
         </td>
       </tr>
       {% endfor %}
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="4" style="font-weight:700;padding-top:12px;border-top:1px solid var(--border)">Total Estimated Cost</td>
-        <td style="font-weight:900;color:var(--pink);font-size:1.1rem;padding-top:12px;border-top:1px solid var(--border)">${{ "%.2f"|format(total_est) }}</td>
+        <td colspan="5" style="font-weight:700;padding-top:10px;border-top:1px solid var(--border)">Estimated Total to Buy</td>
+        <td style="font-weight:900;color:#f87171;font-size:1.1rem;padding-top:10px;border-top:1px solid var(--border)">${{ "%.2f"|format(total_est) }}</td>
         <td style="border-top:1px solid var(--border)"></td>
       </tr>
     </tfoot>
@@ -94,12 +111,12 @@
 {% endif %}
 
 {% if have_enough %}
-<!-- HAVE ENOUGH -->
+<!-- ALREADY HAVE -->
 <div class="card">
-  <div class="card-title" style="margin-bottom:14px;color:#4ade80">✅ Already Have ({{ have_enough|length }} items)</div>
+  <div class="card-title" style="margin-bottom:14px;color:#4ade80">✅ Already Have ({{ have_enough|length }} items · ${{ "%.2f"|format(total_have_cost) }} value)</div>
   <table class="shop-table">
     <thead>
-      <tr><th>Ingredient</th><th>In Stock</th><th>Needed</th><th>Status</th></tr>
+      <tr><th>Ingredient</th><th>In Stock</th><th>Needed</th><th>Cost/Unit</th><th>Ingredient Cost</th><th>Status</th></tr>
     </thead>
     <tbody>
       {% for item in have_enough %}
@@ -107,10 +124,23 @@
         <td style="font-weight:600">{{ item.name }}</td>
         <td style="color:var(--muted)">{{ item.stock }} {{ item.unit }}</td>
         <td>{{ item.needed }} {{ item.unit }}</td>
+        <td style="color:var(--muted);font-size:.8rem">
+          {% if item.cost_per_unit > 0 %}${{ "%.2f"|format(item.cost_per_unit) }}/{{ item.unit }}{% else %}—{% endif %}
+        </td>
+        <td style="font-weight:600;color:var(--text)">
+          {% if item.needed_cost > 0 %}${{ "%.2f"|format(item.needed_cost) }}{% else %}<span style="color:var(--muted);font-size:.75rem">Set cost in Inventory</span>{% endif %}
+        </td>
         <td><span class="ok-badge">✓ OK</span></td>
       </tr>
       {% endfor %}
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="font-weight:700;padding-top:10px;border-top:1px solid var(--border)">Total In-Stock Ingredient Value</td>
+        <td style="font-weight:900;color:#4ade80;font-size:1rem;padding-top:10px;border-top:1px solid var(--border)">${{ "%.2f"|format(total_have_cost) }}</td>
+        <td style="border-top:1px solid var(--border)"></td>
+      </tr>
+    </tfoot>
   </table>
 </div>
 {% endif %}
