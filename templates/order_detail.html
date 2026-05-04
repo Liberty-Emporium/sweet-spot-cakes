@@ -28,7 +28,8 @@
 
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
   <a href="/orders" class="btn btn-ghost btn-sm">← Orders</a>
-  <a href="/kitchen/order/{{ order.id }}" class="btn btn-primary btn-sm">🍳 Kitchen Production Sheet</a>
+  <a href="/kitchen/order/{{ order.id }}" class="btn btn-primary btn-sm">🍳 Kitchen Sheet</a>
+  <a href="/orders/{{ order.id }}/deco-ticket" class="btn btn-ghost btn-sm" target="_blank">🎨 Deco Ticket</a>
   <span class="badge badge-{{ order.status.replace('in_production','production') }}" style="font-size:.85rem;padding:6px 14px">{{ order.status|upper }}</span>
   {% if order.paid_in_full %}<span style="color:var(--green);font-weight:700;font-size:.85rem">✅ PAID IN FULL</span>{% endif %}
   {% if session.get('role') == 'admin' %}

@@ -54,11 +54,44 @@
 {% endblock %}
 {% block content %}
 
+<!-- ── Daily Bake Summary ──────────────────────────────────────────────────── -->
+{% if bake_summary.order_count > 0 %}
+<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.05em;margin-bottom:6px">TODAY'S BAKE — {{ today_str }}</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><span style="font-size:1.5rem;font-weight:900;color:var(--pink)">{{ bake_summary.order_count }}</span> <span style="color:var(--muted);font-size:.82rem">orders</span></div>
+        <div><span style="font-size:1.5rem;font-weight:900;color:var(--yellow)">{{ bake_summary.item_count }}</span> <span style="color:var(--muted);font-size:.82rem">items</span></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      {% for name, qty in bake_summary.items_by_name.items() %}
+      <span style="background:rgba(244,114,182,.1);border:1px solid rgba(244,114,182,.25);color:var(--pink);border-radius:8px;padding:4px 10px;font-size:.8rem;font-weight:600">{{ qty }}× {{ name }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% if bake_summary.ingredient_totals %}
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.05em;margin-bottom:6px">INGREDIENTS NEEDED TODAY</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for ing, qty in bake_summary.ingredient_totals.items() %}
+      <span style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:.76rem;color:var(--muted)">{{ qty }} {{ ing }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
   <div>
     <div style="color:var(--muted);font-size:.85rem">Orders in: <strong style="color:var(--yellow)">Pending</strong> · <strong style="color:var(--blue)">Confirmed</strong> · <strong style="color:var(--pink)">In Production</strong></div>
   </div>
-  <a href="/orders/new" class="btn btn-primary">+ New Order</a>
+  <div style="display:flex;gap:8px">
+    <a href="/shopping-list" class="btn btn-ghost btn-sm">🛒 Shopping List</a>
+    <a href="/orders/new" class="btn btn-primary">+ New Order</a>
+  </div>
 </div>
 
 {% if production_orders %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Shopping List — {{ bakery }}{% endblock %}
+{% block page_title %}🛒 Weekly Shopping List{% endblock %}
+{% block extra_css %}
+<style>
+  .shop-table{width:100%;border-collapse:collapse}
+  .shop-table th{text-align:left;font-size:.72rem;color:var(--muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.04em}
+  .shop-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.85rem;vertical-align:middle}
+  .shop-table tr:hover td{background:rgba(255,255,255,.02)}
+  .need-badge{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:2px 8px;border-radius:8px;font-size:.75rem;font-weight:600}
+  .ok-badge{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;padding:2px 8px;border-radius:8px;font-size:.75rem}
+  .total-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  @media print{
+    .sidebar,.topbar,.btn{display:none!important}
+    .main{margin:0!important;padding:16px!important}
+    body{background:#fff!important;color:#000!important}
+    .shop-table td,.shop-table th{color:#000!important}
+    .card-title{color:#000!important}
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <p style="color:var(--muted);font-size:.85rem;margin:0">
+    Ingredients needed for <strong>{{ orders|length }} order(s)</strong> due
+    {{ today_str }} → {{ week_end }}
+  </p>
+  <div style="display:flex;gap:8px">
+    <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨️ Print</button>
+    <a href="/kitchen" class="btn btn-ghost btn-sm">← Kitchen</a>
+  </div>
+</div>
+
+<!-- Summary bar -->
+<div class="total-bar">
+  <div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:2px">ESTIMATED COST TO BUY</div>
+    <div style="font-size:1.6rem;font-weight:900;color:var(--pink)">${{ "%.2f"|format(total_est) }}</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">ORDERS THIS WEEK</div>
+    {% for o in orders %}
+    <div style="font-size:.78rem;color:var(--muted)">
+      <strong style="color:var(--text)">#{{ o.order_number }}</strong>
+      — {{ o.customer_name }}
+      {% if o.pickup_date %} · 📅 {{ o.pickup_date }}{% endif %}
+    </div>
+    {% else %}
+    <div style="color:var(--muted);font-size:.82rem">No orders this week</div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if to_buy %}
+<!-- NEED TO BUY -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-title" style="margin-bottom:14px;color:#f87171">🛒 Need to Buy ({{ to_buy|length }} items)</div>
+  <table class="shop-table">
+    <thead>
+      <tr>
+        <th>Ingredient</th>
+        <th>Have in Stock</th>
+        <th>Need for Orders</th>
+        <th>Buy</th>
+        <th>Est. Cost</th>
+        <th>Supplier</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in to_buy %}
+      <tr>
+        <td style="font-weight:600">{{ item.name }}</td>
+        <td style="color:var(--muted)">{{ item.stock }} {{ item.unit }}</td>
+        <td>{{ item.needed }} {{ item.unit }}</td>
+        <td><span class="need-badge">{{ item.buy_qty }} {{ item.unit }}</span></td>
+        <td style="color:var(--pink);font-weight:700">${{ "%.2f"|format(item.est_cost) }}</td>
+        <td style="color:var(--muted);font-size:.78rem">
+          {% if item.supplier_id and item.supplier_id in suppliers %}
+            {{ suppliers[item.supplier_id] }}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="font-weight:700;padding-top:12px;border-top:1px solid var(--border)">Total Estimated Cost</td>
+        <td style="font-weight:900;color:var(--pink);font-size:1.1rem;padding-top:12px;border-top:1px solid var(--border)">${{ "%.2f"|format(total_est) }}</td>
+        <td style="border-top:1px solid var(--border)"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endif %}
+
+{% if have_enough %}
+<!-- HAVE ENOUGH -->
+<div class="card">
+  <div class="card-title" style="margin-bottom:14px;color:#4ade80">✅ Already Have ({{ have_enough|length }} items)</div>
+  <table class="shop-table">
+    <thead>
+      <tr><th>Ingredient</th><th>In Stock</th><th>Needed</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for item in have_enough %}
+      <tr>
+        <td style="font-weight:600">{{ item.name }}</td>
+        <td style="color:var(--muted)">{{ item.stock }} {{ item.unit }}</td>
+        <td>{{ item.needed }} {{ item.unit }}</td>
+        <td><span class="ok-badge">✓ OK</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if not to_buy and not have_enough %}
+<div class="card" style="text-align:center;padding:40px 20px">
+  <div style="font-size:2rem;margin-bottom:8px">🎉</div>
+  <div style="font-weight:700;margin-bottom:6px">Nothing needed!</div>
+  <div style="color:var(--muted);font-size:.85rem">No recipe-linked orders found in the next 7 days, or all ingredients are stocked up.</div>
+</div>
+{% endif %}
+{% endblock %}

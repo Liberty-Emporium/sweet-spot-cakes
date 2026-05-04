@@ -1372,6 +1372,72 @@ def order_item_set_recipe(item_id):
     return jsonify({'ok': True, 'recipe_name': recipe['name']})
 
 
+# ── Status-change email templates ────────────────────────────────────────────
+_STATUS_EMAIL_SUBJECTS = {
+    'confirmed':     'Your order is confirmed - {bakery}',
+    'in_production': 'We are baking your cake! - {bakery}',
+    'ready':         'Your cake is ready for pickup! - {bakery}',
+}
+
+def _status_email_body(order, status, bakery):
+    msgs = {
+        'confirmed': f"""
+            <p>Hi <strong>{order['customer_name']}</strong>,</p>
+            <p>Great news — your order <strong>{order['order_number']}</strong> has been <strong>confirmed</strong>! 🎉</p>
+            <p><strong>Pickup:</strong> {order['pickup_date'] or 'TBD'}{' @ ' + order['pickup_time'] if order['pickup_time'] else ''}</p>
+            <p><strong>Order total:</strong> ${order['total']:.2f}<br>
+               <strong>Deposit paid:</strong> ${order['deposit_paid']:.2f}<br>
+               <strong>Balance due at pickup:</strong> ${order['balance_due']:.2f}</p>
+            <p>If you have any changes or questions, just reply to this email.</p>
+        """,
+        'in_production': f"""
+            <p>Hi <strong>{order['customer_name']}</strong>,</p>
+            <p>We just started baking your cake for order <strong>{order['order_number']}</strong>! 🍰</p>
+            <p><strong>Pickup:</strong> {order['pickup_date'] or 'TBD'}{' @ ' + order['pickup_time'] if order['pickup_time'] else ''}</p>
+            <p>We'll send another message when it's ready. Can't wait for you to see it!</p>
+        """,
+        'ready': f"""
+            <p>Hi <strong>{order['customer_name']}</strong>,</p>
+            <p>Your cake is <strong>ready for pickup</strong>! 🎂🎉</p>
+            <p><strong>Order:</strong> {order['order_number']}<br>
+               <strong>Pickup:</strong> {order['pickup_date'] or 'Today'}{' @ ' + order['pickup_time'] if order['pickup_time'] else ''}</p>
+            <p><strong>Balance due at pickup:</strong> ${order['balance_due']:.2f}</p>
+            <p>We're so excited for you to see it. Thank you for choosing {bakery}! 💕</p>
+        """,
+    }
+    body = msgs.get(status, '')
+    if not body:
+        return ''
+    return f"""
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
+          <div style="font-size:1.3rem;font-weight:800;margin-bottom:16px">{bakery}</div>
+          {body}
+          <hr style="margin:24px 0;border:none;border-top:1px solid #eee">
+          <p style="font-size:.8rem;color:#888">This is an automated message from {bakery}.</p>
+        </div>
+    """
+
+def _send_status_email(order_id: int, new_status: str):
+    """Send customer email on status change (runs in background thread)."""
+    if not SMTP_ENABLED:
+        return
+    subject_tpl = _STATUS_EMAIL_SUBJECTS.get(new_status)
+    if not subject_tpl:
+        return
+    try:
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+        order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+        db.close()
+        if not order or not order['customer_email']:
+            return
+        subject = subject_tpl.format(bakery=BAKERY_NAME)
+        body    = _status_email_body(order, new_status, BAKERY_NAME)
+        if body:
+            send_email(order['customer_email'], subject, body)
+    except Exception as e:
+        app.logger.error(f'Status email error: {e}')
+
 @app.route('/orders/<int:order_id>/status', methods=['POST'])
 @login_required
 def order_status(order_id):
@@ -1379,9 +1445,77 @@ def order_status(order_id):
     new_status = request.form.get('status', '')
     valid = ['pending','confirmed','in_production','ready','delivered','cancelled']
     if new_status in valid:
+        old_row = db.execute('SELECT status FROM orders WHERE id=?', (order_id,)).fetchone()
+        old_status = old_row['status'] if old_row else ''
         db.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
         db.commit()
+        # Auto-deduct ingredients when moved to in_production
+        if new_status == 'in_production' and old_status != 'in_production':
+            items = db.execute('SELECT * FROM order_items WHERE order_id=?', (order_id,)).fetchall()
+            for item in items:
+                if item['recipe_id']:
+                    ings = db.execute(
+                        'SELECT ingredient_id, quantity FROM recipe_ingredients WHERE recipe_id=?',
+                        (item['recipe_id'],)
+                    ).fetchall()
+                    for ing in ings:
+                        needed = (ing['quantity'] or 0) * (item['quantity'] or 1)
+                        db.execute(
+                            'UPDATE ingredients SET quantity = MAX(0, quantity - ?) WHERE id=?',
+                            (needed, ing['ingredient_id'])
+                        )
+            db.commit()
+            log_activity('ingredient_deduct', session.get('user_id'),
+                         {'order_id': order_id, 'reason': 'moved to in_production'})
+        # Fire status-change email in background
+        threading.Thread(target=_send_status_email, args=(order_id, new_status), daemon=True).start()
     return redirect(url_for('order_detail', order_id=order_id))
+
+
+# ── 24-hour pickup reminder scheduler ────────────────────────────────────────
+def _pickup_reminder_scheduler():
+    """Background thread: every hour, send reminder emails for orders due tomorrow."""
+    app.logger.info('Pickup reminder scheduler started.')
+    while True:
+        try:
+            time.sleep(3600)  # check every hour
+            if not SMTP_ENABLED:
+                continue
+            ny_now_dt = datetime.datetime.now(NY_TZ)
+            tomorrow  = (ny_now_dt + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+            # Only send reminders in the 8am–9am window
+            if not (8 <= ny_now_dt.hour < 9):
+                continue
+            db = sqlite3.connect(DB_PATH)
+            db.row_factory = sqlite3.Row
+            orders = db.execute(
+                """SELECT * FROM orders
+                   WHERE pickup_date=? AND status NOT IN ('cancelled','delivered')
+                     AND customer_email != '' AND (reminder_sent IS NULL OR reminder_sent=0)""",
+                (tomorrow,)
+            ).fetchall()
+            for order in orders:
+                body = f"""
+                    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px">
+                      <div style="font-size:1.3rem;font-weight:800;margin-bottom:16px">{BAKERY_NAME}</div>
+                      <p>Hi <strong>{order['customer_name']}</strong>,</p>
+                      <p>Just a friendly reminder — your cake is scheduled for pickup <strong>tomorrow</strong>! 🎂</p>
+                      <p><strong>Order:</strong> {order['order_number']}<br>
+                         <strong>Pickup:</strong> {order['pickup_date']}{' @ ' + order['pickup_time'] if order['pickup_time'] else ''}</p>
+                      <p><strong>Balance due at pickup:</strong> ${order['balance_due']:.2f}</p>
+                      <p>Can't wait to see you! — {BAKERY_NAME} 💕</p>
+                    </div>
+                """
+                if send_email(order['customer_email'],
+                              f'⏰ Reminder: Pickup tomorrow — {BAKERY_NAME}', body):
+                    db.execute('UPDATE orders SET reminder_sent=1 WHERE id=?', (order['id'],))
+                    db.commit()
+            db.close()
+        except Exception as e:
+            app.logger.error(f'Reminder scheduler error: {e}')
+
+_reminder_thread = threading.Thread(target=_pickup_reminder_scheduler, daemon=True)
+_reminder_thread.start()
 
 # ── Stripe Checkout ───────────────────────────────────────────────────────────
 @app.route('/orders/<int:order_id>/checkout', methods=['POST'])
@@ -1922,6 +2056,8 @@ def tools_delete(tool_id):
 
 # ── Kitchen Production View ───────────────────────────────────────────────────
 def _run_migrations(db):
+    # Add reminder_sent column to orders if missing
+    _add_col(db, 'orders', 'reminder_sent', 'INTEGER DEFAULT 0')
     """Safe schema migrations for all tables — ALTER TABLE ADD COLUMN is idempotent via try/except."""
     migrations = {
         'orders': [
@@ -2127,8 +2263,41 @@ def kitchen():
         production_orders.append({'order': order, 'order_items': enriched_items})
 
     all_recipes = db.execute('SELECT id, name, category FROM recipes WHERE active=1 ORDER BY name').fetchall()
+
+    # ── Daily Bake Summary ────────────────────────────────────────────────────
+    today_str = ny_now().strftime('%Y-%m-%d')
+    bake_summary = {
+        'order_count': 0,
+        'item_count': 0,
+        'items_by_name': {},
+        'ingredient_totals': {},
+    }
+    today_orders = db.execute(
+        "SELECT * FROM orders WHERE pickup_date=? AND status NOT IN ('cancelled','delivered')",
+        (today_str,)
+    ).fetchall()
+    bake_summary['order_count'] = len(today_orders)
+    for o in today_orders:
+        oi = db.execute('SELECT * FROM order_items WHERE order_id=?', (o['id'],)).fetchall()
+        for item in oi:
+            bake_summary['item_count'] += (item['quantity'] or 1)
+            key = item['name']
+            bake_summary['items_by_name'][key] = bake_summary['items_by_name'].get(key, 0) + (item['quantity'] or 1)
+            if item['recipe_id']:
+                ings = db.execute(
+                    'SELECT i.name, ri.quantity, ri.unit FROM recipe_ingredients ri '
+                    'JOIN ingredients i ON i.id=ri.ingredient_id WHERE ri.recipe_id=?',
+                    (item['recipe_id'],)
+                ).fetchall()
+                for ing in ings:
+                    k = f"{ing['name']} ({ing['unit']})"
+                    need = (ing['quantity'] or 0) * (item['quantity'] or 1)
+                    bake_summary['ingredient_totals'][k] = round(
+                        bake_summary['ingredient_totals'].get(k, 0) + need, 2)
+
     return render_template('kitchen.html', production_orders=production_orders,
-                           all_recipes=all_recipes, bakery=BAKERY_NAME)
+                           all_recipes=all_recipes, bake_summary=bake_summary,
+                           today_str=today_str, bakery=BAKERY_NAME)
 
 @app.route('/kitchen/order/<int:order_id>')
 @login_required
@@ -3262,6 +3431,100 @@ def expenses_delete(expense_id):
     return redirect(request.referrer or '/expenses')
 
 # ── Prep Sheet ────────────────────────────────────────────────────────────────
+
+
+@app.route('/orders/<int:order_id>/deco-ticket')
+@login_required
+def deco_ticket(order_id):
+    """Print-ready decorator ticket for one order."""
+    db = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    if not order:
+        flash('Order not found.', 'error')
+        return redirect(url_for('orders'))
+    raw_items = db.execute(
+        'SELECT oi.*, r.name as recipe_name, r.prep_mins, r.bake_mins '
+        'FROM order_items oi LEFT JOIN recipes r ON r.id=oi.recipe_id '
+        'WHERE oi.order_id=? ORDER BY oi.id',
+        (order_id,)
+    ).fetchall()
+    return render_template('deco_ticket.html', order=order, items=raw_items, bakery=BAKERY_NAME)
+
+@app.route('/shopping-list')
+@login_required
+def shopping_list():
+    """Generate a combined shopping list for all orders due in the next 7 days."""
+    db = get_db()
+    today     = ny_now().date()
+    week_end  = (today + datetime.timedelta(days=7)).isoformat()
+    today_str = today.isoformat()
+
+    orders = db.execute(
+        """SELECT o.*, GROUP_CONCAT(oi.name, ', ') as item_names
+           FROM orders o
+           LEFT JOIN order_items oi ON oi.order_id=o.id
+           WHERE o.pickup_date >= ? AND o.pickup_date < ?
+             AND o.status NOT IN ('cancelled','delivered')
+           GROUP BY o.id
+           ORDER BY o.pickup_date, o.pickup_time""",
+        (today_str, week_end)
+    ).fetchall()
+
+    # Build combined ingredient needs
+    ingredient_needs = {}
+    order_ids = [o['id'] for o in orders]
+    for oid in order_ids:
+        items = db.execute(
+            'SELECT oi.quantity, oi.recipe_id FROM order_items oi WHERE oi.order_id=?', (oid,)
+        ).fetchall()
+        for item in items:
+            if not item['recipe_id']:
+                continue
+            qty = item['quantity'] or 1
+            ings = db.execute(
+                'SELECT i.id, i.name, i.unit, i.quantity as stock, i.reorder_level, '
+                '       i.cost_per_unit, i.supplier_id, ri.quantity as recipe_qty '
+                'FROM recipe_ingredients ri '
+                'JOIN ingredients i ON i.id=ri.ingredient_id '
+                'WHERE ri.recipe_id=?',
+                (item['recipe_id'],)
+            ).fetchall()
+            for ing in ings:
+                k = ing['id']
+                needed = round((ing['recipe_qty'] or 0) * qty, 3)
+                if k not in ingredient_needs:
+                    ingredient_needs[k] = {
+                        'id': ing['id'], 'name': ing['name'],
+                        'unit': ing['unit'], 'needed': 0,
+                        'stock': ing['stock'] or 0,
+                        'cost_per_unit': ing['cost_per_unit'] or 0,
+                        'supplier_id': ing['supplier_id'],
+                    }
+                ingredient_needs[k]['needed'] = round(ingredient_needs[k]['needed'] + needed, 3)
+
+    # Flag which items need buying (need > stock)
+    to_buy = []
+    have_enough = []
+    for item in sorted(ingredient_needs.values(), key=lambda x: x['name']):
+        shortfall = round(item['needed'] - item['stock'], 3)
+        item['shortfall'] = max(0, shortfall)
+        item['buy_qty']   = max(0, shortfall)
+        item['est_cost']  = round(item['buy_qty'] * item['cost_per_unit'], 2)
+        if shortfall > 0:
+            to_buy.append(item)
+        else:
+            have_enough.append(item)
+
+    # Supplier lookup
+    suppliers = {s['id']: s['name'] for s in db.execute('SELECT id, name FROM suppliers').fetchall()}
+    total_est = round(sum(i['est_cost'] for i in to_buy), 2)
+
+    return render_template('shopping_list.html',
+                           orders=orders, to_buy=to_buy, have_enough=have_enough,
+                           suppliers=suppliers, total_est=total_est,
+                           today_str=today_str, week_end=week_end,
+                           bakery=BAKERY_NAME)
+
 @app.route('/prep-sheet')
 @login_required
 def prep_sheet():
@@ -3321,6 +3584,42 @@ def prep_sheet():
                            bakery=BAKERY_NAME)
 
 # ── Settings ──────────────────────────────────────────────────────────────────
+
+@app.route('/settings/price-matrix', methods=['GET', 'POST'])
+@superadmin_required
+def price_matrix():
+    """Admin: view and edit the pricing matrix for sizes and add-ons."""
+    matrix = _load_price_matrix()
+    if request.method == 'POST':
+        # Rebuild sizes from form
+        new_sizes = []
+        labels  = request.form.getlist('size_label')
+        prices  = request.form.getlist('size_price')
+        emojis  = request.form.getlist('size_emoji')
+        for lbl, pr, em in zip(labels, prices, emojis):
+            lbl = lbl.strip()
+            if not lbl: continue
+            try: pr = float(pr)
+            except: pr = 0
+            new_sizes.append({'label': lbl, 'price': pr, 'emoji': em or '🎂'})
+        # Rebuild addons
+        new_addons = []
+        anames  = request.form.getlist('addon_name')
+        aprices = request.form.getlist('addon_price')
+        adescs  = request.form.getlist('addon_desc')
+        for nm, pr, dc in zip(anames, aprices, adescs):
+            nm = nm.strip()
+            if not nm: continue
+            try: pr = float(pr)
+            except: pr = 0
+            new_addons.append({'name': nm, 'price': pr, 'desc': dc or ''})
+        if _save_price_matrix({'sizes': new_sizes, 'addons': new_addons}):
+            flash('Price matrix saved! Changes are live immediately.', 'success')
+        else:
+            flash('Error saving price matrix.', 'error')
+        return redirect(url_for('price_matrix'))
+    return render_template('price_matrix.html', matrix=matrix, bakery=BAKERY_NAME)
+
 @app.route('/settings')
 @superadmin_required
 def settings():
@@ -3408,24 +3707,9 @@ def public_order():
                 cust_id = cur.lastrowid
 
         # Calculate base price from size selection
-        size_prices = {
-            '6" Round (serves 8-10)': 45,
-            '8" Round (serves 12-16)': 65,
-            '10" Round (serves 20-24)': 90,
-            '12" Round (serves 28-35)': 120,
-            '2-Tier (serves 30-40)': 175,
-            '3-Tier (serves 60-80)': 275,
-            'Sheet Cake (serves 24-48)': 95,
-        }
-        addon_prices = {
-            'Fondant Decorations': 25,
-            'Fresh Flowers': 20,
-            'Gold/Silver Leaf': 30,
-            'Photo Print Topper': 15,
-            'Extra Frosting Layer': 10,
-            'Gluten-Free Option': 15,
-            'Vegan Option': 15,
-        }
+        _matrix = _load_price_matrix()
+        size_prices  = {s['label']: s['price'] for s in _matrix['sizes']}
+        addon_prices = {a['name']: a['price'] for a in _matrix['addons']}
         base = float(size_prices.get(size, 0))
         addon_total = sum(float(addon_prices.get(a, 0)) for a in addons)
         subtotal = base + addon_total
@@ -3568,15 +3852,51 @@ def special_toggle(special_id):
 # ── Public Menu ─────────────────────────────────────────────────────────────────
 
 # Cake size/flavor/tier pricing (can be overridden by env or DB later)
-CAKE_SIZES = [
-    {'label': '6" Round (serves 8-10)',    'price': 38,  'emoji': '🎂'},
-    {'label': '8" Round (serves 12-16)',   'price': 52,  'emoji': '🎂'},
-    {'label': '10" Round (serves 20-24)',  'price': 72,  'emoji': '🎂'},
-    {'label': '12" Round (serves 28-35)', 'price': 98,  'emoji': '🎂'},
-    {'label': '2-Tier (serves 30-40)',    'price': 145, 'emoji': '✨'},
-    {'label': '3-Tier (serves 60-80)',    'price': 235, 'emoji': '✨'},
-    {'label': 'Sheet Cake (serves 24-48)','price': 75,  'emoji': '🎂'},
-]
+# ── Price Matrix (live-editable from Settings) ───────────────────────────────
+_PRICE_MATRIX_PATH = os.path.join(os.environ.get('DATA_DIR', '/data'), 'price_matrix.json')
+
+def _load_price_matrix():
+    defaults = {
+        'sizes': [
+            {'label': '6" Round (serves 8-10)',    'price': 38,  'emoji': '🎂'},
+            {'label': '8" Round (serves 12-16)',   'price': 52,  'emoji': '🎂'},
+            {'label': '10" Round (serves 20-24)',  'price': 72,  'emoji': '🎂'},
+            {'label': '12" Round (serves 28-35)', 'price': 98,  'emoji': '🎂'},
+            {'label': '2-Tier (serves 30-40)',    'price': 145, 'emoji': '✨'},
+            {'label': '3-Tier (serves 60-80)',    'price': 235, 'emoji': '✨'},
+            {'label': 'Sheet Cake (serves 24-48)', 'price': 75, 'emoji': '🎂'},
+        ],
+        'addons': [
+            {'name': 'Custom Message',       'price': 0,  'desc': 'Personalized text piped on your cake'},
+            {'name': 'Fondant Decorations',  'price': 20, 'desc': 'Custom fondant figures, flowers, or toppers'},
+            {'name': 'Fresh Flowers',        'price': 15, 'desc': 'Real edible flowers or silk florals'},
+            {'name': 'Gold/Silver Leaf',     'price': 20, 'desc': 'Luxurious metallic leaf accent details'},
+            {'name': 'Photo Print Topper',   'price': 12, 'desc': 'Edible photo printed on frosting sheet'},
+            {'name': 'Extra Frosting Layer', 'price': 8,  'desc': 'Double the frosting'},
+            {'name': 'Gluten-Free Option',   'price': 10, 'desc': 'Gluten-free flour blend'},
+            {'name': 'Vegan Option',         'price': 10, 'desc': '100% plant-based ingredients'},
+        ]
+    }
+    try:
+        if os.path.exists(_PRICE_MATRIX_PATH):
+            with open(_PRICE_MATRIX_PATH) as f:
+                saved = json.load(f)
+                defaults.update(saved)
+    except Exception:
+        pass
+    return defaults
+
+def _save_price_matrix(matrix):
+    try:
+        os.makedirs(os.path.dirname(_PRICE_MATRIX_PATH), exist_ok=True)
+        with open(_PRICE_MATRIX_PATH, 'w') as f:
+            json.dump(matrix, f, indent=2)
+        return True
+    except Exception as e:
+        app.logger.error(f'Price matrix save error: {e}')
+        return False
+
+CAKE_SIZES = _load_price_matrix()['sizes']
 
 FLAVORS = [
     {'name': 'Classic Vanilla',        'desc': 'Light, fluffy vanilla sponge with silky vanilla buttercream',              'emoji': '🧁', 'popular': True},
@@ -3591,16 +3911,7 @@ FLAVORS = [
     {'name': 'Marble',                 'desc': 'Swirled vanilla and chocolate sponge with vanilla or chocolate frosting', 'emoji': '🌀', 'popular': False},
 ]
 
-ADD_ONS = [
-    {'name': 'Custom Message',          'price': 0,  'desc': 'Personalized text piped on your cake'},
-    {'name': 'Fondant Decorations',     'price': 20, 'desc': 'Custom fondant figures, flowers, or toppers'},
-    {'name': 'Fresh Flowers',           'price': 15, 'desc': 'Real edible flowers or silk florals'},
-    {'name': 'Gold/Silver Leaf',        'price': 20, 'desc': 'Luxurious metallic leaf accent details'},
-    {'name': 'Photo Print Topper',      'price': 12, 'desc': 'Edible photo printed on frosting sheet'},
-    {'name': 'Extra Frosting Layer',    'price': 8,  'desc': 'Double the frosting — because why not?'},
-    {'name': 'Gluten-Free Option',      'price': 10, 'desc': 'Gluten-free flour blend at no compromise in taste'},
-    {'name': 'Vegan Option',            'price': 10, 'desc': '100% plant-based ingredients'},
-]
+ADD_ONS = _load_price_matrix()['addons']
 
 
 @app.route('/menu')
