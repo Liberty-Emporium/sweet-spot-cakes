@@ -194,8 +194,13 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="display:grid;grid-template-columns:1fr 80px 110px;gap:8px;margin-bottom:8px">
               <div>
-                <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px">Item Name</label>
-                <input name="name" class="form-control" value="{{ item.name }}" required style="font-size:.85rem;padding:7px 10px">
+                <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px">Item</label>
+                <select name="name" id="edit-recipe-select-{{ item.id }}" class="form-control"
+                  onchange="editFillFromRecipe(this, {{ item.id }})"
+                  style="font-size:.85rem;padding:7px 10px">
+                  <!-- Populated by JS; current value pre-selected -->
+                  <option value="{{ item.name }}" selected>{{ item.name }}</option>
+                </select>
               </div>
               <div>
                 <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px">Qty</label>
@@ -203,7 +208,7 @@
               </div>
               <div>
                 <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:3px">Unit Price $</label>
-                <input name="unit_price" type="number" step="0.01" min="0" class="form-control" value="{{ '%.2f'|format(item.unit_price) }}" style="font-size:.85rem;padding:7px 10px">
+                <input name="unit_price" id="edit-price-{{ item.id }}" type="number" step="0.01" min="0" class="form-control" value="{{ '%.2f'|format(item.unit_price) }}" style="font-size:.85rem;padding:7px 10px">
               </div>
             </div>
             <div style="margin-bottom:10px">
@@ -296,20 +301,56 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-// Load recipes for item selector
+// Load recipes — populate both the Add Item selector and all inline Edit dropdowns
+let _recipeCache = [];
 fetch('/api/recipes').then(r=>r.json()).then(data => {
+  _recipeCache = data;
+
+  // Add Item dropdown
   const sel = document.getElementById('recipeSelect');
-  data.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.id; opt.textContent = r.name; opt.dataset.price = r.base_price;
-    sel.appendChild(opt);
+  if (sel) {
+    data.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id; opt.textContent = r.name; opt.dataset.price = r.base_price;
+      sel.appendChild(opt);
+    });
+  }
+
+  // Inline edit dropdowns — each keeps its current name as the first option
+  document.querySelectorAll('[id^="edit-recipe-select-"]').forEach(editSel => {
+    const currentName = editSel.options[0]?.value || '';
+    // Clear and re-add current name first so it stays selected
+    editSel.innerHTML = '';
+    // Add a blank "— keep current —" option only if current name isn't in recipes
+    const match = data.find(r => r.name === currentName);
+    if (!match) {
+      const keep = document.createElement('option');
+      keep.value = currentName; keep.textContent = currentName; keep.selected = true;
+      editSel.appendChild(keep);
+    }
+    data.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.name; opt.textContent = r.name; opt.dataset.price = r.base_price;
+      if (r.name === currentName) opt.selected = true;
+      editSel.appendChild(opt);
+    });
   });
 });
+
 function fillFromRecipe(sel) {
   const opt = sel.options[sel.selectedIndex];
   if (opt && opt.dataset.price) {
     document.getElementById('itemName').value = opt.text;
     document.getElementById('itemPrice').value = parseFloat(opt.dataset.price).toFixed(2);
+  }
+}
+
+// When an edit-panel recipe dropdown changes, auto-fill the price
+function editFillFromRecipe(sel, itemId) {
+  const opt = sel.options[sel.selectedIndex];
+  const priceInput = document.getElementById('edit-price-' + itemId);
+  if (opt && opt.dataset.price && priceInput) {
+    priceInput.value = parseFloat(opt.dataset.price).toFixed(2);
   }
 }
 
