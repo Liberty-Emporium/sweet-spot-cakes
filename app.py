@@ -3626,12 +3626,34 @@ def settings_integrations():
         action = request.form.get('action', '')
 
         if action == 'test_ecdash':
-            ok = _report_to_ecdash(
-                'Test ping from Sweet Spot settings page. Connection working!',
-                'info'
-            )
-            msg = '✅ EcDash connected! Message sent to Echo + dashboard.' if ok else '❌ EcDash not reachable. Check ECDASH_APP_TOKEN and ECDASH_URL in Railway.'
-            msg_type = 'success' if ok else 'error'
+            if not ECDASH_TOKEN:
+                msg = '❌ ECDASH_APP_TOKEN is not set in Railway. Go to Railway → Sweet Spot service → Variables → add ECDASH_APP_TOKEN.'
+                msg_type = 'error'
+            else:
+                # Try both endpoints and report which ones work
+                import urllib.request as _ur, json as _jj
+                results = []
+                note_payload = _jj.dumps({'text': '[Sweet Spot] Test ping — connection working!'}).encode()
+                bridge_payload = _jj.dumps({'task': '[Sweet Spot] Test ping from settings', 'app': 'sweet-spot-cakes'}).encode()
+
+                for label, url, method, payload, headers in [
+                    ('Notes (X-Brain-Sync-Token)', f'{ECDASH_URL}/api/notes/echo', 'POST',
+                     note_payload, {'Content-Type':'application/json','X-Brain-Sync-Token': ECDASH_TOKEN}),
+                    ('Echo-Bridge (Bearer)', f'{ECDASH_URL}/api/echo-bridge', 'POST',
+                     bridge_payload, {'Content-Type':'application/json','Authorization': f'Bearer {ECDASH_TOKEN}'}),
+                ]:
+                    try:
+                        req = _ur.Request(url, data=payload, headers=headers, method=method)
+                        r = _ur.urlopen(req, timeout=6)
+                        results.append(f'✅ {label}: HTTP {r.status}')
+                    except _ur.error.HTTPError as e:
+                        results.append(f'❌ {label}: HTTP {e.code} — check token value')
+                    except Exception as e:
+                        results.append(f'❌ {label}: {str(e)[:60]}')
+
+                any_ok = any(r.startswith('✅') for r in results)
+                msg = ('✅ EcDash connection working! ' if any_ok else '❌ EcDash connection failed. ') + ' | '.join(results)
+                msg_type = 'success' if any_ok else 'error'
 
         elif action == 'test_cakely':
             # Test that the Cakely token is valid by hitting /cakely/api/dashboard
@@ -4204,35 +4226,56 @@ ECDASH_URL   = os.environ.get('ECDASH_URL', 'https://jay-portfolio-production.up
 ECDASH_TOKEN = os.environ.get('ECDASH_APP_TOKEN', '')
 
 def _report_to_ecdash(message: str, level: str = 'info', source: str = 'Sweet Spot'):
-    """Post an alert/note to EcDash echo-bridge and notes API."""
+    """Post an alert/note to EcDash.
+    Tries two auth methods:
+      1. X-Brain-Sync-Token header (used by notes + brain sync endpoints)
+      2. Authorization: Bearer (used by echo-bridge queue)
+    ECDASH_TOKEN is the app token set in Railway as ECDASH_APP_TOKEN.
+    """
     if not ECDASH_TOKEN:
         return False
     try:
         import urllib.request as _ur, json as _json
-        payload = _json.dumps({
-            'content': f'[{source}] {message}',
+        full_message = f'[Sweet Spot] {message}'
+        note_payload = _json.dumps({'text': full_message}).encode()
+        bridge_payload = _json.dumps({
+            'task': full_message,
             'level': level,
             'app': 'sweet-spot-cakes',
+            'source': source,
         }).encode()
-        # Post to echo-bridge queue (Echo picks this up on heartbeat)
-        req = _ur.Request(
-            f'{ECDASH_URL}/api/echo-bridge',
-            data=payload,
-            headers={'Content-Type': 'application/json',
-                     'Authorization': f'Bearer {ECDASH_TOKEN}'},
-            method='POST'
-        )
-        _ur.urlopen(req, timeout=5)
-        # Also post to notes so Jay sees it on dashboard
-        req2 = _ur.Request(
-            f'{ECDASH_URL}/api/notes/echo',
-            data=payload,
-            headers={'Content-Type': 'application/json',
-                     'Authorization': f'Bearer {ECDASH_TOKEN}'},
-            method='POST'
-        )
-        _ur.urlopen(req2, timeout=5)
-        return True
+
+        sent = False
+
+        # Method 1: Post note via X-Brain-Sync-Token (same as brain sync)
+        try:
+            req1 = _ur.Request(
+                f'{ECDASH_URL}/api/notes/echo',
+                data=note_payload,
+                headers={'Content-Type': 'application/json',
+                         'X-Brain-Sync-Token': ECDASH_TOKEN},
+                method='POST'
+            )
+            _ur.urlopen(req1, timeout=5)
+            sent = True
+        except Exception:
+            pass
+
+        # Method 2: Post to echo-bridge via Authorization Bearer
+        try:
+            req2 = _ur.Request(
+                f'{ECDASH_URL}/api/echo-bridge',
+                data=bridge_payload,
+                headers={'Content-Type': 'application/json',
+                         'Authorization': f'Bearer {ECDASH_TOKEN}'},
+                method='POST'
+            )
+            _ur.urlopen(req2, timeout=5)
+            sent = True
+        except Exception:
+            pass
+
+        return sent
     except Exception as e:
         app.logger.error(f'EcDash report failed: {e}')
         return False
