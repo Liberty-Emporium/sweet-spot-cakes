@@ -215,6 +215,7 @@
     <div class="nav-section">Admin</div>
     <a href="/settings" class="nav-item {% if '/settings' in request.path and '/price-matrix' not in request.path %}active{% endif %}">⚙️ <span>Settings</span></a>
     <a href="/settings/price-matrix" class="nav-item {% if '/price-matrix' in request.path %}active{% endif %}">💰 <span>Price Matrix</span></a>
+    <a href="/settings/integrations" class="nav-item {% if '/integrations' in request.path %}active{% endif %}">🔌 <span>Integrations</span></a>
     <a href="/shopping-list" class="nav-item {% if '/shopping-list' in request.path %}active{% endif %}">🛒 <span>Shopping List</span></a>
     <a href="/admin/backup" class="nav-item {% if '/admin/backup' in request.path %}active{% endif %}">🗄️ <span>Backup</span></a>
     {% endif %}

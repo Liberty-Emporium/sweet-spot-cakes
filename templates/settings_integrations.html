@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Integrations — {{ bakery }}{% endblock %}
+{% block page_title %}🔌 Integrations{% endblock %}
+{% block extra_css %}
+<style>
+  .int-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+  .int-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  .int-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+  .status-pill{padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.03em}
+  .pill-ok{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80}
+  .pill-warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:#fbbf24}
+  .pill-bad{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171}
+  .code-block{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:.8rem;color:var(--muted);margin:8px 0;word-break:break-all}
+  .token-display{display:flex;align-items:center;gap:8px}
+  .token-val{font-family:monospace;font-size:.82rem;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .copy-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.75rem;white-space:nowrap}
+  .copy-btn:hover{border-color:var(--pink);color:var(--pink)}
+  .alert-row{padding:6px 10px;border-radius:6px;background:var(--card2);border-left:3px solid var(--border);font-size:.78rem;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
+</style>
+{% endblock %}
+{% block content %}
+
+{% if msg %}
+<div style="background:{% if msg_type=='success' %}rgba(34,197,94,.1){% else %}rgba(239,68,68,.1){% endif %};
+            border:1px solid {% if msg_type=='success' %}rgba(34,197,94,.3){% else %}rgba(239,68,68,.3){% endif %};
+            color:{% if msg_type=='success' %}#4ade80{% else %}#f87171{% endif %};
+            border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.88rem">
+  {{ msg }}
+</div>
+{% endif %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+  <p style="color:var(--muted);font-size:.85rem;margin:0">Connect Sweet Spot to Cakely AI and EcDash. These let your AI assistant report problems and status automatically.</p>
+  <a href="/settings" class="btn btn-ghost btn-sm">← Settings</a>
+</div>
+
+<!-- ── CAKELY ────────────────────────────────────────────────────────────── -->
+<div class="int-card">
+  <div class="int-header">
+    <div class="int-title">🎂 Cakely AI Agent</div>
+    {% if cakely_token_set %}
+    <span class="status-pill pill-ok">✓ Custom Token Set</span>
+    {% else %}
+    <span class="status-pill pill-warn">⚠ Using Default Token</span>
+    {% endif %}
+  </div>
+  <p style="font-size:.83rem;color:var(--muted);margin-bottom:14px">
+    Cakely is your AI bakery assistant — it can answer questions about orders, inventory, customers,
+    and staff via the AI Widget on your dashboard.
+  </p>
+
+  <div style="margin-bottom:12px">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px;font-weight:600">YOUR CAKELY API TOKEN</div>
+    <div class="token-display">
+      <span class="token-val" id="cakely-token-val">{{ cakely_token[:12] }}••••••••••••</span>
+      <button class="copy-btn" onclick="copyToken('{{ cakely_token }}', this)">📋 Copy</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--muted);margin-top:6px">
+      This token must be set as <code>CAKELY_API_TOKEN</code> in Railway env vars.
+      Anyone with this token can query your bakery data via the Cakely API.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <strong>Railway env var:</strong> CAKELY_API_TOKEN = {{ cakely_token }}<br>
+    <strong>API base URL:</strong> https://sweet-spot-cakes.up.railway.app/cakely/api/<br>
+    <strong>Auth header:</strong> Authorization: Bearer {{ cakely_token }}
+  </div>
+
+  <div style="margin-top:12px">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;font-weight:600">CAKELY API ENDPOINTS</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for ep in ['/cakely/api/orders','/cakely/api/orders/today','/cakely/api/inventory',
+                    '/cakely/api/inventory/low','/cakely/api/customers','/cakely/api/recipes',
+                    '/cakely/api/dashboard','/cakely/api/employees/status','/cakely/api/memory'] %}
+      <span style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.72rem;font-family:monospace;color:var(--muted)">{{ ep }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <form method="POST" style="margin-top:14px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="test_cakely">
+    <button type="submit" class="btn btn-ghost btn-sm">🧪 Test Cakely API</button>
+  </form>
+</div>
+
+<!-- ── ECDASH ────────────────────────────────────────────────────────────── -->
+<div class="int-card">
+  <div class="int-header">
+    <div class="int-title">📊 EcDash — Alert Reporting</div>
+    {% if ecdash_connected %}
+    <span class="status-pill pill-ok">✓ Token Configured</span>
+    {% else %}
+    <span class="status-pill pill-bad">✗ Not Connected</span>
+    {% endif %}
+  </div>
+  <p style="font-size:.83rem;color:var(--muted);margin-bottom:14px">
+    When EcDash is connected, Sweet Spot automatically reports problems, status updates,
+    and alerts — straight to Echo (your AI) and your EcDash dashboard.
+  </p>
+
+  <div class="code-block">
+    <strong>EcDash URL:</strong> {{ ecdash_url }}<br>
+    <strong>Required Railway env vars:</strong><br>
+    &nbsp;&nbsp;<code>ECDASH_URL</code> = {{ ecdash_url }}<br>
+    &nbsp;&nbsp;<code>ECDASH_APP_TOKEN</code> = [get from EcDash → Credentials panel → Sweet Spot token]
+  </div>
+
+  {% if not ecdash_connected %}
+  <div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--yellow);margin:12px 0">
+    ⚠️ <strong>Not connected yet.</strong> Set <code>ECDASH_APP_TOKEN</code> in Railway to enable automatic reporting to Echo and your dashboard.
+  </div>
+  {% endif %}
+
+  <div style="margin-top:12px">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;font-weight:600">WHAT GETS REPORTED AUTOMATICALLY</div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      {% for item in [
+        ('🚀', 'App boot/restart', 'Every time Sweet Spot starts up'),
+        ('❌', '500 server errors', 'Any page crash is reported immediately'),
+        ('✅', 'Order ready/delivered', 'When you mark an order Ready or Delivered'),
+        ('📦', 'Ingredient deducted', 'When an order moves to In Production'),
+      ] %}
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--card2);border-radius:6px;font-size:.82rem">
+        <span>{{ item[0] }}</span>
+        <strong style="min-width:160px">{{ item[1] }}</strong>
+        <span style="color:var(--muted)">{{ item[2] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="test_ecdash">
+      <button type="submit" class="btn btn-ghost btn-sm" {% if not ecdash_connected %}disabled title="Set ECDASH_APP_TOKEN first"{% endif %}>
+        🧪 Test EcDash Connection
+      </button>
+    </form>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="report_status">
+      <button type="submit" class="btn btn-ghost btn-sm" {% if not ecdash_connected %}disabled title="Set ECDASH_APP_TOKEN first"{% endif %}>
+        📤 Send Status Report Now
+      </button>
+    </form>
+    {% if ecdash_connected %}
+    <a href="{{ ecdash_url }}/dashboard" target="_blank" class="btn btn-ghost btn-sm">🔗 Open EcDash</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── EMAIL (SMTP) ────────────────────────────────────────────────────────── -->
+<div class="int-card">
+  <div class="int-header">
+    <div class="int-title">📧 Email (SMTP)</div>
+    {% if smtp_ready %}
+    <span class="status-pill pill-ok">✓ Configured</span>
+    {% else %}
+    <span class="status-pill pill-bad">✗ Not Configured</span>
+    {% endif %}
+  </div>
+  <p style="font-size:.83rem;color:var(--muted);margin-bottom:10px">
+    Required for: customer order confirmation emails, "in production" and "ready" notifications,
+    24-hour pickup reminders, and daily backup emails.
+  </p>
+  <div class="code-block">
+    <strong>Required Railway env vars:</strong><br>
+    &nbsp;&nbsp;<code>SMTP_USER</code> = your Gmail address (e.g. alexanderjay70@gmail.com)<br>
+    &nbsp;&nbsp;<code>SMTP_PASS</code> = your Gmail App Password (16-char code, NOT your login password)<br>
+    &nbsp;&nbsp;<code>SMTP_FROM</code> = sender name/email (optional, defaults to SMTP_USER)<br><br>
+    <strong>Get a Gmail App Password:</strong><br>
+    &nbsp;&nbsp;Google Account → Security → 2-Step Verification → App Passwords → Generate
+  </div>
+</div>
+
+<!-- ── RECENT ACTIVITY ─────────────────────────────────────────────────────── -->
+{% if recent_alerts %}
+<div class="int-card">
+  <div class="int-title" style="margin-bottom:14px">📋 Recent System Activity</div>
+  {% for a in recent_alerts %}
+  <div class="alert-row">
+    <span style="color:var(--text)">{{ a.action_type | replace('_',' ') | title }}</span>
+    <span style="color:var(--muted)">{{ a.created_at[:16] if a.created_at else '' }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+{% block extra_js %}
+<script>
+function copyToken(token, btn) {
+  navigator.clipboard.writeText(token).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy', 2000);
+  });
+}
+</script>
+{% endblock %}

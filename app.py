@@ -1073,6 +1073,15 @@ def check_csrf():
         return 'Form expired or invalid. Please go back and try again.', 403
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
+@app.errorhandler(500)
+def internal_error(e):
+    threading.Thread(
+        target=_report_to_ecdash,
+        args=(f'500 Internal Server Error on {request.path} — {str(e)[:200]}', 'error'),
+        daemon=True
+    ).start()
+    return 'Internal Server Error', 500
+
 @app.after_request
 def security_headers(resp):
     resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -1469,6 +1478,12 @@ def order_status(order_id):
                          {'order_id': order_id, 'reason': 'moved to in_production'})
         # Fire status-change email in background
         threading.Thread(target=_send_status_email, args=(order_id, new_status), daemon=True).start()
+        # Report ready/delivered orders to EcDash
+        if new_status in ('ready', 'delivered'):
+            order_row = db.execute('SELECT order_number, customer_name FROM orders WHERE id=?', (order_id,)).fetchone()
+            if order_row:
+                msg = f"Order {order_row['order_number']} ({order_row['customer_name']}) marked as {new_status.upper()}"
+                threading.Thread(target=_report_to_ecdash, args=(msg, 'info'), daemon=True).start()
     return redirect(url_for('order_detail', order_id=order_id))
 
 
@@ -1516,6 +1531,13 @@ def _pickup_reminder_scheduler():
 
 _reminder_thread = threading.Thread(target=_pickup_reminder_scheduler, daemon=True)
 _reminder_thread.start()
+
+def _startup_report():
+    """Send boot notification to EcDash after a short delay (gives app time to start)."""
+    time.sleep(8)
+    _report_to_ecdash('Sweet Spot booted successfully. All systems running.', 'info')
+
+threading.Thread(target=_startup_report, daemon=True).start()
 
 # ── Stripe Checkout ───────────────────────────────────────────────────────────
 @app.route('/orders/<int:order_id>/checkout', methods=['POST'])
@@ -3591,6 +3613,90 @@ def prep_sheet():
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
+
+@app.route('/settings/integrations', methods=['GET', 'POST'])
+@superadmin_required
+def settings_integrations():
+    """Integrations settings: Cakely API key, EcDash connection, test buttons."""
+    db = get_db()
+    msg = None
+    msg_type = 'success'
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        if action == 'test_ecdash':
+            ok = _report_to_ecdash(
+                'Test ping from Sweet Spot settings page. Connection working!',
+                'info'
+            )
+            msg = '✅ EcDash connected! Message sent to Echo + dashboard.' if ok else '❌ EcDash not reachable. Check ECDASH_APP_TOKEN and ECDASH_URL in Railway.'
+            msg_type = 'success' if ok else 'error'
+
+        elif action == 'test_cakely':
+            # Test that the Cakely token is valid by hitting /cakely/api/dashboard
+            try:
+                import urllib.request as _ur
+                base = request.host_url.rstrip('/')
+                req = _ur.Request(
+                    f'{base}/cakely/api/dashboard',
+                    headers={'Authorization': f'Bearer {CAKELY_TOKEN}'}
+                )
+                resp = _ur.urlopen(req, timeout=5)
+                msg = f'✅ Cakely API token is working. Dashboard data returned.'
+                msg_type = 'success'
+            except Exception as e:
+                msg = f'❌ Cakely API test failed: {str(e)[:100]}'
+                msg_type = 'error'
+
+        elif action == 'report_status':
+            # Manual status report to EcDash
+            try:
+                orders_pending = db.execute(
+                    "SELECT COUNT(*) FROM orders WHERE status IN ('pending','confirmed','in_production')"
+                ).fetchone()[0]
+                low_stock = db.execute(
+                    "SELECT COUNT(*) FROM ingredients WHERE quantity <= reorder_level AND quantity >= 0"
+                ).fetchone()[0]
+                revenue_today = db.execute(
+                    "SELECT COALESCE(SUM(amount),0) FROM receipts WHERE date(created)=date('now')"
+                ).fetchone()[0]
+                report = (
+                    f"Sweet Spot Status Report — "
+                    f"{orders_pending} active orders, "
+                    f"{low_stock} low-stock ingredients, "
+                    f"${revenue_today:.2f} revenue today."
+                )
+                ok = _report_to_ecdash(report, 'info')
+                msg = '✅ Status report sent to EcDash!' if ok else '❌ Failed to send — check EcDash connection.'
+                msg_type = 'success' if ok else 'error'
+            except Exception as e:
+                msg = f'Error: {str(e)}'
+                msg_type = 'error'
+
+    # Gather current status
+    ecdash_connected = bool(ECDASH_TOKEN)
+    cakely_token_set = bool(CAKELY_TOKEN and CAKELY_TOKEN != 'cakely-sweet-spot-2026')
+    smtp_ready = SMTP_ENABLED
+
+    # Recent alerts (last 10 from activity_logs)
+    recent_alerts = db.execute(
+        """SELECT action_type, details, created_at FROM activity_logs
+           WHERE action_type IN ('ingredient_deduct','delete_order_item','backup_download',
+                                 'backup_email_auto','backup_email_manual')
+           ORDER BY created_at DESC LIMIT 10"""
+    ).fetchall()
+
+    return render_template('settings_integrations.html',
+                           msg=msg, msg_type=msg_type,
+                           ecdash_connected=ecdash_connected,
+                           ecdash_url=ECDASH_URL,
+                           cakely_token=CAKELY_TOKEN,
+                           cakely_token_set=cakely_token_set,
+                           smtp_ready=smtp_ready,
+                           recent_alerts=recent_alerts,
+                           bakery=BAKERY_NAME)
+
 @app.route('/settings/price-matrix', methods=['GET', 'POST'])
 @superadmin_required
 def price_matrix():
@@ -4093,7 +4199,43 @@ def campaign_mark_sent(campaign_id):
 
 
 # ── Cakely AI Agent API (Bearer token auth) ─────────────────────────────────
-CAKELY_TOKEN = os.environ.get('CAKELY_API_TOKEN', 'cakely-sweet-spot-2026')
+CAKELY_TOKEN  = os.environ.get('CAKELY_API_TOKEN', 'cakely-sweet-spot-2026')
+ECDASH_URL   = os.environ.get('ECDASH_URL', 'https://jay-portfolio-production.up.railway.app')
+ECDASH_TOKEN = os.environ.get('ECDASH_APP_TOKEN', '')
+
+def _report_to_ecdash(message: str, level: str = 'info', source: str = 'Sweet Spot'):
+    """Post an alert/note to EcDash echo-bridge and notes API."""
+    if not ECDASH_TOKEN:
+        return False
+    try:
+        import urllib.request as _ur, json as _json
+        payload = _json.dumps({
+            'content': f'[{source}] {message}',
+            'level': level,
+            'app': 'sweet-spot-cakes',
+        }).encode()
+        # Post to echo-bridge queue (Echo picks this up on heartbeat)
+        req = _ur.Request(
+            f'{ECDASH_URL}/api/echo-bridge',
+            data=payload,
+            headers={'Content-Type': 'application/json',
+                     'Authorization': f'Bearer {ECDASH_TOKEN}'},
+            method='POST'
+        )
+        _ur.urlopen(req, timeout=5)
+        # Also post to notes so Jay sees it on dashboard
+        req2 = _ur.Request(
+            f'{ECDASH_URL}/api/notes/echo',
+            data=payload,
+            headers={'Content-Type': 'application/json',
+                     'Authorization': f'Bearer {ECDASH_TOKEN}'},
+            method='POST'
+        )
+        _ur.urlopen(req2, timeout=5)
+        return True
+    except Exception as e:
+        app.logger.error(f'EcDash report failed: {e}')
+        return False
 
 def cakely_auth():
     auth = request.headers.get('Authorization', '')
