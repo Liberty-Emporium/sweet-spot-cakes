@@ -65,7 +65,7 @@
             <td style="font-size:.8rem;color:var(--muted);max-width:220px">{{ tool.notes or '—' }}</td>
             <td>
               <div style="display:flex;gap:6px">
-                <button class="btn btn-ghost btn-xs" onclick="openEdit({{ tool.id }}, '{{ tool.name|replace("'","\\'") }}', '{{ tool.category }}', {{ tool.quantity }}, '{{ tool.unit }}', '{{ tool.location|replace("'","\\'") }}', '{{ tool.notes|replace("'","\\'") }}')">Edit</button>
+                <button class="btn btn-ghost btn-xs" onclick="openEdit({{ tool.id }}, '{{ tool.name }}', '{{ tool.category }}', {{ tool.quantity }}, '{{ tool.unit }}', '{{ tool.location }}', '{{ tool.notes }}')">Edit</button>
                 <form method="POST" action="/tools/{{ tool.id }}/delete" onsubmit="return confirm('Remove this tool?')">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-danger btn-xs">Remove</button>
