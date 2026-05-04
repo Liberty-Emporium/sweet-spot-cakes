@@ -1361,6 +1361,42 @@ def order_delete_item(order_id, item_id):
     return redirect(url_for('order_detail', order_id=order_id))
 
 
+@app.route('/orders/<int:order_id>/edit-item/<int:item_id>', methods=['POST'])
+@login_required
+def order_item_edit(order_id, item_id):
+    """Edit an existing order item (name, qty, price, customizations)."""
+    db    = get_db()
+    order = db.execute('SELECT * FROM orders WHERE id=?', (order_id,)).fetchone()
+    item  = db.execute('SELECT * FROM order_items WHERE id=? AND order_id=?', (item_id, order_id)).fetchone()
+    if not order or not item:
+        flash('Item not found.', 'error')
+        return redirect(url_for('order_detail', order_id=order_id))
+
+    name   = request.form.get('name', '').strip() or item['name']
+    qty    = max(1, int(request.form.get('quantity', 1) or 1))
+    price  = round(float(request.form.get('unit_price', 0) or 0), 2)
+    custom = request.form.get('customizations', '').strip()
+    total  = round(qty * price, 2)
+
+    db.execute(
+        'UPDATE order_items SET name=?, quantity=?, unit_price=?, total=?, customizations=? WHERE id=?',
+        (name, qty, price, total, custom, item_id)
+    )
+    # Recalculate order totals
+    subtotal = db.execute('SELECT COALESCE(SUM(total),0) FROM order_items WHERE order_id=?', (order_id,)).fetchone()[0]
+    tax      = round(subtotal * tax_rate(), 2)
+    discount = order['discount'] or 0
+    grand    = round(subtotal + tax - discount, 2)
+    balance  = round(grand - (order['deposit_paid'] or 0), 2)
+    db.execute('UPDATE orders SET subtotal=?,tax=?,total=?,balance_due=? WHERE id=?',
+               (subtotal, tax, grand, balance, order_id))
+    db.commit()
+    log_activity('edit_order_item', session.get('user_id'),
+                 {'order_id': order_id, 'item_id': item_id, 'name': name})
+    flash(f'Item "{name}" updated.', 'success')
+    return redirect(url_for('order_detail', order_id=order_id))
+
+
 @app.route('/api/order-items/<int:item_id>/set-recipe', methods=['POST'])
 @login_required
 def order_item_set_recipe(item_id):
